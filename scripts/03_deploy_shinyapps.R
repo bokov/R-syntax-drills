@@ -13,7 +13,7 @@ if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
 runtime_r_files <- setdiff(
   list.files("R", recursive = TRUE, full.names = TRUE),
   c("R/gradebook.R","R/app_config_example.R")
-) |> grep("\\.bak$",.,inv=T,val=T)
+) |> grep("\\.bak$", x = _, invert = T, value = T)
 
 app_files <- c(
   "index.Rmd",
