@@ -1,0 +1,7 @@
+```{r vector_index, exercise=TRUE, topic="vector_indexing"}
+
+```
+
+```{r vector_index, exercise=TRUE, topic="vector_indexing"}
+
+```

@@ -1,4 +1,5 @@
 source("R/app_config.R")
+source("R/question_manifest.R")
 
 library(googlesheets4)
 library(dplyr)
@@ -8,6 +9,13 @@ library(readr)
 if (grepl("PASTE_", APP_CONFIG$google_sheet_id, fixed = TRUE)) {
   stop("Set APP_CONFIG$google_sheet_id in R/app_config.R first.")
 }
+
+manifest <- build_question_manifest()
+scored_manifest <- manifest |>
+  filter(event == "exercise_result", points > 0) |>
+  select(event, item_label, topic, points)
+
+if (!nrow(scored_manifest)) stop("The question manifest contains no scored exercises.")
 
 gs4_auth()
 
@@ -68,8 +76,8 @@ if (nrow(unidentified)) {
 
 attempts <- events |>
   filter(!is.na(student_id)) |>
-  inner_join(APP_CONFIG$scored_items, by = c("event", "item_label" = "label")) |>
-  group_by(student_id, student_name, event, item_label, points) |>
+  inner_join(scored_manifest, by = c("event", "item_label")) |>
+  group_by(student_id, student_name, event, item_label, topic, points) |>
   summarise(
     attempts = n(),
     ever_correct = any(correct_bool, na.rm = TRUE),
@@ -107,11 +115,11 @@ if (file.exists("roster.csv")) {
 
 item_detail <- tidyr::crossing(
   students,
-  APP_CONFIG$scored_items
+  scored_manifest
 ) |>
   left_join(
     attempts,
-    by = c("student_id", "event", "label" = "item_label", "points")
+    by = c("student_id", "event", "item_label", "topic", "points")
   ) |>
   mutate(
     student_name = coalesce(student_name.x, student_name.y),
@@ -120,7 +128,7 @@ item_detail <- tidyr::crossing(
     points_earned = coalesce(points_earned, 0)
   ) |>
   select(
-    student_id, student_name, event, item_label = label, points,
+    student_id, student_name, event, item_label, topic, points,
     attempts, ever_correct, first_correct_utc, points_earned
   )
 

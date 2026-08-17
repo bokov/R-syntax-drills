@@ -1,0 +1,53 @@
+---
+title: "Topic Metadata Example"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(gradethis)
+```
+
+## Tagged scored exercise
+
+Return the third element of `letters` using single-bracket indexing.
+
+`topic` is stored in the generated question manifest. Because `points` is
+omitted, this `exercise=TRUE` chunk is worth 1 point.
+
+```{r vector_index_example, exercise=TRUE, topic="vector_indexing"}
+
+```
+
+```{r vector_index_example-solution}
+letters[3]
+```
+
+```{r vector_index_example-check}
+grade_this({
+  if (!identical(.result, letters[3])) fail("Return the third element of `letters`.")
+  pass("Correct.")
+})
+```
+
+## Untagged practice exercise
+
+Return `1 + 1`. Because this exercise has no `topic` chunk option, the manifest
+builder assigns it the topic `unassigned` and emits a warning. `points=0` keeps
+it in the event log but excludes it from the gradebook.
+
+```{r untagged_example, exercise=TRUE, points=0}
+
+```
+
+```{r untagged_example-solution}
+1 + 1
+```
+
+```{r untagged_example-check}
+grade_this({
+  if (!identical(.result, 2)) fail("Return 1 + 1.")
+  pass("Correct.")
+})
+```

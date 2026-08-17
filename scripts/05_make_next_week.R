@@ -17,7 +17,10 @@ files <- list.files(
   recursive = TRUE,
   full.names = TRUE
 )
-files <- files[!grepl("^(./)?(output|rsconnect|\\.Rproj\\.user)(/|$)", files)]
+files <- files[!grepl(
+  "^(./)?(output|rsconnect|\\.Rproj\\.user)(/|$)|question_manifest\\.csv$",
+  files
+)]
 
 for (src in files) {
   target <- file.path(destination, src)
@@ -47,4 +50,4 @@ rmd <- sub('  version: [0-9.]+', paste0('  version: ', format(Sys.Date(), "%Y%m%
 writeLines(rmd, rmd_path)
 
 message("Created: ", destination)
-message("Now edit the drills and APP_CONFIG$scored_items in the new copy.")
+message("Now edit the drills and their metadata in the new copy.")

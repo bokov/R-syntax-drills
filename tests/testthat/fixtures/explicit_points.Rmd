@@ -1,0 +1,3 @@
+```{r vector_index_practice, exercise=TRUE, topic="vector_indexing", points=0}
+
+```

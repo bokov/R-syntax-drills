@@ -1,4 +1,7 @@
 source("R/app_config.R")
+source("R/question_manifest.R")
+
+build_question_manifest()
 
 if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
   stop("Set APP_CONFIG$webhook_url before deploying.")
@@ -6,6 +9,7 @@ if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
 
 app_files <- c(
   "index.Rmd",
+  "question_manifest.csv",
   list.files("R", recursive = TRUE, full.names = TRUE),
   list.files("www", recursive = TRUE, full.names = TRUE)
 )

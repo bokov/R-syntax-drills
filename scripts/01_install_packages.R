@@ -8,7 +8,8 @@ packages <- c(
   "googlesheets4",
   "dplyr",
   "tidyr",
-  "readr"
+  "readr",
+  "testthat"
 )
 
 missing <- setdiff(packages, rownames(installed.packages()))

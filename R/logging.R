@@ -33,7 +33,13 @@ set_logging_status <- function(session, ok, message) {
   invisible(NULL)
 }
 
-post_log_event <- function(session, event, data = list(), config = APP_CONFIG) {
+post_log_event <- function(
+  session,
+  event,
+  data = list(),
+  config = APP_CONFIG,
+  manifest = read_question_manifest()
+) {
   identity <- current_identity(session)
 
   payload <- list(
@@ -47,6 +53,11 @@ post_log_event <- function(session, event, data = list(), config = APP_CONFIG) {
     student_name = log_scalar(identity$student_name, NA_character_),
     event = event,
     item_label = log_scalar(data$label, NA_character_),
+    topic = if (event %in% c("exercise_result", "question_submission")) {
+      question_topic(log_scalar(data$label, NA_character_), manifest)
+    } else {
+      NA_character_
+    },
     attempt_id = log_scalar(data$id, NA_character_),
     submitted_code = log_scalar(data$code, NA_character_),
     correct = if (!is.null(data$feedback$correct)) isTRUE(data$feedback$correct) else log_scalar(data$correct, NA),
@@ -87,12 +98,14 @@ post_log_event <- function(session, event, data = list(), config = APP_CONFIG) {
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
 register_logging_handlers <- function(config = APP_CONFIG) {
+  manifest <- read_question_manifest()
+
   learnr::event_register_handler("exercise_result", function(session, event, data) {
-    post_log_event(session, event, data, config)
+    post_log_event(session, event, data, config, manifest)
   })
 
   learnr::event_register_handler("question_submission", function(session, event, data) {
-    post_log_event(session, event, data, config)
+    post_log_event(session, event, data, config, manifest)
   })
 
   invisible(TRUE)
