@@ -1,0 +1,243 @@
+<!-- question: vector_e15a -->
+## Vector Drill E15a: Use `match()` inside brackets
+
+The vector `available_codes` is provided. `match(needles, haystack)` returns the position of each value in `needles` within `haystack`. Use `match()` inside `[ ]` to return `available_codes` in the order specified by `wanted_codes`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e15a-setup, include=FALSE}
+available_codes <- c("AA", "BB", "CC", "DD")
+wanted_codes <- c("CC", "AA")
+```
+
+```{r vector_e15a, exercise=TRUE, exercise.setup="vector_e15a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e15a-solution}
+available_codes[match(wanted_codes, available_codes)]
+```
+
+```{r vector_e15a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("match"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e15b -->
+## Vector Drill E15b: Use `match()` inside brackets
+
+The vector `STAFF` is provided. `match(needles, haystack)` returns positions for the requested values. Use it inside `[ ]` to return `STAFF` in the order given by `requested_staff`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e15b-setup, include=FALSE}
+STAFF <- c("Ada", "Grace", "Rita", "Lin")
+requested_staff <- c("Lin", "Grace", "Ada")
+```
+
+```{r vector_e15b, exercise=TRUE, exercise.setup="vector_e15b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e15b-solution}
+STAFF[match(requested_staff, STAFF)]
+```
+
+```{r vector_e15b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("match"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e15c -->
+## Vector Drill E15c: Use `match()` inside brackets
+
+The vector `lab_names` is provided. `match(needles, haystack)` returns positions of requested values. Use it inside `[ ]` to return `lab_names` in the order given by `needed_labs`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e15c-setup, include=FALSE}
+lab_names <- c("cbc", "cmp", "a1c", "tsh", "lipid")
+needed_labs <- c("tsh", "cbc", "lipid")
+```
+
+```{r vector_e15c, exercise=TRUE, exercise.setup="vector_e15c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e15c-solution}
+lab_names[match(needed_labs, lab_names)]
+```
+
+```{r vector_e15c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("match"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e15d -->
+## Vector Drill E15d: Use `match()` inside brackets
+
+The vector `visit_days` is provided. `match(needles, haystack)` returns the positions of each requested value. Use it inside `[ ]` to return `visit_days` in the order given by `target_days`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e15d-setup, include=FALSE}
+visit_days <- c(7, 14, 21, 28, 35)
+target_days <- c(28, 7, 35)
+```
+
+```{r vector_e15d, exercise=TRUE, exercise.setup="vector_e15d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e15d-solution}
+visit_days[match(target_days, visit_days)]
+```
+
+```{r vector_e15d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("match"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e16a -->
+## Vector Drill E16a: Use `order()` inside brackets
+
+The vector `scores` is provided. `order(values)` returns positions that arrange `values` in ascending order. Use `order()` inside `[ ]` to return the scores from lowest to highest. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e16a-setup, include=FALSE}
+scores <- c(72, 55, 91, 68, 84)
+```
+
+```{r vector_e16a, exercise=TRUE, exercise.setup="vector_e16a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e16a-solution}
+scores[order(scores)]
+```
+
+```{r vector_e16a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("order"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e16b -->
+## Vector Drill E16b: Use `order()` inside brackets
+
+The vector `NAMES2` is provided. `order(values)` returns positions that arrange the values in ascending order. Use it inside `[ ]` to return the names alphabetically. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e16b-setup, include=FALSE}
+NAMES2 <- c("Zoe", "Ada", "Lin", "Grace")
+```
+
+```{r vector_e16b, exercise=TRUE, exercise.setup="vector_e16b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e16b-solution}
+NAMES2[order(NAMES2)]
+```
+
+```{r vector_e16b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("order"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e16c -->
+## Vector Drill E16c: Use `order()` inside brackets
+
+The vector `lab.values` is provided. `order(values)` returns the positions that sort the values ascending. Use it inside `[ ]` to return the lab values from smallest to largest. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e16c-setup, include=FALSE}
+lab.values <- c(4.2, 1.1, 7.5, 3.3, 2.8)
+```
+
+```{r vector_e16c, exercise=TRUE, exercise.setup="vector_e16c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e16c-solution}
+lab.values[order(lab.values)]
+```
+
+```{r vector_e16c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("order"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e16d -->
+## Vector Drill E16d: Use `order()` inside brackets
+
+The vector `visit_days` is provided. `order(values)` returns positions that sort the values ascending. Use it inside `[ ]` to return the visit days chronologically. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e16d-setup, include=FALSE}
+visit_days <- c(21, 7, 35, 14, 28)
+```
+
+```{r vector_e16d, exercise=TRUE, exercise.setup="vector_e16d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e16d-solution}
+visit_days[order(visit_days)]
+```
+
+```{r vector_e16d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("order"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->

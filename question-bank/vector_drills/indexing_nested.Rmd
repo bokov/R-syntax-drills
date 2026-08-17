@@ -1,0 +1,239 @@
+<!-- question: vector_e11a -->
+## Vector Drill E11a: Subvector of a subvector by position
+
+The vector `scores` is provided. First take elements 2, 4, 6, and 8. From that subvector, return its third and first elements. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e11a-setup, include=FALSE}
+scores <- c(10, 20, 30, 40, 50, 60, 70, 80)
+```
+
+```{r vector_e11a, exercise=TRUE, exercise.setup="vector_e11a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e11a-solution}
+scores[c(2, 4, 6, 8)][c(3, 1)]
+```
+
+```{r vector_e11a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e11b -->
+## Vector Drill E11b: Subvector of a subvector by position
+
+The vector `STATUS` is provided. First take elements 1, 3, 5, and 7. From that subvector, return its fourth and second elements. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e11b-setup, include=FALSE}
+STATUS <- c("aa", "bb", "cc", "dd", "ee", "ff", "gg")
+```
+
+```{r vector_e11b, exercise=TRUE, exercise.setup="vector_e11b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e11b-solution}
+STATUS[c(1, 3, 5, 7)][c(4, 2)]
+```
+
+```{r vector_e11b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e11c -->
+## Vector Drill E11c: Subvector of a subvector by position
+
+The vector `lab.values` is provided. First take elements 3 through 8. From that subvector, return its fifth, second, and first elements. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e11c-setup, include=FALSE}
+lab.values <- c(1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9)
+```
+
+```{r vector_e11c, exercise=TRUE, exercise.setup="vector_e11c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e11c-solution}
+lab.values[3:8][c(5, 2, 1)]
+```
+
+```{r vector_e11c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e11d -->
+## Vector Drill E11d: Subvector of a subvector by position
+
+The vector `visit_days` is provided. First take elements 2 through 7. From that subvector, return its sixth through third elements in reverse order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e11d-setup, include=FALSE}
+visit_days <- c(2, 5, 9, 14, 20, 27, 35, 44)
+```
+
+```{r vector_e11d, exercise=TRUE, exercise.setup="vector_e11d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e11d-solution}
+visit_days[2:7][6:3]
+```
+
+```{r vector_e11d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e12a -->
+## Vector Drill E12a: Subvector of a subvector by name
+
+The vector `rates` is provided. First take `beta`, `delta`, and `alpha`. From that subvector, return `delta` and `beta`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e12a-setup, include=FALSE}
+rates <- c(alpha = 10, beta = 20, gamma = 30, delta = 40)
+```
+
+```{r vector_e12a, exercise=TRUE, exercise.setup="vector_e12a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e12a-solution}
+rates[c("beta", "delta", "alpha")][c("delta", "beta")]
+```
+
+```{r vector_e12a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e12b -->
+## Vector Drill E12b: Subvector of a subvector by name
+
+The vector `STAFF` is provided. First take `owner`, `lead`, and `reviewer`. From that subvector, return `lead` and `owner`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e12b-setup, include=FALSE}
+STAFF <- c(lead = "Ada", backup = "Grace", reviewer = "Rita", owner = "Lin")
+```
+
+```{r vector_e12b, exercise=TRUE, exercise.setup="vector_e12b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e12b-solution}
+STAFF[c("owner", "lead", "reviewer")][c("lead", "owner")]
+```
+
+```{r vector_e12b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e12c -->
+## Vector Drill E12c: Subvector of a subvector by name
+
+The vector `lab.values` is provided. First take `calcium`, `sodium`, and `glucose`. From that subvector, return `glucose` and `calcium`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e12c-setup, include=FALSE}
+lab.values <- c(glucose = 93, sodium = 140, potassium = 4.2, calcium = 9.4)
+```
+
+```{r vector_e12c, exercise=TRUE, exercise.setup="vector_e12c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e12c-solution}
+lab.values[c("calcium", "sodium", "glucose")][c("glucose", "calcium")]
+```
+
+```{r vector_e12c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e12d -->
+## Vector Drill E12d: Subvector of a subvector by name
+
+The vector `status_flags` is provided. First take `archived`, `ready`, and `late`. From that subvector, return `late` and `archived`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e12d-setup, include=FALSE}
+status_flags <- c(ready = TRUE, late = FALSE, reviewed = TRUE, archived = FALSE)
+```
+
+```{r vector_e12d, exercise=TRUE, exercise.setup="vector_e12d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e12d-solution}
+status_flags[c("archived", "ready", "late")][c("late", "archived")]
+```
+
+```{r vector_e12d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 2
+  )
+})
+```
+<!-- /question -->

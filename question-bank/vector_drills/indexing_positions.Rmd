@@ -1,0 +1,479 @@
+<!-- question: vector_e01a -->
+## Vector Drill E01a: One element by position
+
+The vector `measurements` is provided. Return the third element. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e01a-setup, include=FALSE}
+measurements <- c(10, 20, 30, 40, 50)
+```
+
+```{r vector_e01a, exercise=TRUE, exercise.setup="vector_e01a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e01a-solution}
+measurements[3]
+```
+
+```{r vector_e01a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e01b -->
+## Vector Drill E01b: One element by position
+
+The vector `COLORS` is provided. Return the second element. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e01b-setup, include=FALSE}
+COLORS <- c("red", "green", "blue", "black")
+```
+
+```{r vector_e01b, exercise=TRUE, exercise.setup="vector_e01b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e01b-solution}
+COLORS[2]
+```
+
+```{r vector_e01b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e01c -->
+## Vector Drill E01c: One element by position
+
+The vector `site.codes` is provided. Return the fifth element. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e01c-setup, include=FALSE}
+site.codes <- c("AA", "BB", "CC", "DD", "EE", "FF")
+```
+
+```{r vector_e01c, exercise=TRUE, exercise.setup="vector_e01c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e01c-solution}
+site.codes[5]
+```
+
+```{r vector_e01c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e01d -->
+## Vector Drill E01d: One element by position
+
+The vector `visit_days` is provided. Return the sixth element. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e01d-setup, include=FALSE}
+visit_days <- c(2, 5, 9, 14, 20, 27, 35)
+```
+
+```{r vector_e01d, exercise=TRUE, exercise.setup="vector_e01d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e01d-solution}
+visit_days[6]
+```
+
+```{r vector_e01d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e02a -->
+## Vector Drill E02a: Several positions in a specified order
+
+The vector `animals` is provided. Return the second and fifth elements, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e02a-setup, include=FALSE}
+animals <- c("ant", "bee", "cat", "dog", "eel")
+```
+
+```{r vector_e02a, exercise=TRUE, exercise.setup="vector_e02a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e02a-solution}
+animals[c(2, 5)]
+```
+
+```{r vector_e02a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e02b -->
+## Vector Drill E02b: Several positions in a specified order
+
+The vector `SCORES` is provided. Return the sixth, first, and fourth elements, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e02b-setup, include=FALSE}
+SCORES <- c(11, 22, 33, 44, 55, 66)
+```
+
+```{r vector_e02b, exercise=TRUE, exercise.setup="vector_e02b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e02b-solution}
+SCORES[c(6, 1, 4)]
+```
+
+```{r vector_e02b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e02c -->
+## Vector Drill E02c: Several positions in a specified order
+
+The vector `lab.values` is provided. Return the third, seventh, and second elements, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e02c-setup, include=FALSE}
+lab.values <- c(3.1, 4.2, 5.3, 6.4, 7.5, 8.6, 9.7)
+```
+
+```{r vector_e02c, exercise=TRUE, exercise.setup="vector_e02c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e02c-solution}
+lab.values[c(3, 7, 2)]
+```
+
+```{r vector_e02c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e02d -->
+## Vector Drill E02d: Several positions in a specified order
+
+The vector `status_codes` is provided. Return the fourth, second, and first elements, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e02d-setup, include=FALSE}
+status_codes <- c("new", "open", "held", "done", "void")
+```
+
+```{r vector_e02d, exercise=TRUE, exercise.setup="vector_e02d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e02d-solution}
+status_codes[c(4, 2, 1)]
+```
+
+```{r vector_e02d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e03a -->
+## Vector Drill E03a: Contiguous subvector
+
+The vector `values` is provided. Return elements 2 through 5. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e03a-setup, include=FALSE}
+values <- c(5, 10, 15, 20, 25, 30)
+```
+
+```{r vector_e03a, exercise=TRUE, exercise.setup="vector_e03a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e03a-solution}
+values[2:5]
+```
+
+```{r vector_e03a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e03b -->
+## Vector Drill E03b: Contiguous subvector
+
+The vector `LETTERS2` is provided. Return elements 3 through 6. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e03b-setup, include=FALSE}
+LETTERS2 <- c("aa", "bb", "cc", "dd", "ee", "ff", "gg")
+```
+
+```{r vector_e03b, exercise=TRUE, exercise.setup="vector_e03b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e03b-solution}
+LETTERS2[3:6]
+```
+
+```{r vector_e03b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e03c -->
+## Vector Drill E03c: Contiguous subvector
+
+The vector `visit.counts` is provided. Return elements 4 through 7. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e03c-setup, include=FALSE}
+visit.counts <- c(1, 4, 7, 10, 13, 16, 19, 22)
+```
+
+```{r vector_e03c, exercise=TRUE, exercise.setup="vector_e03c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e03c-solution}
+visit.counts[4:7]
+```
+
+```{r vector_e03c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e03d -->
+## Vector Drill E03d: Contiguous subvector
+
+The vector `dose_levels` is provided. Return elements 5 through 8. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e03d-setup, include=FALSE}
+dose_levels <- c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5)
+```
+
+```{r vector_e03d, exercise=TRUE, exercise.setup="vector_e03d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e03d-solution}
+dose_levels[5:8]
+```
+
+```{r vector_e03d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e04a -->
+## Vector Drill E04a: Reverse a contiguous section
+
+The vector `codes` is provided. Return elements 6, 5, 4, and 3, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e04a-setup, include=FALSE}
+codes <- c("aa", "bb", "cc", "dd", "ee", "ff", "gg")
+```
+
+```{r vector_e04a, exercise=TRUE, exercise.setup="vector_e04a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e04a-solution}
+codes[6:3]
+```
+
+```{r vector_e04a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e04b -->
+## Vector Drill E04b: Reverse a contiguous section
+
+The vector `VISITS` is provided. Return elements 7, 6, 5, and 4, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e04b-setup, include=FALSE}
+VISITS <- c(10, 20, 30, 40, 50, 60, 70, 80)
+```
+
+```{r vector_e04b, exercise=TRUE, exercise.setup="vector_e04b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e04b-solution}
+VISITS[7:4]
+```
+
+```{r vector_e04b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e04c -->
+## Vector Drill E04c: Reverse a contiguous section
+
+The vector `lab.results` is provided. Return elements 5, 4, 3, and 2, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e04c-setup, include=FALSE}
+lab.results <- c(2.1, 3.2, 4.3, 5.4, 6.5, 7.6)
+```
+
+```{r vector_e04c, exercise=TRUE, exercise.setup="vector_e04c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e04c-solution}
+lab.results[5:2]
+```
+
+```{r vector_e04c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e04d -->
+## Vector Drill E04d: Reverse a contiguous section
+
+The vector `day_names` is provided. Return elements 7, 6, 5, 4, and 3, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e04d-setup, include=FALSE}
+day_names <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+```
+
+```{r vector_e04d, exercise=TRUE, exercise.setup="vector_e04d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e04d-solution}
+day_names[7:3]
+```
+
+```{r vector_e04d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->

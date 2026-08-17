@@ -1,0 +1,359 @@
+<!-- question: vector_e05a -->
+## Vector Drill E05a: Repeated positions
+
+The vector `counts` is provided. Return elements 4, 1, 4, and 2, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e05a-setup, include=FALSE}
+counts <- c(11, 22, 33, 44, 55)
+```
+
+```{r vector_e05a, exercise=TRUE, exercise.setup="vector_e05a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e05a-solution}
+counts[c(4, 1, 4, 2)]
+```
+
+```{r vector_e05a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e05b -->
+## Vector Drill E05b: Repeated positions
+
+The vector `FLAGS` is provided. Return elements 2, 2, 4, and 1, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e05b-setup, include=FALSE}
+FLAGS <- c(TRUE, FALSE, TRUE, FALSE)
+```
+
+```{r vector_e05b, exercise=TRUE, exercise.setup="vector_e05b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e05b-solution}
+FLAGS[c(2, 2, 4, 1)]
+```
+
+```{r vector_e05b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e05c -->
+## Vector Drill E05c: Repeated positions
+
+The vector `site.names` is provided. Return elements 5, 3, 5, and 1, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e05c-setup, include=FALSE}
+site.names <- c("north", "south", "east", "west", "central")
+```
+
+```{r vector_e05c, exercise=TRUE, exercise.setup="vector_e05c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e05c-solution}
+site.names[c(5, 3, 5, 1)]
+```
+
+```{r vector_e05c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e05d -->
+## Vector Drill E05d: Repeated positions
+
+The vector `dose_values` is provided. Return elements 6, 2, 6, 4, and 2, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e05d-setup, include=FALSE}
+dose_values <- c(2.5, 5, 7.5, 10, 12.5, 15)
+```
+
+```{r vector_e05d, exercise=TRUE, exercise.setup="vector_e05d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e05d-solution}
+dose_values[c(6, 2, 6, 4, 2)]
+```
+
+```{r vector_e05d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e06a -->
+## Vector Drill E06a: Omit positions with negative subscripts
+
+The vector `status` is provided. Return everything except the first element. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e06a-setup, include=FALSE}
+status <- c("zero", "one", "two", "three")
+```
+
+```{r vector_e06a, exercise=TRUE, exercise.setup="vector_e06a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e06a-solution}
+status[-1]
+```
+
+```{r vector_e06a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e06b -->
+## Vector Drill E06b: Omit positions with negative subscripts
+
+The vector `VALUES` is provided. Return everything except elements 2 and 5. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e06b-setup, include=FALSE}
+VALUES <- c(100, 200, 300, 400, 500, 600)
+```
+
+```{r vector_e06b, exercise=TRUE, exercise.setup="vector_e06b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e06b-solution}
+VALUES[-c(2, 5)]
+```
+
+```{r vector_e06b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e06c -->
+## Vector Drill E06c: Omit positions with negative subscripts
+
+The vector `visit.days` is provided. Return everything except elements 3 through 6. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e06c-setup, include=FALSE}
+visit.days <- c(3, 6, 9, 12, 15, 18, 21, 24)
+```
+
+```{r vector_e06c, exercise=TRUE, exercise.setup="vector_e06c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e06c-solution}
+visit.days[-(3:6)]
+```
+
+```{r vector_e06c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e06d -->
+## Vector Drill E06d: Omit positions with negative subscripts
+
+The vector `lab_codes` is provided. Return everything except elements 1, 4, and 7. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e06d-setup, include=FALSE}
+lab_codes <- c("A1", "B2", "C3", "D4", "E5", "F6", "G7")
+```
+
+```{r vector_e06d, exercise=TRUE, exercise.setup="vector_e06d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e06d-solution}
+lab_codes[-c(1, 4, 7)]
+```
+
+```{r vector_e06d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e07a -->
+## Vector Drill E07a: Logical selection
+
+The vector `rates` is provided. Using a full-length logical subscript, return the first, third, and fifth elements. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e07a-setup, include=FALSE}
+rates <- c(3, 6, 9, 12, 15)
+```
+
+```{r vector_e07a, exercise=TRUE, exercise.setup="vector_e07a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e07a-solution}
+rates[c(TRUE, FALSE, TRUE, FALSE, TRUE)]
+```
+
+```{r vector_e07a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e07b -->
+## Vector Drill E07b: Logical selection
+
+The vector `STATUS` is provided. Using a full-length logical subscript, return the second and fourth elements. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e07b-setup, include=FALSE}
+STATUS <- c("new", "open", "held", "done")
+```
+
+```{r vector_e07b, exercise=TRUE, exercise.setup="vector_e07b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e07b-solution}
+STATUS[c(FALSE, TRUE, FALSE, TRUE)]
+```
+
+```{r vector_e07b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e07c -->
+## Vector Drill E07c: Logical selection
+
+The vector `lab.values` is provided. Using a full-length logical subscript, return every element except the second and fourth. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e07c-setup, include=FALSE}
+lab.values <- c(8, 16, 24, 32, 40, 48)
+```
+
+```{r vector_e07c, exercise=TRUE, exercise.setup="vector_e07c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e07c-solution}
+lab.values[c(TRUE, FALSE, TRUE, FALSE, TRUE, TRUE)]
+```
+
+```{r vector_e07c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e07d -->
+## Vector Drill E07d: Logical selection
+
+The vector `review_flags` is provided. Using a full-length logical subscript, return the second, fifth, and seventh elements. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e07d-setup, include=FALSE}
+review_flags <- c(TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE)
+```
+
+```{r vector_e07d, exercise=TRUE, exercise.setup="vector_e07d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e07d-solution}
+review_flags[c(FALSE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE)]
+```
+
+```{r vector_e07d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->

@@ -1,0 +1,323 @@
+<!-- question: vector_c08a -->
+## Vector Drill C08a: Named numeric vector
+
+Using `c()`, create a vector with these entries in order: `north = 12.5, south = 9, west = 14.25`. Assign it to `region_rates`, then put `region_rates` on the final line.
+
+```{r vector_c08a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c08a-solution}
+region_rates <- c(north = 12.5, south = 9, west = 14.25)
+region_rates
+```
+
+```{r vector_c08a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "region_rates",
+    expected_value = c(north = 12.5, south = 9, west = 14.25),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c08b -->
+## Vector Drill C08b: Named numeric vector
+
+Using `c()`, create a vector with these entries in order: `pre = 118, post = 110, final = 106`. Assign it to `BP`, then put `BP` on the final line.
+
+```{r vector_c08b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c08b-solution}
+BP <- c(pre = 118, post = 110, final = 106)
+BP
+```
+
+```{r vector_c08b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "BP",
+    expected_value = c(pre = 118, post = 110, final = 106),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c08c -->
+## Vector Drill C08c: Named numeric vector
+
+Using `c()`, create a vector with these entries in order: `glucose = 93, sodium = 140, potassium = 4.2`. Assign it to `lab.values`, then put `lab.values` on the final line.
+
+```{r vector_c08c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c08c-solution}
+lab.values <- c(glucose = 93, sodium = 140, potassium = 4.2)
+lab.values
+```
+
+```{r vector_c08c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "lab.values",
+    expected_value = c(glucose = 93, sodium = 140, potassium = 4.2),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c08d -->
+## Vector Drill C08d: Named numeric vector
+
+Using `c()`, create a vector with these entries in order: `math = 88, reading = 94, science = 91`. Assign it to `SCORES`, then put `SCORES` on the final line.
+
+```{r vector_c08d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c08d-solution}
+SCORES <- c(math = 88, reading = 94, science = 91)
+SCORES
+```
+
+```{r vector_c08d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "SCORES",
+    expected_value = c(math = 88, reading = 94, science = 91),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c09a -->
+## Vector Drill C09a: Named character vector
+
+Using `c()`, create a vector with these entries in order: `lead = "Ada", backup = "Grace", reviewer = "Rita"`. Assign it to `staff`, then put `staff` on the final line.
+
+```{r vector_c09a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c09a-solution}
+staff <- c(lead = "Ada", backup = "Grace", reviewer = "Rita")
+staff
+```
+
+```{r vector_c09a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "staff",
+    expected_value = c(lead = "Ada", backup = "Grace", reviewer = "Rita"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c09b -->
+## Vector Drill C09b: Named character vector
+
+Using `c()`, create a vector with these entries in order: `primary = "srv01", backup = "srv02", archive = "srv09"`. Assign it to `SERVER_MAP`, then put `SERVER_MAP` on the final line.
+
+```{r vector_c09b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c09b-solution}
+SERVER_MAP <- c(primary = "srv01", backup = "srv02", archive = "srv09")
+SERVER_MAP
+```
+
+```{r vector_c09b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "SERVER_MAP",
+    expected_value = c(primary = "srv01", backup = "srv02", archive = "srv09"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c09c -->
+## Vector Drill C09c: Named character vector
+
+Using `c()`, create a vector with these entries in order: `north = "Alpha", central = "Bravo", south = "Charlie"`. Assign it to `site.names`, then put `site.names` on the final line.
+
+```{r vector_c09c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c09c-solution}
+site.names <- c(north = "Alpha", central = "Bravo", south = "Charlie")
+site.names
+```
+
+```{r vector_c09c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "site.names",
+    expected_value = c(north = "Alpha", central = "Bravo", south = "Charlie"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c09d -->
+## Vector Drill C09d: Named character vector
+
+Using `c()`, create a vector with these entries in order: `first = "RXA", second = "RXB", third = "RXC"`. Assign it to `rx_codes`, then put `rx_codes` on the final line.
+
+```{r vector_c09d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c09d-solution}
+rx_codes <- c(first = "RXA", second = "RXB", third = "RXC")
+rx_codes
+```
+
+```{r vector_c09d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "rx_codes",
+    expected_value = c(first = "RXA", second = "RXB", third = "RXC"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c10a -->
+## Vector Drill C10a: Named logical vector
+
+Using `c()`, create a vector with these entries in order: `ready = TRUE, late = FALSE, reviewed = TRUE`. Assign it to `workflow`, then put `workflow` on the final line.
+
+```{r vector_c10a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c10a-solution}
+workflow <- c(ready = TRUE, late = FALSE, reviewed = TRUE)
+workflow
+```
+
+```{r vector_c10a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "workflow",
+    expected_value = c(ready = TRUE, late = FALSE, reviewed = TRUE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c10b -->
+## Vector Drill C10b: Named logical vector
+
+Using `c()`, create a vector with these entries in order: `passed = TRUE, flagged = FALSE, repeated = FALSE`. Assign it to `QC_STATUS`, then put `QC_STATUS` on the final line.
+
+```{r vector_c10b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c10b-solution}
+QC_STATUS <- c(passed = TRUE, flagged = FALSE, repeated = FALSE)
+QC_STATUS
+```
+
+```{r vector_c10b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "QC_STATUS",
+    expected_value = c(passed = TRUE, flagged = FALSE, repeated = FALSE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c10c -->
+## Vector Drill C10c: Named logical vector
+
+Using `c()`, create a vector with these entries in order: `eligible = TRUE, enrolled = TRUE, complete = FALSE`. Assign it to `visit.flags`, then put `visit.flags` on the final line.
+
+```{r vector_c10c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c10c-solution}
+visit.flags <- c(eligible = TRUE, enrolled = TRUE, complete = FALSE)
+visit.flags
+```
+
+```{r vector_c10c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "visit.flags",
+    expected_value = c(eligible = TRUE, enrolled = TRUE, complete = FALSE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c10d -->
+## Vector Drill C10d: Named logical vector
+
+Using `c()`, create a vector with these entries in order: `high = FALSE, medium = TRUE, low = TRUE`. Assign it to `alerts`, then put `alerts` on the final line.
+
+```{r vector_c10d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c10d-solution}
+alerts <- c(high = FALSE, medium = TRUE, low = TRUE)
+alerts
+```
+
+```{r vector_c10d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "alerts",
+    expected_value = c(high = FALSE, medium = TRUE, low = TRUE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->

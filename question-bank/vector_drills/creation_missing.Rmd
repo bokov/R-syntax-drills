@@ -1,0 +1,215 @@
+<!-- question: vector_c11a -->
+## Vector Drill C11a: Vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `2.5, NA, 7.5, 9`. Assign it to `measurements`, then put `measurements` on the final line.
+
+```{r vector_c11a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c11a-solution}
+measurements <- c(2.5, NA, 7.5, 9)
+measurements
+```
+
+```{r vector_c11a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "measurements",
+    expected_value = c(2.5, NA, 7.5, 9),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c11b -->
+## Vector Drill C11b: Vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `"alpha", NA, "omega", "final"`. Assign it to `codes`, then put `codes` on the final line.
+
+```{r vector_c11b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c11b-solution}
+codes <- c("alpha", NA, "omega", "final")
+codes
+```
+
+```{r vector_c11b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "codes",
+    expected_value = c("alpha", NA, "omega", "final"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c11c -->
+## Vector Drill C11c: Vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `TRUE, NA, FALSE, TRUE`. Assign it to `FLAGS`, then put `FLAGS` on the final line.
+
+```{r vector_c11c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c11c-solution}
+FLAGS <- c(TRUE, NA, FALSE, TRUE)
+FLAGS
+```
+
+```{r vector_c11c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "FLAGS",
+    expected_value = c(TRUE, NA, FALSE, TRUE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c11d -->
+## Vector Drill C11d: Vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `14, 18, NA, 21, 24`. Assign it to `visit_values`, then put `visit_values` on the final line.
+
+```{r vector_c11d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c11d-solution}
+visit_values <- c(14, 18, NA, 21, 24)
+visit_values
+```
+
+```{r vector_c11d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "visit_values",
+    expected_value = c(14, 18, NA, 21, 24),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c12a -->
+## Vector Drill C12a: Named vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `baseline = 8.2, month3 = NA, final = 7.1`. Assign it to `followup`, then put `followup` on the final line.
+
+```{r vector_c12a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c12a-solution}
+followup <- c(baseline = 8.2, month3 = NA, final = 7.1)
+followup
+```
+
+```{r vector_c12a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "followup",
+    expected_value = c(baseline = 8.2, month3 = NA, final = 7.1),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c12b -->
+## Vector Drill C12b: Named vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `cbc = "done", cmp = NA, a1c = "pending"`. Assign it to `LAB_STATUS`, then put `LAB_STATUS` on the final line.
+
+```{r vector_c12b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c12b-solution}
+LAB_STATUS <- c(cbc = "done", cmp = NA, a1c = "pending")
+LAB_STATUS
+```
+
+```{r vector_c12b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "LAB_STATUS",
+    expected_value = c(cbc = "done", cmp = NA, a1c = "pending"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c12c -->
+## Vector Drill C12c: Named vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `initial = TRUE, second = NA, final = FALSE`. Assign it to `review.flags`, then put `review.flags` on the final line.
+
+```{r vector_c12c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c12c-solution}
+review.flags <- c(initial = TRUE, second = NA, final = FALSE)
+review.flags
+```
+
+```{r vector_c12c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "review.flags",
+    expected_value = c(initial = TRUE, second = NA, final = FALSE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c12d -->
+## Vector Drill C12d: Named vector containing `NA`
+
+Using `c()`, create a vector with these entries in order: `low = 2.5, medium = NA, high = 7.5`. Assign it to `dose.values`, then put `dose.values` on the final line.
+
+```{r vector_c12d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c12d-solution}
+dose.values <- c(low = 2.5, medium = NA, high = 7.5)
+dose.values
+```
+
+```{r vector_c12d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "dose.values",
+    expected_value = c(low = 2.5, medium = NA, high = 7.5),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->

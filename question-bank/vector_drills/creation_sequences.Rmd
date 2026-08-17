@@ -1,0 +1,431 @@
+<!-- question: vector_c04a -->
+## Vector Drill C04a: Sequence with `:`
+
+Using the `:` operator, create the integer sequence from `4` through `11`. Assign it to `days`, then put `days` on the final line.
+
+```{r vector_c04a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c04a-solution}
+days <- 4:11
+days
+```
+
+```{r vector_c04a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "days",
+    expected_value = 4:11,
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c04b -->
+## Vector Drill C04b: Sequence with `:`
+
+Using the `:` operator, create the integer sequence from `18` through `25`. Assign it to `AGE`, then put `AGE` on the final line.
+
+```{r vector_c04b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c04b-solution}
+AGE <- 18:25
+AGE
+```
+
+```{r vector_c04b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "AGE",
+    expected_value = 18:25,
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c04c -->
+## Vector Drill C04c: Sequence with `:`
+
+Using the `:` operator, create the integer sequence from `105` through `112`. Assign it to `trial_ids`, then put `trial_ids` on the final line.
+
+```{r vector_c04c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c04c-solution}
+trial_ids <- 105:112
+trial_ids
+```
+
+```{r vector_c04c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "trial_ids",
+    expected_value = 105:112,
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c04d -->
+## Vector Drill C04d: Sequence with `:`
+
+Using the `:` operator, create the integer sequence from `9` through `3`. Assign it to `block.range`, then put `block.range` on the final line.
+
+```{r vector_c04d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c04d-solution}
+block.range <- 9:3
+block.range
+```
+
+```{r vector_c04d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "block.range",
+    expected_value = 9:3,
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c05a -->
+## Vector Drill C05a: Sequence crossing or including zero
+
+Using the `:` operator, create the integer sequence from `-4` through `3`. Assign it to `offsets`, then put `offsets` on the final line.
+
+```{r vector_c05a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c05a-solution}
+offsets <- (-4):3
+offsets
+```
+
+```{r vector_c05a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "offsets",
+    expected_value = (-4):3,
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c05b -->
+## Vector Drill C05b: Sequence crossing or including zero
+
+Using the `:` operator, create the integer sequence from `-2` through `5`. Assign it to `DELTA`, then put `DELTA` on the final line.
+
+```{r vector_c05b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c05b-solution}
+DELTA <- (-2):5
+DELTA
+```
+
+```{r vector_c05b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "DELTA",
+    expected_value = (-2):5,
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c05c -->
+## Vector Drill C05c: Sequence crossing or including zero
+
+Using the `:` operator, create the integer sequence from `0` through `6`. Assign it to `day_diff`, then put `day_diff` on the final line.
+
+```{r vector_c05c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c05c-solution}
+day_diff <- 0:6
+day_diff
+```
+
+```{r vector_c05c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "day_diff",
+    expected_value = 0:6,
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c05d -->
+## Vector Drill C05d: Sequence crossing or including zero
+
+Using the `:` operator, create the integer sequence from `3` through `-3`. Assign it to `center.range`, then put `center.range` on the final line.
+
+```{r vector_c05d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c05d-solution}
+center.range <- 3:(-3)
+center.range
+```
+
+```{r vector_c05d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "center.range",
+    expected_value = 3:(-3),
+    required_calls = c(":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c06a -->
+## Vector Drill C06a: Combine explicit values with a range
+
+Using `c()` and `:`, create the vector `1, 4, 5, 6, 7, 10`. Assign it to `windows`, then put `windows` on the final line.
+
+```{r vector_c06a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c06a-solution}
+windows <- c(1, 4:7, 10)
+windows
+```
+
+```{r vector_c06a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "windows",
+    expected_value = c(1, 4:7, 10),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c06b -->
+## Vector Drill C06b: Combine explicit values with a range
+
+Using `c()` and `:`, create the vector `20, 23, 24, 25, 26, 31`. Assign it to `ID_set`, then put `ID_set` on the final line.
+
+```{r vector_c06b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c06b-solution}
+ID_set <- c(20, 23:26, 31)
+ID_set
+```
+
+```{r vector_c06b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "ID_set",
+    expected_value = c(20, 23:26, 31),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c06c -->
+## Vector Drill C06c: Combine explicit values with a range
+
+Using `c()` and `:`, create the vector `-5, -2, -1, 0, 1, 2, 8`. Assign it to `visit.days`, then put `visit.days` on the final line.
+
+```{r vector_c06c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c06c-solution}
+visit.days <- c(-5, (-2):2, 8)
+visit.days
+```
+
+```{r vector_c06c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "visit.days",
+    expected_value = c(-5, (-2):2, 8),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c06d -->
+## Vector Drill C06d: Combine explicit values with a range
+
+Using `c()` and `:`, create the vector `100, 104, 105, 106, 107, 108, 115`. Assign it to `bands`, then put `bands` on the final line.
+
+```{r vector_c06d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c06d-solution}
+bands <- c(100, 104:108, 115)
+bands
+```
+
+```{r vector_c06d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "bands",
+    expected_value = c(100, 104:108, 115),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c07a -->
+## Vector Drill C07a: Combine two ranges
+
+Using `c()` and `:`, create the vector `1, 2, 3, 8, 9, 10`. Assign it to `groups`, then put `groups` on the final line.
+
+```{r vector_c07a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c07a-solution}
+groups <- c(1:3, 8:10)
+groups
+```
+
+```{r vector_c07a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "groups",
+    expected_value = c(1:3, 8:10),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c07b -->
+## Vector Drill C07b: Combine two ranges
+
+Using `c()` and `:`, create the vector `4, 5, 6, 7, 12, 13, 14, 15`. Assign it to `PERIODS`, then put `PERIODS` on the final line.
+
+```{r vector_c07b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c07b-solution}
+PERIODS <- c(4:7, 12:15)
+PERIODS
+```
+
+```{r vector_c07b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "PERIODS",
+    expected_value = c(4:7, 12:15),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c07c -->
+## Vector Drill C07c: Combine two ranges
+
+Using `c()` and `:`, create the vector `21, 22, 23, 24, 40, 41, 42, 43`. Assign it to `sample_ids`, then put `sample_ids` on the final line.
+
+```{r vector_c07c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c07c-solution}
+sample_ids <- c(21:24, 40:43)
+sample_ids
+```
+
+```{r vector_c07c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "sample_ids",
+    expected_value = c(21:24, 40:43),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c07d -->
+## Vector Drill C07d: Combine two ranges
+
+Using `c()` and `:`, create the vector `1998, 1999, 2000, 2001, 2008, 2009, 2010, 2011`. Assign it to `year.blocks`, then put `year.blocks` on the final line.
+
+```{r vector_c07d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c07d-solution}
+year.blocks <- c(1998:2001, 2008:2011)
+year.blocks
+```
+
+```{r vector_c07d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "year.blocks",
+    expected_value = c(1998:2001, 2008:2011),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->

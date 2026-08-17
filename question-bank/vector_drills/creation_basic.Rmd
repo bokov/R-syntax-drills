@@ -1,0 +1,323 @@
+<!-- question: vector_c01a -->
+## Vector Drill C01a: Explicit numeric vector
+
+Using `c()`, create a vector with these entries in order: `2, 5, 9, 14`. Assign it to `scores`, then put `scores` on the final line.
+
+```{r vector_c01a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c01a-solution}
+scores <- c(2, 5, 9, 14)
+scores
+```
+
+```{r vector_c01a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "scores",
+    expected_value = c(2, 5, 9, 14),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c01b -->
+## Vector Drill C01b: Explicit numeric vector
+
+Using `c()`, create a vector with these entries in order: `1.5, 3, 8.25, 11`. Assign it to `dose_values`, then put `dose_values` on the final line.
+
+```{r vector_c01b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c01b-solution}
+dose_values <- c(1.5, 3, 8.25, 11)
+dose_values
+```
+
+```{r vector_c01b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "dose_values",
+    expected_value = c(1.5, 3, 8.25, 11),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c01c -->
+## Vector Drill C01c: Explicit numeric vector
+
+Using `c()`, create a vector with these entries in order: `-3, 0, 6, 12`. Assign it to `LAB`, then put `LAB` on the final line.
+
+```{r vector_c01c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c01c-solution}
+LAB <- c(-3, 0, 6, 12)
+LAB
+```
+
+```{r vector_c01c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "LAB",
+    expected_value = c(-3, 0, 6, 12),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c01d -->
+## Vector Drill C01d: Explicit numeric vector
+
+Using `c()`, create a vector with these entries in order: `4, 7, 7, 13`. Assign it to `visit.counts`, then put `visit.counts` on the final line.
+
+```{r vector_c01d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c01d-solution}
+visit.counts <- c(4, 7, 7, 13)
+visit.counts
+```
+
+```{r vector_c01d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "visit.counts",
+    expected_value = c(4, 7, 7, 13),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c02a -->
+## Vector Drill C02a: Explicit character vector
+
+Using `c()`, create a vector with these entries in order: `"red", "green", "blue"`. Assign it to `colors`, then put `colors` on the final line.
+
+```{r vector_c02a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c02a-solution}
+colors <- c("red", "green", "blue")
+colors
+```
+
+```{r vector_c02a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "colors",
+    expected_value = c("red", "green", "blue"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c02b -->
+## Vector Drill C02b: Explicit character vector
+
+Using `c()`, create a vector with these entries in order: `"NE", "SW", "MW", "SE"`. Assign it to `site_codes`, then put `site_codes` on the final line.
+
+```{r vector_c02b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c02b-solution}
+site_codes <- c("NE", "SW", "MW", "SE")
+site_codes
+```
+
+```{r vector_c02b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "site_codes",
+    expected_value = c("NE", "SW", "MW", "SE"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c02c -->
+## Vector Drill C02c: Explicit character vector
+
+Using `c()`, create a vector with these entries in order: `"new", "open", "closed"`. Assign it to `STATUS`, then put `STATUS` on the final line.
+
+```{r vector_c02c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c02c-solution}
+STATUS <- c("new", "open", "closed")
+STATUS
+```
+
+```{r vector_c02c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "STATUS",
+    expected_value = c("new", "open", "closed"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c02d -->
+## Vector Drill C02d: Explicit character vector
+
+Using `c()`, create a vector with these entries in order: `"cbc", "cmp", "a1c", "tsh"`. Assign it to `lab.labels`, then put `lab.labels` on the final line.
+
+```{r vector_c02d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c02d-solution}
+lab.labels <- c("cbc", "cmp", "a1c", "tsh")
+lab.labels
+```
+
+```{r vector_c02d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "lab.labels",
+    expected_value = c("cbc", "cmp", "a1c", "tsh"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c03a -->
+## Vector Drill C03a: Explicit logical vector
+
+Using `c()`, create a vector with these entries in order: `TRUE, FALSE, FALSE, TRUE`. Assign it to `flags`, then put `flags` on the final line.
+
+```{r vector_c03a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c03a-solution}
+flags <- c(TRUE, FALSE, FALSE, TRUE)
+flags
+```
+
+```{r vector_c03a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "flags",
+    expected_value = c(TRUE, FALSE, FALSE, TRUE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c03b -->
+## Vector Drill C03b: Explicit logical vector
+
+Using `c()`, create a vector with these entries in order: `FALSE, TRUE, TRUE, FALSE, TRUE`. Assign it to `QC_flags`, then put `QC_flags` on the final line.
+
+```{r vector_c03b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c03b-solution}
+QC_flags <- c(FALSE, TRUE, TRUE, FALSE, TRUE)
+QC_flags
+```
+
+```{r vector_c03b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "QC_flags",
+    expected_value = c(FALSE, TRUE, TRUE, FALSE, TRUE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c03c -->
+## Vector Drill C03c: Explicit logical vector
+
+Using `c()`, create a vector with these entries in order: `TRUE, TRUE, FALSE`. Assign it to `ACTIVE`, then put `ACTIVE` on the final line.
+
+```{r vector_c03c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c03c-solution}
+ACTIVE <- c(TRUE, TRUE, FALSE)
+ACTIVE
+```
+
+```{r vector_c03c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "ACTIVE",
+    expected_value = c(TRUE, TRUE, FALSE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c03d -->
+## Vector Drill C03d: Explicit logical vector
+
+Using `c()`, create a vector with these entries in order: `FALSE, FALSE, TRUE, TRUE`. Assign it to `review.done`, then put `review.done` on the final line.
+
+```{r vector_c03d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c03d-solution}
+review.done <- c(FALSE, FALSE, TRUE, TRUE)
+review.done
+```
+
+```{r vector_c03d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "review.done",
+    expected_value = c(FALSE, FALSE, TRUE, TRUE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->

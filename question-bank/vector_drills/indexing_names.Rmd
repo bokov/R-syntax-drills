@@ -1,0 +1,359 @@
+<!-- question: vector_e08a -->
+## Vector Drill E08a: One element by name
+
+The vector `region_rates` is provided. Return the element named `east`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e08a-setup, include=FALSE}
+region_rates <- c(north = 12, south = 18, east = 9, west = 15)
+```
+
+```{r vector_e08a, exercise=TRUE, exercise.setup="vector_e08a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e08a-solution}
+region_rates["east"]
+```
+
+```{r vector_e08a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e08b -->
+## Vector Drill E08b: One element by name
+
+The vector `LAB` is provided. Return the element named `potassium`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e08b-setup, include=FALSE}
+LAB <- c(glucose = 93, sodium = 140, potassium = 4.2, calcium = 9.4)
+```
+
+```{r vector_e08b, exercise=TRUE, exercise.setup="vector_e08b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e08b-solution}
+LAB["potassium"]
+```
+
+```{r vector_e08b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e08c -->
+## Vector Drill E08c: One element by name
+
+The vector `server.map` is provided. Return the element named `backup`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e08c-setup, include=FALSE}
+server.map <- c(primary = "srv01", backup = "srv02", archive = "srv09")
+```
+
+```{r vector_e08c, exercise=TRUE, exercise.setup="vector_e08c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e08c-solution}
+server.map["backup"]
+```
+
+```{r vector_e08c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e08d -->
+## Vector Drill E08d: One element by name
+
+The vector `visit_status` is provided. Return the element named `complete`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e08d-setup, include=FALSE}
+visit_status <- c(screened = TRUE, enrolled = TRUE, complete = FALSE, withdrawn = FALSE)
+```
+
+```{r vector_e08d, exercise=TRUE, exercise.setup="vector_e08d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e08d-solution}
+visit_status["complete"]
+```
+
+```{r vector_e08d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e09a -->
+## Vector Drill E09a: Several elements by name
+
+The vector `region_rates` is provided. Return `south` and `north`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e09a-setup, include=FALSE}
+region_rates <- c(north = 12, south = 18, east = 9, west = 15)
+```
+
+```{r vector_e09a, exercise=TRUE, exercise.setup="vector_e09a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e09a-solution}
+region_rates[c("south", "north")]
+```
+
+```{r vector_e09a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e09b -->
+## Vector Drill E09b: Several elements by name
+
+The vector `STAFF` is provided. Return `reviewer`, `lead`, and `owner`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e09b-setup, include=FALSE}
+STAFF <- c(lead = "Ada", backup = "Grace", reviewer = "Rita", owner = "Lin")
+```
+
+```{r vector_e09b, exercise=TRUE, exercise.setup="vector_e09b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e09b-solution}
+STAFF[c("reviewer", "lead", "owner")]
+```
+
+```{r vector_e09b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e09c -->
+## Vector Drill E09c: Several elements by name
+
+The vector `lab.values` is provided. Return `calcium`, `glucose`, and `potassium`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e09c-setup, include=FALSE}
+lab.values <- c(glucose = 93, sodium = 140, potassium = 4.2, calcium = 9.4)
+```
+
+```{r vector_e09c, exercise=TRUE, exercise.setup="vector_e09c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e09c-solution}
+lab.values[c("calcium", "glucose", "potassium")]
+```
+
+```{r vector_e09c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e09d -->
+## Vector Drill E09d: Several elements by name
+
+The vector `status_flags` is provided. Return `archived`, `ready`, and `late`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e09d-setup, include=FALSE}
+status_flags <- c(ready = TRUE, late = FALSE, reviewed = TRUE, archived = FALSE)
+```
+
+```{r vector_e09d, exercise=TRUE, exercise.setup="vector_e09d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e09d-solution}
+status_flags[c("archived", "ready", "late")]
+```
+
+```{r vector_e09d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e10a -->
+## Vector Drill E10a: Repeat a named element
+
+The vector `levels` is provided. Return `beta`, `beta`, and `alpha`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e10a-setup, include=FALSE}
+levels <- c(alpha = 10, beta = 20, gamma = 30)
+```
+
+```{r vector_e10a, exercise=TRUE, exercise.setup="vector_e10a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e10a-solution}
+levels[c("beta", "beta", "alpha")]
+```
+
+```{r vector_e10a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e10b -->
+## Vector Drill E10b: Repeat a named element
+
+The vector `COLORS` is provided. Return `blue`, `red`, `blue`, and `black`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e10b-setup, include=FALSE}
+COLORS <- c(red = "R", green = "G", blue = "B", black = "K")
+```
+
+```{r vector_e10b, exercise=TRUE, exercise.setup="vector_e10b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e10b-solution}
+COLORS[c("blue", "red", "blue", "black")]
+```
+
+```{r vector_e10b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e10c -->
+## Vector Drill E10c: Repeat a named element
+
+The vector `site.rates` is provided. Return `south`, `east`, `south`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e10c-setup, include=FALSE}
+site.rates <- c(north = 1.2, south = 2.4, east = 3.6)
+```
+
+```{r vector_e10c, exercise=TRUE, exercise.setup="vector_e10c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e10c-solution}
+site.rates[c("south", "east", "south")]
+```
+
+```{r vector_e10c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e10d -->
+## Vector Drill E10d: Repeat a named element
+
+The vector `review_flags` is provided. Return `final`, `final`, and `interim`, in that order. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e10d-setup, include=FALSE}
+review_flags <- c(initial = TRUE, interim = FALSE, final = TRUE)
+```
+
+```{r vector_e10d, exercise=TRUE, exercise.setup="vector_e10d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e10d-solution}
+review_flags[c("final", "final", "interim")]
+```
+
+```{r vector_e10d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = character(),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->

@@ -1,0 +1,239 @@
+<!-- question: vector_e17a -->
+## Vector Drill E17a: Use `startsWith()` inside brackets
+
+The vector `codes` is provided. `startsWith(text, prefix)` returns a logical vector indicating which strings begin with `prefix`. Use it inside `[ ]` to return codes beginning with `AB`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e17a-setup, include=FALSE}
+codes <- c("AB10", "CD20", "AB30", "EF40", "AB50")
+```
+
+```{r vector_e17a, exercise=TRUE, exercise.setup="vector_e17a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e17a-solution}
+codes[startsWith(codes, "AB")]
+```
+
+```{r vector_e17a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("startsWith"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e17b -->
+## Vector Drill E17b: Use `startsWith()` inside brackets
+
+The vector `SITE_NAMES` is provided. `startsWith(text, prefix)` returns a logical vector. Use it inside `[ ]` to return entries beginning with `north`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e17b-setup, include=FALSE}
+SITE_NAMES <- c("north-clinic", "south-lab", "north-lab", "west-clinic")
+```
+
+```{r vector_e17b, exercise=TRUE, exercise.setup="vector_e17b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e17b-solution}
+SITE_NAMES[startsWith(SITE_NAMES, "north")]
+```
+
+```{r vector_e17b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("startsWith"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e17c -->
+## Vector Drill E17c: Use `startsWith()` inside brackets
+
+The vector `status.text` is provided. `startsWith(text, prefix)` returns a logical vector. Use it inside `[ ]` to return entries beginning with `pre`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e17c-setup, include=FALSE}
+status.text <- c("precheck", "postcheck", "preview", "final", "prepare")
+```
+
+```{r vector_e17c, exercise=TRUE, exercise.setup="vector_e17c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e17c-solution}
+status.text[startsWith(status.text, "pre")]
+```
+
+```{r vector_e17c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("startsWith"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e17d -->
+## Vector Drill E17d: Use `startsWith()` inside brackets
+
+The vector `rx_codes` is provided. `startsWith(text, prefix)` returns a logical vector. Use it inside `[ ]` to return entries beginning with `RX`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e17d-setup, include=FALSE}
+rx_codes <- c("RXA10", "TXA20", "RXB30", "RXA40", "QXA50")
+```
+
+```{r vector_e17d, exercise=TRUE, exercise.setup="vector_e17d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e17d-solution}
+rx_codes[startsWith(rx_codes, "RX")]
+```
+
+```{r vector_e17d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("startsWith"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e18a -->
+## Vector Drill E18a: Use `is.na()` inside brackets
+
+The vector `measurements` is provided. `is.na(values)` returns a logical vector indicating which values are missing. Use it inside `[ ]` to return all non-missing values. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e18a-setup, include=FALSE}
+measurements <- c(4, NA, 12, 3, NA, 7)
+```
+
+```{r vector_e18a, exercise=TRUE, exercise.setup="vector_e18a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e18a-solution}
+measurements[!is.na(measurements)]
+```
+
+```{r vector_e18a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("is.na"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e18b -->
+## Vector Drill E18b: Use `is.na()` inside brackets
+
+The vector `STATUS` is provided. `is.na(values)` returns a logical vector indicating missing values. Use it inside `[ ]` to return only the non-missing status values. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e18b-setup, include=FALSE}
+STATUS <- c("new", NA, "held", "done", NA)
+```
+
+```{r vector_e18b, exercise=TRUE, exercise.setup="vector_e18b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e18b-solution}
+STATUS[!is.na(STATUS)]
+```
+
+```{r vector_e18b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("is.na"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e18c -->
+## Vector Drill E18c: Use `is.na()` inside brackets
+
+The vector `lab.values` is provided. `is.na(values)` identifies missing values. Use it inside `[ ]` to return only the missing entries. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e18c-setup, include=FALSE}
+lab.values <- c(1.2, NA, 2.8, 7.4, NA, 9.2)
+```
+
+```{r vector_e18c, exercise=TRUE, exercise.setup="vector_e18c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e18c-solution}
+lab.values[is.na(lab.values)]
+```
+
+```{r vector_e18c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("is.na"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e18d -->
+## Vector Drill E18d: Use `is.na()` inside brackets
+
+The vector `visit_days` is provided. `is.na(values)` returns a logical vector indicating missing values. Use it inside `[ ]` to return all non-missing visit days. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e18d-setup, include=FALSE}
+visit_days <- c(2, 5, NA, 14, 20, NA, 35)
+```
+
+```{r vector_e18d, exercise=TRUE, exercise.setup="vector_e18d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e18d-solution}
+visit_days[!is.na(visit_days)]
+```
+
+```{r vector_e18d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("is.na"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->

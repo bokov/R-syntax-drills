@@ -1,0 +1,539 @@
+<!-- question: vector_c13a -->
+## Vector Drill C13a: Repeated explicit values
+
+Using `c()`, create a vector with these entries in order: `3, 3, 7, 7, 7, 12`. Assign it to `ratings`, then put `ratings` on the final line.
+
+```{r vector_c13a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c13a-solution}
+ratings <- c(3, 3, 7, 7, 7, 12)
+ratings
+```
+
+```{r vector_c13a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "ratings",
+    expected_value = c(3, 3, 7, 7, 7, 12),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c13b -->
+## Vector Drill C13b: Repeated explicit values
+
+Using `c()`, create a vector with these entries in order: `"A", "A", "B", "B", "C"`. Assign it to `STATUS_CODES`, then put `STATUS_CODES` on the final line.
+
+```{r vector_c13b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c13b-solution}
+STATUS_CODES <- c("A", "A", "B", "B", "C")
+STATUS_CODES
+```
+
+```{r vector_c13b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "STATUS_CODES",
+    expected_value = c("A", "A", "B", "B", "C"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c13c -->
+## Vector Drill C13c: Repeated explicit values
+
+Using `c()`, create a vector with these entries in order: `TRUE, TRUE, FALSE, TRUE, FALSE`. Assign it to `trial.flags`, then put `trial.flags` on the final line.
+
+```{r vector_c13c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c13c-solution}
+trial.flags <- c(TRUE, TRUE, FALSE, TRUE, FALSE)
+trial.flags
+```
+
+```{r vector_c13c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "trial.flags",
+    expected_value = c(TRUE, TRUE, FALSE, TRUE, FALSE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c13d -->
+## Vector Drill C13d: Repeated explicit values
+
+Using `c()`, create a vector with these entries in order: `10, 10, 10, 25, 25, 40`. Assign it to `batch_values`, then put `batch_values` on the final line.
+
+```{r vector_c13d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c13d-solution}
+batch_values <- c(10, 10, 10, 25, 25, 40)
+batch_values
+```
+
+```{r vector_c13d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "batch_values",
+    expected_value = c(10, 10, 10, 25, 25, 40),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c14a -->
+## Vector Drill C14a: Ordinary decimal notation
+
+Using `c()`, create a vector with these entries in order: `0.001, 0.002, 0.005`. Assign it to `probabilities`, then put `probabilities` on the final line.
+
+```{r vector_c14a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c14a-solution}
+probabilities <- c(0.001, 0.002, 0.005)
+probabilities
+```
+
+```{r vector_c14a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "probabilities",
+    expected_value = c(0.001, 0.002, 0.005),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c14b -->
+## Vector Drill C14b: Ordinary decimal notation
+
+Using `c()`, create a vector with these entries in order: `0.25, 0.5, 0.75, 1.25`. Assign it to `RATES`, then put `RATES` on the final line.
+
+```{r vector_c14b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c14b-solution}
+RATES <- c(0.25, 0.5, 0.75, 1.25)
+RATES
+```
+
+```{r vector_c14b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "RATES",
+    expected_value = c(0.25, 0.5, 0.75, 1.25),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c14c -->
+## Vector Drill C14c: Ordinary decimal notation
+
+Using `c()`, create a vector with these entries in order: `1.1, 1.35, 1.8`. Assign it to `lab.ratios`, then put `lab.ratios` on the final line.
+
+```{r vector_c14c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c14c-solution}
+lab.ratios <- c(1.1, 1.35, 1.8)
+lab.ratios
+```
+
+```{r vector_c14c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "lab.ratios",
+    expected_value = c(1.1, 1.35, 1.8),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c14d -->
+## Vector Drill C14d: Ordinary decimal notation
+
+Using `c()`, create a vector with these entries in order: `0.05, 0.1, 0.2, 0.4`. Assign it to `dose_levels`, then put `dose_levels` on the final line.
+
+```{r vector_c14d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c14d-solution}
+dose_levels <- c(0.05, 0.1, 0.2, 0.4)
+dose_levels
+```
+
+```{r vector_c14d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "dose_levels",
+    expected_value = c(0.05, 0.1, 0.2, 0.4),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c15a -->
+## Vector Drill C15a: Character vector containing an empty string
+
+Using `c()`, create a vector with these entries in order: `"alpha", "", "gamma"`. Assign it to `labels`, then put `labels` on the final line.
+
+```{r vector_c15a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c15a-solution}
+labels <- c("alpha", "", "gamma")
+labels
+```
+
+```{r vector_c15a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "labels",
+    expected_value = c("alpha", "", "gamma"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c15b -->
+## Vector Drill C15b: Character vector containing an empty string
+
+Using `c()`, create a vector with these entries in order: `"NE", "SW", "", "MW"`. Assign it to `SITE_CODES`, then put `SITE_CODES` on the final line.
+
+```{r vector_c15b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c15b-solution}
+SITE_CODES <- c("NE", "SW", "", "MW")
+SITE_CODES
+```
+
+```{r vector_c15b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "SITE_CODES",
+    expected_value = c("NE", "SW", "", "MW"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c15c -->
+## Vector Drill C15c: Character vector containing an empty string
+
+Using `c()`, create a vector with these entries in order: `"ready", "", "held"`. Assign it to `status.text`, then put `status.text` on the final line.
+
+```{r vector_c15c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c15c-solution}
+status.text <- c("ready", "", "held")
+status.text
+```
+
+```{r vector_c15c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "status.text",
+    expected_value = c("ready", "", "held"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c15d -->
+## Vector Drill C15d: Character vector containing an empty string
+
+Using `c()`, create a vector with these entries in order: `"ok", "review", "", "done"`. Assign it to `comments`, then put `comments` on the final line.
+
+```{r vector_c15d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c15d-solution}
+comments <- c("ok", "review", "", "done")
+comments
+```
+
+```{r vector_c15d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "comments",
+    expected_value = c("ok", "review", "", "done"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c16a -->
+## Vector Drill C16a: Single-element named vector
+
+Using `c()`, create a vector with these entries in order: `status = "complete"`. Assign it to `state`, then put `state` on the final line.
+
+```{r vector_c16a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c16a-solution}
+state <- c(status = "complete")
+state
+```
+
+```{r vector_c16a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "state",
+    expected_value = c(status = "complete"),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c16b -->
+## Vector Drill C16b: Single-element named vector
+
+Using `c()`, create a vector with these entries in order: `total = 42`. Assign it to `COUNT`, then put `COUNT` on the final line.
+
+```{r vector_c16b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c16b-solution}
+COUNT <- c(total = 42)
+COUNT
+```
+
+```{r vector_c16b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "COUNT",
+    expected_value = c(total = 42),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c16c -->
+## Vector Drill C16c: Single-element named vector
+
+Using `c()`, create a vector with these entries in order: `passed = TRUE`. Assign it to `quality.flag`, then put `quality.flag` on the final line.
+
+```{r vector_c16c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c16c-solution}
+quality.flag <- c(passed = TRUE)
+quality.flag
+```
+
+```{r vector_c16c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "quality.flag",
+    expected_value = c(passed = TRUE),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c16d -->
+## Vector Drill C16d: Single-element named vector
+
+Using `c()`, create a vector with these entries in order: `glucose = 98.6`. Assign it to `lab_result`, then put `lab_result` on the final line.
+
+```{r vector_c16d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c16d-solution}
+lab_result <- c(glucose = 98.6)
+lab_result
+```
+
+```{r vector_c16d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "lab_result",
+    expected_value = c(glucose = 98.6),
+    required_calls = c("c")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c17a -->
+## Vector Drill C17a: Sentinel values around a range
+
+Using `c()` and `:`, create the vector `-99, 1, 2, 3, 4, 99`. Assign it to `coded_range`, then put `coded_range` on the final line.
+
+```{r vector_c17a, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c17a-solution}
+coded_range <- c(-99, 1:4, 99)
+coded_range
+```
+
+```{r vector_c17a-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "coded_range",
+    expected_value = c(-99, 1:4, 99),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c17b -->
+## Vector Drill C17b: Sentinel values around a range
+
+Using `c()` and `:`, create the vector `-10, -3, -2, -1, 0, 1, 2, 3, 10`. Assign it to `LIMITS`, then put `LIMITS` on the final line.
+
+```{r vector_c17b, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c17b-solution}
+LIMITS <- c(-10, (-3):3, 10)
+LIMITS
+```
+
+```{r vector_c17b-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "LIMITS",
+    expected_value = c(-10, (-3):3, 10),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c17c -->
+## Vector Drill C17c: Sentinel values around a range
+
+Using `c()` and `:`, create the vector `-30, 0, 1, 2, 3, 4, 5, 30`. Assign it to `visit.window`, then put `visit.window` on the final line.
+
+```{r vector_c17c, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c17c-solution}
+visit.window <- c(-30, 0:5, 30)
+visit.window
+```
+
+```{r vector_c17c-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "visit.window",
+    expected_value = c(-30, 0:5, 30),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_c17d -->
+## Vector Drill C17d: Sentinel values around a range
+
+Using `c()` and `:`, create the vector `-1, 50, 51, 52, 53, 54, 100`. Assign it to `score_band`, then put `score_band` on the final line.
+
+```{r vector_c17d, exercise=TRUE, topic="vector_creation"}
+
+```
+
+```{r vector_c17d-solution}
+score_band <- c(-1, 50:54, 100)
+score_band
+```
+
+```{r vector_c17d-check}
+grade_this({
+  check_vector_assignment(
+    code = .user_code,
+    result_env = .envir_result,
+    variable_name = "score_band",
+    expected_value = c(-1, 50:54, 100),
+    required_calls = c("c", ":")
+  )
+})
+```
+<!-- /question -->

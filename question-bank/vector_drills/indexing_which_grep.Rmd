@@ -1,0 +1,239 @@
+<!-- question: vector_e13a -->
+## Vector Drill E13a: Use `which()` inside brackets
+
+The vector `measurements` is provided. `which()` takes a logical vector and returns the positions where it is `TRUE`. Use `which()` inside `[ ]` to return values greater than 8. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e13a-setup, include=FALSE}
+measurements <- c(4, 9, 12, 3, 18, 7)
+```
+
+```{r vector_e13a, exercise=TRUE, exercise.setup="vector_e13a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e13a-solution}
+measurements[which(measurements > 8)]
+```
+
+```{r vector_e13a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("which"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e13b -->
+## Vector Drill E13b: Use `which()` inside brackets
+
+The vector `SCORES` is provided. `which()` returns the positions where a logical condition is `TRUE`. Use it inside `[ ]` to return scores at least 80. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e13b-setup, include=FALSE}
+SCORES <- c(55, 72, 88, 61, 95, 79)
+```
+
+```{r vector_e13b, exercise=TRUE, exercise.setup="vector_e13b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e13b-solution}
+SCORES[which(SCORES >= 80)]
+```
+
+```{r vector_e13b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("which"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e13c -->
+## Vector Drill E13c: Use `which()` inside brackets
+
+The vector `lab.values` is provided. `which()` returns positions where its logical input is `TRUE`. Use it inside `[ ]` to return values below 3. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e13c-setup, include=FALSE}
+lab.values <- c(1.2, 5.1, 2.8, 7.4, 3.3, 9.2)
+```
+
+```{r vector_e13c, exercise=TRUE, exercise.setup="vector_e13c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e13c-solution}
+lab.values[which(lab.values < 3)]
+```
+
+```{r vector_e13c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("which"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e13d -->
+## Vector Drill E13d: Use `which()` inside brackets
+
+The vector `visit_days` is provided. `which()` returns positions where a logical condition is `TRUE`. Use it inside `[ ]` to return visit days from 10 through 30 inclusive. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e13d-setup, include=FALSE}
+visit_days <- c(2, 5, 9, 14, 20, 27, 35)
+```
+
+```{r vector_e13d, exercise=TRUE, exercise.setup="vector_e13d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e13d-solution}
+visit_days[which(visit_days >= 10 & visit_days <= 30)]
+```
+
+```{r vector_e13d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("which"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e14a -->
+## Vector Drill E14a: Use `grep()` inside brackets
+
+The vector `codes` is provided. `grep(pattern, text)` returns the positions of character values matching `pattern`. Use `grep()` inside `[ ]` to return the codes containing `AX`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e14a-setup, include=FALSE}
+codes <- c("AX1", "BY2", "AX3", "CZ4", "AX5")
+```
+
+```{r vector_e14a, exercise=TRUE, exercise.setup="vector_e14a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e14a-solution}
+codes[grep("AX", codes)]
+```
+
+```{r vector_e14a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("grep"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e14b -->
+## Vector Drill E14b: Use `grep()` inside brackets
+
+The vector `SITE_NAMES` is provided. `grep(pattern, text)` returns positions of matching strings. Use it inside `[ ]` to return entries containing `lab`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e14b-setup, include=FALSE}
+SITE_NAMES <- c("north-clinic", "south-lab", "north-lab", "west-clinic")
+```
+
+```{r vector_e14b, exercise=TRUE, exercise.setup="vector_e14b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e14b-solution}
+SITE_NAMES[grep("lab", SITE_NAMES)]
+```
+
+```{r vector_e14b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("grep"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e14c -->
+## Vector Drill E14c: Use `grep()` inside brackets
+
+The vector `status.text` is provided. `grep(pattern, text)` returns positions of matching strings. Use it inside `[ ]` to return entries containing `review`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e14c-setup, include=FALSE}
+status.text <- c("ready", "review", "held", "reviewed", "done")
+```
+
+```{r vector_e14c, exercise=TRUE, exercise.setup="vector_e14c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e14c-solution}
+status.text[grep("review", status.text)]
+```
+
+```{r vector_e14c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("grep"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e14d -->
+## Vector Drill E14d: Use `grep()` inside brackets
+
+The vector `rx_codes` is provided. `grep(pattern, text)` returns positions of matching strings. Use it inside `[ ]` to return entries containing `RXA`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e14d-setup, include=FALSE}
+rx_codes <- c("RXA-10", "RQB-20", "RXA-30", "TXC-40", "RXA-50")
+```
+
+```{r vector_e14d, exercise=TRUE, exercise.setup="vector_e14d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e14d-solution}
+rx_codes[grep("RXA", rx_codes)]
+```
+
+```{r vector_e14d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("grep"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->

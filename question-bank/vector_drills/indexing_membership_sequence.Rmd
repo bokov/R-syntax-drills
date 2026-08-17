@@ -1,0 +1,243 @@
+<!-- question: vector_e19a -->
+## Vector Drill E19a: Use `%in%` inside brackets
+
+The vector `codes` is provided. `left %in% right` returns a logical vector showing which values in `left` occur in `right`. Use `%in%` inside `[ ]` to return the wanted codes. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e19a-setup, include=FALSE}
+codes <- c("AA", "BB", "CC", "DD", "EE")
+wanted_codes <- c("BB", "DD")
+```
+
+```{r vector_e19a, exercise=TRUE, exercise.setup="vector_e19a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e19a-solution}
+codes[codes %in% wanted_codes]
+```
+
+```{r vector_e19a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("%in%"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e19b -->
+## Vector Drill E19b: Use `%in%` inside brackets
+
+The vector `STAFF` is provided. `left %in% right` returns a logical vector. Use `%in%` inside `[ ]` to return the staff members who are in `on_call`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e19b-setup, include=FALSE}
+STAFF <- c("Ada", "Grace", "Rita", "Lin")
+on_call <- c("Lin", "Ada")
+```
+
+```{r vector_e19b, exercise=TRUE, exercise.setup="vector_e19b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e19b-solution}
+STAFF[STAFF %in% on_call]
+```
+
+```{r vector_e19b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("%in%"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e19c -->
+## Vector Drill E19c: Use `%in%` inside brackets
+
+The vector `lab_names` is provided. `left %in% right` returns a logical vector. Use `%in%` inside `[ ]` to return labs listed in `priority_labs`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e19c-setup, include=FALSE}
+lab_names <- c("cbc", "cmp", "a1c", "tsh", "lipid")
+priority_labs <- c("a1c", "lipid", "cbc")
+```
+
+```{r vector_e19c, exercise=TRUE, exercise.setup="vector_e19c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e19c-solution}
+lab_names[lab_names %in% priority_labs]
+```
+
+```{r vector_e19c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("%in%"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e19d -->
+## Vector Drill E19d: Use `%in%` inside brackets
+
+The vector `visit_days` is provided. `left %in% right` returns a logical vector. Use `%in%` inside `[ ]` to return visit days that occur in `target_days`. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e19d-setup, include=FALSE}
+visit_days <- c(7, 14, 21, 28, 35, 42)
+target_days <- c(14, 35, 42)
+```
+
+```{r vector_e19d, exercise=TRUE, exercise.setup="vector_e19d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e19d-solution}
+visit_days[visit_days %in% target_days]
+```
+
+```{r vector_e19d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("%in%"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e20a -->
+## Vector Drill E20a: Use `seq()` inside brackets
+
+The vector `values` is provided. `seq(from, to, by)` returns a numeric vector. Use `seq()` inside `[ ]` to return elements 2, 4, 6, and 8. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e20a-setup, include=FALSE}
+values <- c(10, 20, 30, 40, 50, 60, 70, 80)
+```
+
+```{r vector_e20a, exercise=TRUE, exercise.setup="vector_e20a-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e20a-solution}
+values[seq(2, 8, by = 2)]
+```
+
+```{r vector_e20a-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("seq"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e20b -->
+## Vector Drill E20b: Use `seq()` inside brackets
+
+The vector `LETTERS2` is provided. `seq(from, to, by)` returns a numeric vector. Use `seq()` inside `[ ]` to return elements 1, 4, and 7. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e20b-setup, include=FALSE}
+LETTERS2 <- c("aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii")
+```
+
+```{r vector_e20b, exercise=TRUE, exercise.setup="vector_e20b-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e20b-solution}
+LETTERS2[seq(1, 7, by = 3)]
+```
+
+```{r vector_e20b-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("seq"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e20c -->
+## Vector Drill E20c: Use `seq()` inside brackets
+
+The vector `lab.values` is provided. `seq(from, to, by)` returns a numeric vector. Use `seq()` inside `[ ]` to return elements 3, 5, 7, and 9. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e20c-setup, include=FALSE}
+lab.values <- c(1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1)
+```
+
+```{r vector_e20c, exercise=TRUE, exercise.setup="vector_e20c-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e20c-solution}
+lab.values[seq(3, 9, by = 2)]
+```
+
+```{r vector_e20c-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("seq"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
+
+<!-- question: vector_e20d -->
+## Vector Drill E20d: Use `seq()` inside brackets
+
+The vector `visit_days` is provided. `seq(from, to, by)` returns a numeric vector. Use `seq()` inside `[ ]` to return elements 2, 5, and 8. Use single-bracket vector subscripting (`[ ]`).
+
+```{r vector_e20d-setup, include=FALSE}
+visit_days <- c(2, 5, 9, 14, 20, 27, 35, 44, 54, 65)
+```
+
+```{r vector_e20d, exercise=TRUE, exercise.setup="vector_e20d-setup", topic="vector_indexing"}
+
+```
+
+```{r vector_e20d-solution}
+visit_days[seq(2, 8, by = 3)]
+```
+
+```{r vector_e20d-check}
+grade_this({
+  check_vector_subscript(
+    code = .user_code,
+    returned_value = .result,
+    expected_value = .solution,
+    required_calls = c("seq"),
+    min_brackets = 1
+  )
+})
+```
+<!-- /question -->
