@@ -147,8 +147,8 @@ function doPost(e) {
       return handleGetAssignments(data, ss);
     }
 
-    if (requestType === 'get_or_create_assignments') {
-      return handleGetOrCreateAssignments(data, ss);
+    if (requestType === 'get_or_create_dynamic_assignments') {
+      return handleGetOrCreateDynamicAssignments(data, ss);
     }
 
     throw new Error('Unsupported request_type.');
@@ -208,7 +208,7 @@ function handleLogEvent(data, ss) {
 }
 
 function handleGetAssignments(data, ss) {
-  validateAssignmentRequest(data, false);
+  validateAssignmentRequest(data);
 
   const sheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   if (!sheet) throw new Error('The assignments sheet does not exist.');
@@ -228,8 +228,8 @@ function handleGetAssignments(data, ss) {
   });
 }
 
-function handleGetOrCreateAssignments(data, ss) {
-  validateAssignmentRequest(data, true);
+function handleGetOrCreateDynamicAssignments(data, ss) {
+  validateDynamicAssignmentRequest(data);
 
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   if (!assignmentsSheet) throw new Error('The assignments sheet does not exist.');
@@ -259,50 +259,115 @@ function handleGetOrCreateAssignments(data, ss) {
       });
     }
 
-    const bank = getQuestionBankMap(questionBankSheet);
-    const now = new Date().toISOString();
+    const bank = getQuestionBank(questionBankSheet);
+    const unlockedTopics = data.unlocked_topics.map(function(x) { return String(x); });
+    const unlocked = new Set(unlockedTopics);
+    const knownTopics = new Set(bank.map(function(item) { return item.topic; }));
+    const unknownTopics = unlockedTopics.filter(function(topic) {
+      return !knownTopics.has(topic);
+    });
+    if (unknownTopics.length) {
+      throw new Error(
+        'Unknown unlocked topic(s): ' + unknownTopics.join(', ') +
+        '. Sync question_bank and check APP_CONFIG$unlocked_topics.'
+      );
+    }
 
-    const rows = data.item_labels.map(function(itemLabel) {
-      const canonical = bank[String(itemLabel)];
-      if (!canonical) {
+    const eligible = bank.filter(function(item) {
+      return (
+        item.event === 'exercise_result' &&
+        item.points > 0 &&
+        unlocked.has(item.topic)
+      );
+    });
+
+    if (eligible.length < data.questions_per_week) {
+      throw new Error(
+        'Only ' + eligible.length +
+        ' scored exercise question(s) are available in unlocked topics, but ' +
+        data.questions_per_week + ' were requested.'
+      );
+    }
+
+    const history = getAssignmentsForStudentAcrossWeeks(
+      assignmentsSheet,
+      data.course_id,
+      data.student_id
+    );
+
+    let selected;
+    let assignmentReason;
+
+    if (!history.length) {
+      selected = eligible.filter(function(item) {
+        return item.starter_question;
+      });
+      assignmentReason = 'starter';
+
+      if (!selected.length) {
         throw new Error(
-          'Unknown canonical item_label: ' + String(itemLabel) +
-          '. Sync question_bank before creating assignments.'
+          'No starter questions are eligible. Mark starter_question=TRUE on at least one ' +
+          'scored exercise in an unlocked topic and sync question_bank.'
         );
       }
+    } else {
+      const exposureCounts = {};
+      history.forEach(function(assignment) {
+        const label = String(assignment.item_label);
+        exposureCounts[label] = (exposureCounts[label] || 0) + 1;
+      });
 
+      selected = eligible
+        .map(function(item) {
+          return {
+            item: item,
+            exposure_count: exposureCounts[item.item_label] || 0,
+            random_key: Math.random()
+          };
+        })
+        .sort(function(aa, bb) {
+          if (aa.exposure_count !== bb.exposure_count) {
+            return aa.exposure_count - bb.exposure_count;
+          }
+          return aa.random_key - bb.random_key;
+        })
+        .slice(0, data.questions_per_week)
+        .map(function(row) { return row.item; });
+
+      assignmentReason = 'least_exposed';
+    }
+
+    const now = new Date().toISOString();
+    const rows = selected.map(function(canonical) {
       return [
         Utilities.getUuid(),
         clean(data.course_id, 200),
         clean(data.week_id, 200),
         clean(data.student_id, 200),
-        clean(itemLabel, 300),
+        clean(canonical.item_label, 300),
         clean(canonical.topic, 300),
         canonical.points,
         clean(canonical.question_hash, 100),
         now,
-        clean(data.assignment_reason, 200)
+        assignmentReason
       ];
     });
 
-    if (rows.length) {
-      assignmentsSheet
-        .getRange(
-          assignmentsSheet.getLastRow() + 1,
-          1,
-          rows.length,
-          ASSIGNMENT_HEADERS.length
-        )
-        .setValues(rows);
-    }
-
-    const created = rows.map(assignmentRowToObject);
+    assignmentsSheet
+      .getRange(
+        assignmentsSheet.getLastRow() + 1,
+        1,
+        rows.length,
+        ASSIGNMENT_HEADERS.length
+      )
+      .setValues(rows);
 
     return jsonResponse({
       ok: true,
       request_id: data.request_id,
       created: true,
-      assignments: created
+      assignment_reason: assignmentReason,
+      assignments: rows.map(assignmentRowToObject)
     });
   } finally {
     lock.releaseLock();
@@ -317,36 +382,42 @@ function validateEventPayload(data) {
   }
 }
 
-function validateAssignmentRequest(data, requireItems) {
+function validateAssignmentRequest(data) {
   validateCommonPayload(data);
 
   if (!data.student_id) throw new Error('student_id is required.');
   if (!/^[A-Za-z0-9._@-]{2,100}$/.test(String(data.student_id))) {
     throw new Error('student_id has an invalid format.');
   }
+}
 
-  if (requireItems) {
-    if (!Array.isArray(data.item_labels) || !data.item_labels.length) {
-      throw new Error('item_labels must be a non-empty array.');
-    }
-    if (data.item_labels.length > 500) {
-      throw new Error('Too many item_labels in one assignment request.');
-    }
+function validateDynamicAssignmentRequest(data) {
+  validateAssignmentRequest(data);
 
-    const labels = data.item_labels.map(function(x) { return String(x); });
-    if (labels.some(function(x) { return !x || x.length > 300; })) {
-      throw new Error('Each item_label must be a non-empty string of at most 300 characters.');
-    }
-
-    const unique = new Set(labels);
-    if (unique.size !== labels.length) {
-      throw new Error('item_labels must not contain duplicates.');
-    }
-
-    if (!data.assignment_reason) {
-      throw new Error('assignment_reason is required when creating assignments.');
-    }
+  const questionsPerWeek = Number(data.questions_per_week);
+  if (
+    !Number.isInteger(questionsPerWeek) ||
+    questionsPerWeek < 1 ||
+    questionsPerWeek > 500
+  ) {
+    throw new Error('questions_per_week must be an integer from 1 through 500.');
   }
+  data.questions_per_week = questionsPerWeek;
+
+  if (!Array.isArray(data.unlocked_topics) || !data.unlocked_topics.length) {
+    throw new Error('unlocked_topics must be a non-empty array.');
+  }
+
+  const topics = data.unlocked_topics.map(function(x) {
+    return String(x).trim();
+  });
+  if (topics.some(function(x) { return !x || x.length > 300; })) {
+    throw new Error('Each unlocked topic must be a non-empty string of at most 300 characters.');
+  }
+  if (new Set(topics).size !== topics.length) {
+    throw new Error('unlocked_topics must not contain duplicates.');
+  }
+  data.unlocked_topics = topics;
 }
 
 function validateCommonPayload(data) {
@@ -358,10 +429,9 @@ function validateCommonPayload(data) {
   if (!data.week_id) throw new Error('week_id is required.');
 }
 
-function getAssignmentsForStudent(sheet, courseId, weekId, studentId) {
+function getAssignmentRows(sheet) {
   if (sheet.getLastRow() <= 1) return [];
-
-  const rows = sheet
+  return sheet
     .getRange(
       2,
       1,
@@ -369,18 +439,31 @@ function getAssignmentsForStudent(sheet, courseId, weekId, studentId) {
       ASSIGNMENT_HEADERS.length
     )
     .getValues();
+}
 
+function getAssignmentsForStudent(sheet, courseId, weekId, studentId) {
   const courseKey = clean(courseId, 200);
   const weekKey = clean(weekId, 200);
   const studentKey = clean(studentId, 200);
 
-  return rows
+  return getAssignmentRows(sheet)
     .filter(function(row) {
       return (
         row[1] === courseKey &&
         row[2] === weekKey &&
         row[3] === studentKey
       );
+    })
+    .map(assignmentRowToObject);
+}
+
+function getAssignmentsForStudentAcrossWeeks(sheet, courseId, studentId) {
+  const courseKey = clean(courseId, 200);
+  const studentKey = clean(studentId, 200);
+
+  return getAssignmentRows(sheet)
+    .filter(function(row) {
+      return row[1] === courseKey && row[3] === studentKey;
     })
     .map(assignmentRowToObject);
 }
@@ -400,7 +483,7 @@ function assignmentRowToObject(row) {
   };
 }
 
-function getQuestionBankMap(sheet) {
+function getQuestionBank(sheet) {
   if (sheet.getLastRow() <= 1) {
     throw new Error(
       'The question_bank sheet is empty. Run scripts/06_sync_question_bank.R first.'
@@ -416,31 +499,44 @@ function getQuestionBankMap(sheet) {
     )
     .getValues();
 
-  const bank = {};
+  const seen = new Set();
+  const bank = [];
 
   rows.forEach(function(row) {
     const itemLabel = String(row[0] || '');
     if (!itemLabel) return;
 
-    if (Object.prototype.hasOwnProperty.call(bank, itemLabel)) {
+    if (seen.has(itemLabel)) {
       throw new Error('Duplicate item_label in question_bank: ' + itemLabel + '.');
     }
+    seen.add(itemLabel);
 
     const points = Number(row[3]);
     if (!Number.isFinite(points) || points < 0) {
       throw new Error('Invalid points value for question_bank item ' + itemLabel + '.');
     }
 
-    bank[itemLabel] = {
-      event: row[1],
-      topic: row[2],
+    bank.push({
+      item_label: itemLabel,
+      event: String(row[1] || ''),
+      topic: String(row[2] || ''),
       points: points,
-      starter_question: row[4],
-      question_hash: row[5]
-    };
+      starter_question: sheetBoolean(row[4]),
+      question_hash: String(row[5] || '')
+    });
   });
 
   return bank;
+}
+
+function sheetBoolean(value) {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value === '' || value === null) return false;
+
+  const text = String(value).trim().toLowerCase();
+  if (text === 'true' || text === '1' || text === 'yes') return true;
+  if (text === 'false' || text === '0' || text === 'no') return false;
+  throw new Error('Invalid starter_question value in question_bank: ' + String(value));
 }
 
 function clean(value, maxLength) {

@@ -13,3 +13,8 @@ body {
 code {
   font-size: 0.95em;
 }
+
+.assignment-question {
+  display: none;
+  margin-bottom: 2rem;
+}
