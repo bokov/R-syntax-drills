@@ -123,7 +123,7 @@ question_source_files <- function(root = ".") {
   )
   files <- gsub("\\\\", "/", files)
   files <- files[!grepl(
-    "(^|/)(tests|examples|output|rsconnect|\\.Rproj\\.user)(/|$)",
+    "(^|/)(tests|compare|drafts|examples|output|rsconnect|\\.Rproj\\.user)(/|$)",
     files
   )]
   sub("^\\./", "", files)
