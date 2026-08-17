@@ -35,12 +35,16 @@ library(httr2)
 source("R/app_config.R")
 source("R/question_manifest.R")
 build_question_manifest()
+source("R/assignment_storage.R")
 source("R/logging.R")
 register_logging_handlers(APP_CONFIG)
 ```
 
 ```{r identity-server, context="server", include=FALSE}
 session$userData$identity <- shiny::reactiveVal(NULL)
+session$userData$assignment_ids <- shiny::reactiveVal(
+  stats::setNames(character(), character())
+)
 session$userData$logging_status <- shiny::reactiveVal(
   list(ok = NA, message = "Enter your student ID before beginning.")
 )
@@ -57,6 +61,25 @@ shiny::observeEvent(input$save_identity, {
     return()
   }
 
+  manifest <- read_question_manifest()
+  assignments <- tryCatch(
+    initialize_static_assignments(
+      student_id = student_id,
+      manifest = manifest,
+      config = APP_CONFIG
+    ),
+    error = function(e) e
+  )
+
+  if (inherits(assignments, "error")) {
+    session$userData$logging_status(list(
+      ok = FALSE,
+      message = paste("Could not load your assignment:", conditionMessage(assignments))
+    ))
+    return()
+  }
+
+  session$userData$assignment_ids(assignment_id_map(assignments))
   session$userData$identity(list(
     student_id = student_id,
     student_name = student_name

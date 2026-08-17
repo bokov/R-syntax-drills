@@ -10,10 +10,15 @@ if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
   stop("Set APP_CONFIG$webhook_url before deploying.")
 }
 
+runtime_r_files <- setdiff(
+  list.files("R", recursive = TRUE, full.names = TRUE),
+  "R/gradebook.R"
+)
+
 app_files <- c(
   "index.Rmd",
   "question_manifest.csv",
-  list.files("R", recursive = TRUE, full.names = TRUE),
+  runtime_r_files,
   list.files("www", recursive = TRUE, full.names = TRUE)
 )
 
