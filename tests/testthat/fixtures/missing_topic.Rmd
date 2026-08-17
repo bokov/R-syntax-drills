@@ -1,3 +1,7 @@
+<!-- question: vector_index -->
+## Vector index
+
 ```{r vector_index, exercise=TRUE}
 
 ```
+<!-- /question -->

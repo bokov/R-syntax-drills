@@ -71,8 +71,7 @@ In RStudio, open `index.Rmd` and click **Run Document**, or run:
 rmarkdown::run("index.Rmd")
 ```
 
-The tutorial rebuilds `question_manifest.csv` when its server process starts, so
-local runs use the same question metadata as deployed runs.
+The tutorial rebuilds `question_manifest.csv` when its server process starts, so local runs use the same question metadata as deployed runs.
 
 Enter a test student ID, solve an exercise, and verify that an `exercise_result` row appears in the Sheet.
 
@@ -86,7 +85,7 @@ First configure `rsconnect` for your shinyapps.io account in the normal way. The
 source("scripts/03_deploy_shinyapps.R")
 ```
 
-The deployment script sends only the runtime files (`index.Rmd`, `question_manifest.csv`, `R/`, and `www/`). The Apps Script source, roster, local grade output, and instructor scripts are not deployed.
+The deployment script sends only the runtime files (`index.Rmd`, `question_manifest.csv`, `R/`, and `www/`). The Apps Script source, roster, local grade output, instructor scripts, and canonical question bank are not deployed.
 
 Distribute the resulting app URL to students. They need only a browser; they do not need R installed locally.
 
@@ -129,7 +128,7 @@ From the current week's directory:
 Rscript scripts/05_make_next_week.R week-02 ../r-syntax-week-02
 ```
 
-This creates a new project copy and updates the week ID, deployment name, tutorial ID, and tutorial version. Then edit the exercises and their metadata in `index.Rmd`.
+This creates a new project copy and updates the week ID, deployment name, tutorial ID, and tutorial version. Then select canonical question blocks from `question-bank/` and copy them into `index.Rmd`.
 
 A unique tutorial ID/version each week prevents `learnr` from restoring a previous week's browser state into the new assignment.
 
@@ -143,8 +142,6 @@ A graded code exercise has three pieces:
 # check chunk using gradethis::grade_this()
 ```
 
-The exercise chunk itself is the source of truth for item identity and scoring metadata.
-
 The helper functions in `R/syntax_checkers.R` inspect parsed R code and let you require syntax, not merely the final value. For example:
 
 ```r
@@ -155,41 +152,41 @@ call_has_named_arg(.user_code, "mean", "na.rm")
 
 This makes it possible to distinguish “got the right answer” from “used the R syntax this drill is teaching.”
 
-### Topic metadata and the generated question manifest
+### Canonical question bank and assignment copies
 
-Add topic metadata directly to an exercise chunk:
+Canonical questions live only under `question-bank/`. Question IDs (`item_label`s) are permanent and globally unique there; do not reuse an existing ID for a substantively different question.
 
-````markdown
-```{r vector_index, exercise=TRUE, topic="vector_indexing"}
+The current authoring workflow remains manual: browse `question-bank/`, copy the complete question you want into `index.Rmd`, then run or deploy the tutorial. `index.Rmd` is a derived assignment, not another source of canonical questions.
+
+New or modified canonical questions should have explicit boundaries:
+
+```text
+<!-- question: vector_c01 -->
+## Vector Drill C01
+
+[question prompt, setup, exercise, solution, and checker]
+
+<!-- /question -->
 ```
-````
 
-`topic` and `points` are optional. If `topic` is omitted, the manifest builder
-assigns the question to `unassigned` and emits a warning. An `exercise=TRUE`
-chunk is worth 1 point by default; set `points=0` for a logged practice item or
-set another non-negative numeric value for a different weight. Duplicate or
-missing question labels are hard errors because the event log could not identify
-those questions reliably.
+The marker ID must equal the exercise/question chunk label. Existing pre-marker bank files remain supported by treating a level-2 section containing one question chunk as one question block.
 
-`scripts/03_deploy_shinyapps.R` automatically scans the project R Markdown
-files, validates their question labels and scoring metadata, and writes
-`question_manifest.csv`. `scripts/04_build_gradebook.R` rebuilds the same
-manifest before calculating grades, so the R Markdown chunks remain the only
-item list that must be maintained. The manifest is generated output and should
-not be edited by hand. `examples/` and `tests/` are excluded from the scan.
+Canonical metadata live on the question chunk. `topic` and `points` retain their existing meanings, and `starter_question=TRUE` is available for future first-time-student routing. It does not change current assignment behavior.
 
-See `examples/topic_metadata_example.Rmd` for a small complete tutorial showing
-a tagged scored exercise and a zero-point practice exercise using the
-`unassigned` topic fallback.
+`R/question_manifest.R` produces two build artifacts:
 
-Run the initial scanner tests with:
+- `question_bank_manifest.csv` describes every canonical bank question, including `item_label`, `topic`, `points`, `starter_question`, source location, and a normalized `question_hash`.
+- `question_manifest.csv` describes only the questions copied into the current `index.Rmd`, after verifying that every ID exists in the canonical bank and that the full question content matches its canonical copy.
+
+Both CSVs are generated output and should not be edited by hand. The canonical bank itself is intentionally not deployed to shinyapps.io because it contains solutions and check code. Deployment validates locally and sends only the derived `question_manifest.csv` plus the tutorial runtime files.
+
+Run the scanner/validation tests with:
 
 ```r
 source("tests/testthat.R")
 ```
 
-V1.2 assumes the V1.1 event-log schema already includes the `topic` column. No
-further Google Sheet schema change is required for V1.2.
+V1.2 assumes the V1.1 event-log schema already includes the `topic` column. No further Google Sheet schema change is required for V1.2.
 
 ## Security / reliability notes
 
