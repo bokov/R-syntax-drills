@@ -70,23 +70,24 @@ test_that("runtime index receives the configured week as tutorial version", {
   expect_false(grepl("__WEEK_ID__", text, fixed = TRUE))
 })
 
-test_that("real vector bank defines the agreed ten starter questions", {
+test_that("current vector-only configuration has an eligible starter set", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
   bank <- scan_question_bank(question_bank_source_files(root))
 
-  starters <- bank$item_label[bank$starter_question %in% TRUE]
-  expected <- c(
-    "vector_c01c",
-    "vector_c03b",
-    "vector_c04d",
-    "vector_c09a",
-    "vector_e01b",
-    "vector_e02c",
-    "vector_e06a",
-    "vector_e09d",
-    "vector_e10b",
-    "vector_e25a"
+  config <- list(
+    questions_per_week = 10L,
+    unlocked_topics = c("vector_creation", "vector_indexing")
   )
 
-  expect_setequal(starters, expected)
+  expect_silent(validate_assignment_config(config, bank))
+
+  eligible_starters <- bank[
+    bank$event == "exercise_result" &
+      bank$points > 0 &
+      bank$starter_question %in% TRUE &
+      bank$topic %in% config$unlocked_topics,
+    ,
+    drop = FALSE
+  ]
+  expect_gt(nrow(eligible_starters), 0)
 })

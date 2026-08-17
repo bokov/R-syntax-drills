@@ -110,7 +110,7 @@ unlocked_topics = c(
 )
 ```
 
-A topic name must exactly match canonical question metadata. Publishing/sync validation fails on unknown topic names. If a starter question belongs to a locked topic, validation warns that it is not currently starter-eligible.
+A topic name must exactly match canonical question metadata. Publishing/sync validation fails on unknown topic names. `scripts/06_sync_question_bank.R` also prints all topic names currently present in the canonical bank so you can copy them exactly. If a starter question belongs to a locked topic, validation warns that it is not currently starter-eligible.
 
 Changing `unlocked_topics` does not alter an assignment that has already been persisted for the current student/week. It changes only future assignment creation.
 
@@ -125,18 +125,7 @@ Mark a canonical exercise as a starter directly in its exercise chunk metadata:
 
 A brand-new student receives **all** scored starter questions whose topics are unlocked. There is no second hard-coded starter list. Publishing fails if no starter question is eligible.
 
-The current vector bank defines these ten starters:
-
-- `vector_c01c`
-- `vector_c03b`
-- `vector_c04d`
-- `vector_c09a`
-- `vector_e01b`
-- `vector_e02c`
-- `vector_e06a`
-- `vector_e09d`
-- `vector_e10b`
-- `vector_e25a`
+The starter set has no separate configuration list: the canonical `starter_question=TRUE` metadata is the only source of truth. To change the starter set, change that metadata in the question bank and publish/sync again.
 
 ## 4. Sync and publish everything
 
@@ -204,7 +193,7 @@ Run:
 source("tests/testthat.R")
 ```
 
-The tests cover canonical metadata, dynamic-assignment payload/config validation, persisted-subset grading behavior, player generation, solution stripping from the runtime pool, week-specific tutorial versioning, and the agreed ten starter IDs.
+The tests cover canonical metadata, dynamic-assignment payload/config validation, persisted-subset grading behavior, player generation, solution stripping from the runtime pool, week-specific tutorial versioning, and validation of the currently configured starter/unlocked-topic rules.
 
 ### Webhook logging smoke test
 
@@ -243,7 +232,7 @@ The smoke-test assignment rows are deliberately retained as an audit trail. Assi
 Use a never-before-used student ID in an incognito/private browser window and check:
 
 1. No exercise is visible before saving identity.
-2. Saving identity reveals exactly the eligible starter questions; with the default vector configuration this should be 10.
+2. Saving identity reveals exactly the eligible starter questions; with the current vector-only configuration this should be the starter set you marked in canonical metadata.
 3. The Google `assignments` tab receives one row per visible question, all with `assignment_reason = starter` and distinct `assignment_id`s.
 4. Submit one wrong and then one correct attempt to the same question. Both event rows should reference the same nonblank `assignment_id`.
 5. Close the browser, reopen the app, enter the same student ID, and verify no new assignment rows are created and the same questions return.

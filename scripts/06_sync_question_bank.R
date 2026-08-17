@@ -25,6 +25,11 @@ message(
   " canonical question(s) to the private question_bank tab."
 )
 message(
+  "Available topics: ",
+  paste(sort(unique(question_bank$topic)), collapse = ", "),
+  "."
+)
+message(
   "Unlocked topics: ", paste(APP_CONFIG$unlocked_topics, collapse = ", "),
   "; questions per returning-student week: ", APP_CONFIG$questions_per_week, "."
 )
