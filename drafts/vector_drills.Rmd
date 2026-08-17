@@ -1,0 +1,2378 @@
+# Vector creation and subscripting drill bank
+
+These chunks are intended to be pasted after the setup/logging/identity sections of the existing `learnr` tutorial. They depend only on the existing `uses_call()` helper in `R/syntax_checkers.R`.
+
+The solutions deliberately use only `c()` and, where appropriate, `:` for vector construction. Extraction drills use single-bracket vector subscripting with numeric, logical, or character/name subscripts.
+
+
+## Vector Drill C01: Un-named numeric vector
+
+Using only `c()`, create and return the numeric vector containing 2, 5, 9, and 14, in that order.
+
+```{r vector_c01, exercise=TRUE}
+
+```
+
+```{r vector_c01-solution}
+c(2, 5, 9, 14)
+```
+
+```{r vector_c01-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(2, 5, 9, 14))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C02: Un-named integer vector
+
+Using only `c()`, create and return an **integer** vector containing 4, 9, 12, and 20. Use the `L` suffix so the values are integers.
+
+```{r vector_c02, exercise=TRUE}
+
+```
+
+```{r vector_c02-solution}
+c(4L, 9L, 12L, 20L)
+```
+
+```{r vector_c02-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("L", .user_code, fixed = TRUE)) {
+    fail("Use `L` as requested.")
+  }
+  if (!identical(.result, c(4L, 9L, 12L, 20L))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C03: Un-named character vector
+
+Using only `c()`, create and return the character vector containing `"red"`, `"green"`, `"blue"`, in that order.
+
+```{r vector_c03, exercise=TRUE}
+
+```
+
+```{r vector_c03-solution}
+c("red", "green", "blue")
+```
+
+```{r vector_c03-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c("red", "green", "blue"))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C04: Un-named logical vector
+
+Using only `c()`, create and return the logical vector `TRUE, FALSE, FALSE, TRUE, TRUE`.
+
+```{r vector_c04, exercise=TRUE}
+
+```
+
+```{r vector_c04-solution}
+c(TRUE, FALSE, FALSE, TRUE, TRUE)
+```
+
+```{r vector_c04-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("TRUE", .user_code, fixed = TRUE)) {
+    fail("Use `TRUE` as requested.")
+  }
+  if (!grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use `FALSE` as requested.")
+  }
+  if (!identical(.result, c(TRUE, FALSE, FALSE, TRUE, TRUE))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C05: Un-named complex vector
+
+Using only `c()`, create and return the complex vector containing `1+2i`, `3-1i`, and `4+0i`.
+
+```{r vector_c05, exercise=TRUE}
+
+```
+
+```{r vector_c05-solution}
+c(1+2i, 3-1i, 4+0i)
+```
+
+```{r vector_c05-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(1+2i, 3-1i, 4+0i))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C06: Ascending integer sequence
+
+Using the `:` operator, create and return the integers from 4 through 11.
+
+```{r vector_c06, exercise=TRUE}
+
+```
+
+```{r vector_c06-solution}
+4:11
+```
+
+```{r vector_c06-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, 4:11)) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C07: Descending integer sequence
+
+Using the `:` operator, create and return the integers from 9 down through 3.
+
+```{r vector_c07, exercise=TRUE}
+
+```
+
+```{r vector_c07-solution}
+9:3
+```
+
+```{r vector_c07-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, 9:3)) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C08: Sequence including zero
+
+Using the `:` operator, create and return the integers from 0 through 6.
+
+```{r vector_c08, exercise=TRUE}
+
+```
+
+```{r vector_c08-solution}
+0:6
+```
+
+```{r vector_c08-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, 0:6)) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C09: Negative-to-positive sequence
+
+Using the `:` operator, create and return the integers from -4 through 3.
+
+```{r vector_c09, exercise=TRUE}
+
+```
+
+```{r vector_c09-solution}
+(-4):3
+```
+
+```{r vector_c09-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, (-4):3)) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C10: Values surrounding a sequence
+
+Using only `c()` and `:`, create and return `1, 4, 5, 6, 7, 10`.
+
+```{r vector_c10, exercise=TRUE}
+
+```
+
+```{r vector_c10-solution}
+c(1, 4:7, 10)
+```
+
+```{r vector_c10-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, c(1, 4:7, 10))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C11: Combine two sequences
+
+Using only `c()` and `:`, create and return `1, 2, 3, 8, 9, 10`.
+
+```{r vector_c11, exercise=TRUE}
+
+```
+
+```{r vector_c11-solution}
+c(1:3, 8:10)
+```
+
+```{r vector_c11-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, c(1:3, 8:10))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C12: Named numeric vector
+
+Using `c()`, create and return a named numeric vector with `north = 12.5`, `south = 9.0`, and `west = 14.25`, in that order.
+
+```{r vector_c12, exercise=TRUE}
+
+```
+
+```{r vector_c12-solution}
+c(north = 12.5, south = 9.0, west = 14.25)
+```
+
+```{r vector_c12-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(north = 12.5, south = 9.0, west = 14.25))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C13: Named integer vector
+
+Using `c()`, create and return a named integer vector with `cats = 2L`, `dogs = 5L`, and `birds = 1L`.
+
+```{r vector_c13, exercise=TRUE}
+
+```
+
+```{r vector_c13-solution}
+c(cats = 2L, dogs = 5L, birds = 1L)
+```
+
+```{r vector_c13-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("L", .user_code, fixed = TRUE)) {
+    fail("Use `L` as requested.")
+  }
+  if (!identical(.result, c(cats = 2L, dogs = 5L, birds = 1L))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C14: Named character vector
+
+Using `c()`, create and return a named character vector with `first = "Ada"`, `second = "Grace"`, and `third = "Rita"`.
+
+```{r vector_c14, exercise=TRUE}
+
+```
+
+```{r vector_c14-solution}
+c(first = "Ada", second = "Grace", third = "Rita")
+```
+
+```{r vector_c14-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(first = "Ada", second = "Grace", third = "Rita"))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C15: Named logical vector
+
+Using `c()`, create and return a named logical vector with `ready = TRUE`, `late = FALSE`, and `reviewed = TRUE`.
+
+```{r vector_c15, exercise=TRUE}
+
+```
+
+```{r vector_c15-solution}
+c(ready = TRUE, late = FALSE, reviewed = TRUE)
+```
+
+```{r vector_c15-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("TRUE", .user_code, fixed = TRUE)) {
+    fail("Use `TRUE` as requested.")
+  }
+  if (!grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use `FALSE` as requested.")
+  }
+  if (!identical(.result, c(ready = TRUE, late = FALSE, reviewed = TRUE))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C16: Named complex vector
+
+Using `c()`, create and return a named complex vector with `z1 = 2+3i`, `z2 = -1+4i`, and `z3 = 5-2i`.
+
+```{r vector_c16, exercise=TRUE}
+
+```
+
+```{r vector_c16-solution}
+c(z1 = 2+3i, z2 = -1+4i, z3 = 5-2i)
+```
+
+```{r vector_c16-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(z1 = 2+3i, z2 = -1+4i, z3 = 5-2i))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C17: Names containing spaces
+
+Using `c()`, create and return a numeric vector whose element names are `first score` and `second score`, with values 88 and 94. Use backticks around the names.
+
+```{r vector_c17, exercise=TRUE}
+
+```
+
+```{r vector_c17-solution}
+c(`first score` = 88, `second score` = 94)
+```
+
+```{r vector_c17-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("`", .user_code, fixed = TRUE)) {
+    fail("Use `` as requested.")
+  }
+  if (!identical(.result, c(`first score` = 88, `second score` = 94))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C18: Duplicate names
+
+Using `c()`, create and return `control = 10`, `treatment = 14`, and another `control = 12`, preserving that order and the duplicate name.
+
+```{r vector_c18, exercise=TRUE}
+
+```
+
+```{r vector_c18-solution}
+c(control = 10, treatment = 14, control = 12)
+```
+
+```{r vector_c18-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(control = 10, treatment = 14, control = 12))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C19: Numeric vector with missing value
+
+Using `c()`, create and return the numeric vector `2.5, NA, 7.5`, using `NA_real_` for the missing value.
+
+```{r vector_c19, exercise=TRUE}
+
+```
+
+```{r vector_c19-solution}
+c(2.5, NA_real_, 7.5)
+```
+
+```{r vector_c19-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("NA_real_", .user_code, fixed = TRUE)) {
+    fail("Use `NA_real_` as requested.")
+  }
+  if (!identical(.result, c(2.5, NA_real_, 7.5))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C20: Integer vector with missing value
+
+Using `c()`, create and return the integer vector `2, NA, 7`, using integer constants and `NA_integer_`.
+
+```{r vector_c20, exercise=TRUE}
+
+```
+
+```{r vector_c20-solution}
+c(2L, NA_integer_, 7L)
+```
+
+```{r vector_c20-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("NA_integer_", .user_code, fixed = TRUE)) {
+    fail("Use `NA_integer_` as requested.")
+  }
+  if (!grepl("L", .user_code, fixed = TRUE)) {
+    fail("Use `L` as requested.")
+  }
+  if (!identical(.result, c(2L, NA_integer_, 7L))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C21: Character vector with missing value
+
+Using `c()`, create and return `"alpha", NA, "omega"`, using `NA_character_` for the missing value.
+
+```{r vector_c21, exercise=TRUE}
+
+```
+
+```{r vector_c21-solution}
+c("alpha", NA_character_, "omega")
+```
+
+```{r vector_c21-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("NA_character_", .user_code, fixed = TRUE)) {
+    fail("Use `NA_character_` as requested.")
+  }
+  if (!identical(.result, c("alpha", NA_character_, "omega"))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C22: Logical vector with missing value
+
+Using `c()`, create and return the logical vector `TRUE, NA, FALSE, TRUE`.
+
+```{r vector_c22, exercise=TRUE}
+
+```
+
+```{r vector_c22-solution}
+c(TRUE, NA, FALSE, TRUE)
+```
+
+```{r vector_c22-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("TRUE", .user_code, fixed = TRUE)) {
+    fail("Use `TRUE` as requested.")
+  }
+  if (!grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use `FALSE` as requested.")
+  }
+  if (!grepl("NA", .user_code, fixed = TRUE)) {
+    fail("Use `NA` as requested.")
+  }
+  if (!identical(.result, c(TRUE, NA, FALSE, TRUE))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C23: Complex vector with missing value
+
+Using `c()`, create and return a complex vector containing `1+1i`, a missing complex value, and `2-2i`. Use `NA_complex_`.
+
+```{r vector_c23, exercise=TRUE}
+
+```
+
+```{r vector_c23-solution}
+c(1+1i, NA_complex_, 2-2i)
+```
+
+```{r vector_c23-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("NA_complex_", .user_code, fixed = TRUE)) {
+    fail("Use `NA_complex_` as requested.")
+  }
+  if (!identical(.result, c(1+1i, NA_complex_, 2-2i))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C24: Named vector with a missing value
+
+Using `c()`, create and return a named numeric vector with `baseline = 8.2`, `followup = NA`, and `final = 7.1`. Use `NA_real_`.
+
+```{r vector_c24, exercise=TRUE}
+
+```
+
+```{r vector_c24-solution}
+c(baseline = 8.2, followup = NA_real_, final = 7.1)
+```
+
+```{r vector_c24-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("NA_real_", .user_code, fixed = TRUE)) {
+    fail("Use `NA_real_` as requested.")
+  }
+  if (!identical(.result, c(baseline = 8.2, followup = NA_real_, final = 7.1))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C25: Single-element named vector
+
+Using `c()`, create and return a one-element character vector named `status` whose value is `"complete"`.
+
+```{r vector_c25, exercise=TRUE}
+
+```
+
+```{r vector_c25-solution}
+c(status = "complete")
+```
+
+```{r vector_c25-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(status = "complete"))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C26: Repeated explicit values
+
+Using only `c()`, create and return `3, 3, 7, 7, 7, 12`. Do not use a repetition function.
+
+```{r vector_c26, exercise=TRUE}
+
+```
+
+```{r vector_c26-solution}
+c(3, 3, 7, 7, 7, 12)
+```
+
+```{r vector_c26-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c(3, 3, 7, 7, 7, 12))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C27: Small decimal values
+
+Using `c()`, create and return the numeric vector `0.001, 0.002, 0.005` using scientific notation.
+
+```{r vector_c27, exercise=TRUE}
+
+```
+
+```{r vector_c27-solution}
+c(1e-3, 2e-3, 5e-3)
+```
+
+```{r vector_c27-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("e-3", .user_code, fixed = TRUE)) {
+    fail("Use `e-3` as requested.")
+  }
+  if (!identical(.result, c(1e-3, 2e-3, 5e-3))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C28: Character vector including an empty string
+
+Using `c()`, create and return `"alpha"`, the empty string `""`, and `"gamma"`.
+
+```{r vector_c28, exercise=TRUE}
+
+```
+
+```{r vector_c28-solution}
+c("alpha", "", "gamma")
+```
+
+```{r vector_c28-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, c("alpha", "", "gamma"))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C29: Sentinels around a range
+
+Using only `c()` and `:`, create and return `-99, 1, 2, 3, 4, 99`.
+
+```{r vector_c29, exercise=TRUE}
+
+```
+
+```{r vector_c29-solution}
+c(-99, 1:4, 99)
+```
+
+```{r vector_c29-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, c(-99, 1:4, 99))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill C30: Named logical vector with unknown status
+
+Using `c()`, create and return a named logical vector with `active = TRUE`, `archived = FALSE`, and `pending = NA`.
+
+```{r vector_c30, exercise=TRUE}
+
+```
+
+```{r vector_c30-solution}
+c(active = TRUE, archived = FALSE, pending = NA)
+```
+
+```{r vector_c30-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("c", ":", "+", "-", "("))) {
+    fail("For this drill, construct the vector using only `c()` and/or `:` (apart from signs/arithmetic needed to write the literal values).")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!grepl("TRUE", .user_code, fixed = TRUE)) {
+    fail("Use `TRUE` as requested.")
+  }
+  if (!grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use `FALSE` as requested.")
+  }
+  if (!grepl("NA", .user_code, fixed = TRUE)) {
+    fail("Use `NA` as requested.")
+  }
+  if (!identical(.result, c(active = TRUE, archived = FALSE, pending = NA))) {
+    fail("The returned vector does not exactly match the requested vector.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E01: One element by position
+
+The vector `x` is provided. Return its **third element** using a numeric subscript.
+
+```{r vector_e01-setup, include=FALSE}
+x <- c(10, 20, 30, 40, 50)
+```
+
+```{r vector_e01, exercise=TRUE, exercise.setup="vector_e01-setup"}
+
+```
+
+```{r vector_e01-solution}
+x[3]
+```
+
+```{r vector_e01-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!identical(.result, x[3])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E02: Several positions
+
+The vector `x` is provided. Return the **second and fifth elements**, in that order, using a numeric subscript built with `c()`.
+
+```{r vector_e02-setup, include=FALSE}
+x <- c("ant", "bee", "cat", "dog", "eel")
+```
+
+```{r vector_e02, exercise=TRUE, exercise.setup="vector_e02-setup"}
+
+```
+
+```{r vector_e02-solution}
+x[c(2, 5)]
+```
+
+```{r vector_e02-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(2, 5)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E03: Contiguous subvector
+
+The vector `x` is provided. Return elements **2 through 5** using `:` inside the numeric subscript.
+
+```{r vector_e03-setup, include=FALSE}
+x <- c(5, 10, 15, 20, 25, 30)
+```
+
+```{r vector_e03, exercise=TRUE, exercise.setup="vector_e03-setup"}
+
+```
+
+```{r vector_e03-solution}
+x[2:5]
+```
+
+```{r vector_e03-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use `:` in the subscript as requested.")
+  }
+  if (!identical(.result, x[2:5])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E04: Reverse a contiguous section
+
+The vector `x` is provided. Return elements **6, 5, 4, and 3**, in that order, using `:` inside the numeric subscript.
+
+```{r vector_e04-setup, include=FALSE}
+x <- c("a", "b", "c", "d", "e", "f", "g")
+```
+
+```{r vector_e04, exercise=TRUE, exercise.setup="vector_e04-setup"}
+
+```
+
+```{r vector_e04-solution}
+x[6:3]
+```
+
+```{r vector_e04-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use `:` in the subscript as requested.")
+  }
+  if (!identical(.result, x[6:3])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E05: Repeated positions
+
+The vector `x` is provided. Return elements **4, 1, 4, 2**, in that order, using `c()` inside a numeric subscript.
+
+```{r vector_e05-setup, include=FALSE}
+x <- c(11, 22, 33, 44, 55)
+```
+
+```{r vector_e05, exercise=TRUE, exercise.setup="vector_e05-setup"}
+
+```
+
+```{r vector_e05-solution}
+x[c(4, 1, 4, 2)]
+```
+
+```{r vector_e05-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(4, 1, 4, 2)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E06: Omit the first element
+
+The vector `x` is provided. Return everything **except the first element** using a negative numeric subscript.
+
+```{r vector_e06-setup, include=FALSE}
+x <- c("zero", "one", "two", "three")
+```
+
+```{r vector_e06, exercise=TRUE, exercise.setup="vector_e06-setup"}
+
+```
+
+```{r vector_e06-solution}
+x[-1]
+```
+
+```{r vector_e06-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "-")) {
+    fail("Use a negative numeric subscript as requested.")
+  }
+  if (!identical(.result, x[-1])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E07: Omit several positions
+
+The vector `x` is provided. Return everything **except elements 2 and 5** using `c()` and negative numeric subscripts.
+
+```{r vector_e07-setup, include=FALSE}
+x <- c(100, 200, 300, 400, 500, 600)
+```
+
+```{r vector_e07, exercise=TRUE, exercise.setup="vector_e07-setup"}
+
+```
+
+```{r vector_e07-solution}
+x[-c(2, 5)]
+```
+
+```{r vector_e07-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!uses_call(.user_code, "-")) {
+    fail("Use a negative numeric subscript as requested.")
+  }
+  if (!identical(.result, x[-c(2, 5)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E08: Omit a range
+
+The vector `x` is provided. Return everything **except elements 3 through 6** using a negative numeric range.
+
+```{r vector_e08-setup, include=FALSE}
+x <- c(10, 20, 30, 40, 50, 60, 70, 80)
+```
+
+```{r vector_e08, exercise=TRUE, exercise.setup="vector_e08-setup"}
+
+```
+
+```{r vector_e08-solution}
+x[-(3:6)]
+```
+
+```{r vector_e08-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use `:` in the subscript as requested.")
+  }
+  if (!uses_call(.user_code, "-")) {
+    fail("Use a negative numeric subscript as requested.")
+  }
+  if (!identical(.result, x[-(3:6)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E09: Zero in a numeric subscript
+
+The vector `x` is provided. Using `c()`, return elements **2 and 4**, but include zeros in your numeric subscript to demonstrate that index 0 selects nothing. Use exactly the positions `0, 2, 0, 4`.
+
+```{r vector_e09-setup, include=FALSE}
+x <- c("A", "B", "C", "D", "E")
+```
+
+```{r vector_e09, exercise=TRUE, exercise.setup="vector_e09-setup"}
+
+```
+
+```{r vector_e09-solution}
+x[c(0, 2, 0, 4)]
+```
+
+```{r vector_e09-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!grepl("0", .user_code, fixed = TRUE)) {
+    fail("Use `0` as requested.")
+  }
+  if (!identical(.result, x[c(0, 2, 0, 4)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E10: Logical selection
+
+The vector `x` is provided. Using a logical subscript built with `c()`, return the **first, third, and fifth** elements.
+
+```{r vector_e10-setup, include=FALSE}
+x <- c(3, 6, 9, 12, 15)
+```
+
+```{r vector_e10, exercise=TRUE, exercise.setup="vector_e10-setup"}
+
+```
+
+```{r vector_e10-solution}
+x[c(TRUE, FALSE, TRUE, FALSE, TRUE)]
+```
+
+```{r vector_e10-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE) || grepl("NA", .user_code, fixed = TRUE))) {
+    fail("Use a logical subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(TRUE, FALSE, TRUE, FALSE, TRUE)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E11: Logical recycling
+
+The vector `x` is provided. Use the shorter logical subscript `c(TRUE, FALSE)` so R recycles it and returns the odd-positioned elements.
+
+```{r vector_e11-setup, include=FALSE}
+x <- c("a", "b", "c", "d", "e", "f")
+```
+
+```{r vector_e11, exercise=TRUE, exercise.setup="vector_e11-setup"}
+
+```
+
+```{r vector_e11-solution}
+x[c(TRUE, FALSE)]
+```
+
+```{r vector_e11-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE) || grepl("NA", .user_code, fixed = TRUE))) {
+    fail("Use a logical subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(TRUE, FALSE)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E12: Logical pattern with two FALSE values
+
+The vector `x` is provided. Use a logical subscript to return every element **except the second and fourth**.
+
+```{r vector_e12-setup, include=FALSE}
+x <- c(8, 16, 24, 32, 40, 48)
+```
+
+```{r vector_e12, exercise=TRUE, exercise.setup="vector_e12-setup"}
+
+```
+
+```{r vector_e12-solution}
+x[c(TRUE, FALSE, TRUE, FALSE, TRUE, TRUE)]
+```
+
+```{r vector_e12-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE) || grepl("NA", .user_code, fixed = TRUE))) {
+    fail("Use a logical subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(TRUE, FALSE, TRUE, FALSE, TRUE, TRUE)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E13: One element by name
+
+The named vector `x` is provided. Return the element named **`east`** using a character/name subscript, not a numeric position.
+
+```{r vector_e13-setup, include=FALSE}
+x <- c(north = 12, south = 18, east = 9, west = 15)
+```
+
+```{r vector_e13, exercise=TRUE, exercise.setup="vector_e13-setup"}
+
+```
+
+```{r vector_e13-solution}
+x["east"]
+```
+
+```{r vector_e13-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!identical(.result, x["east"])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E14: Several elements by name
+
+The named vector `x` is provided. Return **`south` and `north`**, in that order, using `c()` to construct a character/name subscript.
+
+```{r vector_e14-setup, include=FALSE}
+x <- c(north = 12, south = 18, east = 9, west = 15)
+```
+
+```{r vector_e14, exercise=TRUE, exercise.setup="vector_e14-setup"}
+
+```
+
+```{r vector_e14-solution}
+x[c("south", "north")]
+```
+
+```{r vector_e14-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c("south", "north")])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E15: Reorder by name
+
+The named vector `x` is provided. Return the elements in the order **`third`, `first`, `second`** using names as subscripts.
+
+```{r vector_e15-setup, include=FALSE}
+x <- c(first = "A", second = "B", third = "C")
+```
+
+```{r vector_e15, exercise=TRUE, exercise.setup="vector_e15-setup"}
+
+```
+
+```{r vector_e15-solution}
+x[c("third", "first", "second")]
+```
+
+```{r vector_e15-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c("third", "first", "second")])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E16: Repeat a named element
+
+The named vector `x` is provided. Return **`beta`, `beta`, `alpha`**, in that order, using a name subscript.
+
+```{r vector_e16-setup, include=FALSE}
+x <- c(alpha = 10, beta = 20, gamma = 30)
+```
+
+```{r vector_e16, exercise=TRUE, exercise.setup="vector_e16-setup"}
+
+```
+
+```{r vector_e16-solution}
+x[c("beta", "beta", "alpha")]
+```
+
+```{r vector_e16-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c("beta", "beta", "alpha")])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E17: Subscript a name containing a space
+
+The named vector `x` is provided. Return the element named **`second score`** using its name as the subscript.
+
+```{r vector_e17-setup, include=FALSE}
+x <- c(`first score` = 88, `second score` = 94, `final score` = 91)
+```
+
+```{r vector_e17, exercise=TRUE, exercise.setup="vector_e17-setup"}
+
+```
+
+```{r vector_e17-solution}
+x["second score"]
+```
+
+```{r vector_e17-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!identical(.result, x["second score"])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E18: Numeric subscript preserves names
+
+The named vector `x` is provided. Return its **first and third elements** using numeric positions. The resulting subvector should retain their names.
+
+```{r vector_e18-setup, include=FALSE}
+x <- c(low = 2.5, middle = 5.0, high = 7.5)
+```
+
+```{r vector_e18, exercise=TRUE, exercise.setup="vector_e18-setup"}
+
+```
+
+```{r vector_e18-solution}
+x[c(1, 3)]
+```
+
+```{r vector_e18-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(1, 3)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E19: Negative subscript preserves names
+
+The named vector `x` is provided. Return everything **except the second element** using a negative numeric subscript.
+
+```{r vector_e19-setup, include=FALSE}
+x <- c(red = 4, green = 8, blue = 12, black = 16)
+```
+
+```{r vector_e19, exercise=TRUE, exercise.setup="vector_e19-setup"}
+
+```
+
+```{r vector_e19-solution}
+x[-2]
+```
+
+```{r vector_e19-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "-")) {
+    fail("Use a negative numeric subscript as requested.")
+  }
+  if (!identical(.result, x[-2])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E20: Logical subscript preserves names
+
+The named vector `x` is provided. Return **`one` and `three`** using a logical subscript, not their names or positions.
+
+```{r vector_e20-setup, include=FALSE}
+x <- c(one = 1, two = 2, three = 3, four = 4)
+```
+
+```{r vector_e20, exercise=TRUE, exercise.setup="vector_e20-setup"}
+
+```
+
+```{r vector_e20-solution}
+x[c(TRUE, FALSE, TRUE, FALSE)]
+```
+
+```{r vector_e20-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE) || grepl("NA", .user_code, fixed = TRUE))) {
+    fail("Use a logical subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(TRUE, FALSE, TRUE, FALSE)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E21: Extract from an integer vector
+
+The integer vector `x` is provided. Return elements **2 through 4** using a numeric range subscript.
+
+```{r vector_e21-setup, include=FALSE}
+x <- c(10L, 20L, 30L, 40L, 50L)
+```
+
+```{r vector_e21, exercise=TRUE, exercise.setup="vector_e21-setup"}
+
+```
+
+```{r vector_e21-solution}
+x[2:4]
+```
+
+```{r vector_e21-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use `:` in the subscript as requested.")
+  }
+  if (!identical(.result, x[2:4])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E22: Extract from a logical vector
+
+The logical vector `x` is provided. Return the **second, third, and sixth values** using numeric subscripts.
+
+```{r vector_e22-setup, include=FALSE}
+x <- c(TRUE, FALSE, TRUE, TRUE, FALSE, FALSE)
+```
+
+```{r vector_e22, exercise=TRUE, exercise.setup="vector_e22-setup"}
+
+```
+
+```{r vector_e22-solution}
+x[c(2, 3, 6)]
+```
+
+```{r vector_e22-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(2, 3, 6)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E23: Extract from a complex vector
+
+The complex vector `x` is provided. Return the **fourth and first elements**, in that order, using numeric subscripts.
+
+```{r vector_e23-setup, include=FALSE}
+x <- c(1+1i, 2+0i, 3-1i, 4+2i)
+```
+
+```{r vector_e23, exercise=TRUE, exercise.setup="vector_e23-setup"}
+
+```
+
+```{r vector_e23-solution}
+x[c(4, 1)]
+```
+
+```{r vector_e23-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(4, 1)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E24: Missing numeric subscript
+
+The vector `x` is provided. Use the numeric subscript `c(2, NA_integer_, 4)` exactly, so the result contains the second value, an unknown value, and the fourth value.
+
+```{r vector_e24-setup, include=FALSE}
+x <- c(10, 20, 30, 40, 50)
+```
+
+```{r vector_e24, exercise=TRUE, exercise.setup="vector_e24-setup"}
+
+```
+
+```{r vector_e24-solution}
+x[c(2, NA_integer_, 4)]
+```
+
+```{r vector_e24-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!grepl("NA_integer_", .user_code, fixed = TRUE)) {
+    fail("Use `NA_integer_` as requested.")
+  }
+  if (!identical(.result, x[c(2, NA_integer_, 4)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E25: Missing logical subscript
+
+The vector `x` is provided. Use the logical subscript `c(TRUE, NA, FALSE, TRUE)` exactly.
+
+```{r vector_e25-setup, include=FALSE}
+x <- c("a", "b", "c", "d")
+```
+
+```{r vector_e25, exercise=TRUE, exercise.setup="vector_e25-setup"}
+
+```
+
+```{r vector_e25-solution}
+x[c(TRUE, NA, FALSE, TRUE)]
+```
+
+```{r vector_e25-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE) || grepl("NA", .user_code, fixed = TRUE))) {
+    fail("Use a logical subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!grepl("NA", .user_code, fixed = TRUE)) {
+    fail("Use `NA` as requested.")
+  }
+  if (!identical(.result, x[c(TRUE, NA, FALSE, TRUE)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E26: Duplicate names: character subscript
+
+The named vector `x` is provided and contains duplicate `a` names. Use the character subscript `"a"` to select by name.
+
+```{r vector_e26-setup, include=FALSE}
+x <- c(a = 10, a = 20, b = 30)
+```
+
+```{r vector_e26, exercise=TRUE, exercise.setup="vector_e26-setup"}
+
+```
+
+```{r vector_e26-solution}
+x["a"]
+```
+
+```{r vector_e26-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!identical(.result, x["a"])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E27: Duplicate names: numeric subscript
+
+The named vector `x` is provided and contains duplicate `a` names. Use numeric positions to return **both first and second elements**.
+
+```{r vector_e27-setup, include=FALSE}
+x <- c(a = 10, a = 20, b = 30)
+```
+
+```{r vector_e27, exercise=TRUE, exercise.setup="vector_e27-setup"}
+
+```
+
+```{r vector_e27-solution}
+x[c(1, 2)]
+```
+
+```{r vector_e27-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(1, 2)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E28: Select character values by name
+
+The named character vector `x` is provided. Return **`primary` and `backup`**, in that order, using their names.
+
+```{r vector_e28-setup, include=FALSE}
+x <- c(primary = "server-a", backup = "server-b", retired = "server-c")
+```
+
+```{r vector_e28, exercise=TRUE, exercise.setup="vector_e28-setup"}
+
+```
+
+```{r vector_e28-solution}
+x[c("primary", "backup")]
+```
+
+```{r vector_e28-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c("primary", "backup")])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E29: Reorder logical values by name
+
+The named logical vector `x` is provided. Return **`reviewed`, `active`, `archived`**, in that order, using names as subscripts.
+
+```{r vector_e29-setup, include=FALSE}
+x <- c(active = TRUE, archived = FALSE, reviewed = TRUE)
+```
+
+```{r vector_e29, exercise=TRUE, exercise.setup="vector_e29-setup"}
+
+```
+
+```{r vector_e29-solution}
+x[c("reviewed", "active", "archived")]
+```
+
+```{r vector_e29-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (!(grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE))) {
+    fail("Use a character/name subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c("reviewed", "active", "archived")])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```
+
+## Vector Drill E30: Combine individual positions and a range
+
+The vector `x` is provided. Using only `c()` and `:` inside the numeric subscript, return elements **1, 3, 4, 5, and 8**.
+
+```{r vector_e30-setup, include=FALSE}
+x <- c(10, 20, 30, 40, 50, 60, 70, 80)
+```
+
+```{r vector_e30, exercise=TRUE, exercise.setup="vector_e30-setup"}
+
+```
+
+```{r vector_e30-solution}
+x[c(1, 3:5, 8)]
+```
+
+```{r vector_e30-check}
+grade_this({
+  used_calls <- vapply(
+    walk_calls(parse_student_code(.user_code)),
+    call_head,
+    character(1)
+  )
+  used_calls <- used_calls[!is.na(used_calls)]
+  if (any(!used_calls %in% c("[", "c", ":", "-", "("))) {
+    fail("Use vector `[ ]` subscripting, with only `c()` and/or `:` as needed to construct the subscript.")
+  }
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket vector subscripting (`[ ]`).")
+  }
+  if (grepl("\"", .user_code, fixed = TRUE) || grepl("'", .user_code, fixed = TRUE) ||
+      grepl("TRUE", .user_code, fixed = TRUE) || grepl("FALSE", .user_code, fixed = TRUE)) {
+    fail("Use a numeric subscript, as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` in the subscript as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use `:` in the subscript as requested.")
+  }
+  if (!identical(.result, x[c(1, 3:5, 8)])) {
+    fail("The returned value or subvector is not correct.")
+  }
+  pass("Correct.")
+})
+```

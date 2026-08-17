@@ -1,0 +1,11 @@
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+rsconnect/
+output/*
+!output/.gitkeep
+roster.csv
+index.html
+R/app_config.R
+

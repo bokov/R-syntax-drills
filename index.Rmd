@@ -1,0 +1,324 @@
+---
+title: "R Syntax Drill — Week 01"
+output:
+  learnr::tutorial:
+    progressive: false
+    allow_skip: true
+    css: "www/styles.css"
+runtime: shiny_prerendered
+tutorial:
+  id: "r-syntax-drills-week-01"
+  version: 1.0
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(gradethis)
+library(shiny)
+source("R/syntax_checkers.R")
+
+gradethis::gradethis_setup(
+  pass.praise = FALSE,
+  fail.encourage = FALSE,
+  fail.hint = FALSE
+)
+
+learnr::tutorial_options(
+  exercise.timelimit = 10,
+  exercise.reveal_solution = FALSE #,
+  #exercise.warn_invisible = FALSE
+)
+```
+
+```{r logging-start, context="server-start", include=FALSE}
+library(httr2)
+source("R/app_config.R")
+source("R/logging.R")
+register_logging_handlers(APP_CONFIG)
+```
+
+```{r identity-server, context="server", include=FALSE}
+session$userData$identity <- shiny::reactiveVal(NULL)
+session$userData$logging_status <- shiny::reactiveVal(
+  list(ok = NA, message = "Enter your student ID before beginning.")
+)
+
+shiny::observeEvent(input$save_identity, {
+  student_id <- trimws(input$student_id)
+  student_name <- trimws(input$student_name)
+
+  if (!grepl("^[A-Za-z0-9._@-]{2,100}$", student_id)) {
+    session$userData$logging_status(list(
+      ok = FALSE,
+      message = "Enter a valid student ID (2–100 letters, digits, ., _, @, or -)."
+    ))
+    return()
+  }
+
+  session$userData$identity(list(
+    student_id = student_id,
+    student_name = student_name
+  ))
+
+  post_log_event(
+    session,
+    "identity_saved",
+    data = list(label = "identity"),
+    config = APP_CONFIG
+  )
+})
+
+output$identity_status <- shiny::renderUI({
+  status <- session$userData$logging_status()
+  cls <- if (isTRUE(status$ok)) {
+    "alert alert-success"
+  } else if (identical(status$ok, FALSE)) {
+    "alert alert-danger"
+  } else {
+    "alert alert-warning"
+  }
+  shiny::tags$div(class = cls, status$message)
+})
+```
+
+## Before you begin
+
+Your responses are graded immediately and recorded for your instructor. Enter the same student ID your course uses for grading.
+
+```{r identity-ui, echo=FALSE}
+shiny::wellPanel(
+  shiny::textInput("student_id", "Student ID", placeholder = "e.g., abc123"),
+  shiny::textInput("student_name", "Name (optional)", placeholder = "e.g., Ada Lovelace"),
+  shiny::actionButton("save_identity", "Save identity"),
+  shiny::br(), shiny::br(),
+  shiny::uiOutput("identity_status")
+)
+```
+
+## Drill 1: Assignment
+
+Create a vector containing the integers 1 through 5. Assign it to `x` using the `<-` operator, then put `x` on the final line so its value is returned.
+
+```{r assignment, exercise=TRUE}
+
+```
+
+```{r assignment-solution}
+x <- 1:5
+x
+```
+
+```{r assignment-check}
+grade_this({
+  if (!uses_call(.user_code, "<-")) {
+    fail("Use the `<-` assignment operator.")
+  }
+  if (!identical(.result, 1:5)) {
+    fail("`x` should contain the integers 1 through 5.")
+  }
+  pass("Correct: you used `<-` and created the requested vector.")
+})
+```
+
+## Drill 2: Vector indexing
+
+The vector `v` is provided. Return its **third element using single-bracket indexing** (`[ ]`).
+
+```{r vector_index-setup, include=FALSE}
+v <- c("alpha", "beta", "gamma", "delta")
+```
+
+```{r vector_index, exercise=TRUE, exercise.setup="vector_index-setup"}
+
+```
+
+```{r vector_index-solution}
+v[3]
+```
+
+```{r vector_index-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single brackets: `v[3]`.")
+  }
+  if (uses_call(.user_code, "[[")) {
+    fail("This drill is specifically asking for single-bracket indexing, not `[[ ]]`.")
+  }
+  if (!identical(.result, "gamma")) {
+    fail("Return the third element of `v`.")
+  }
+  pass("Correct: single brackets select the requested vector element.")
+})
+```
+
+## Drill 3: List extraction
+
+The list `z` is provided. Extract its second element using **double-bracket extraction** (`[[ ]]`).
+
+```{r list_extract-setup, include=FALSE}
+z <- list(first = 10, second = c(20, 30), third = "done")
+```
+
+```{r list_extract, exercise=TRUE, exercise.setup="list_extract-setup"}
+
+```
+
+```{r list_extract-solution}
+z[[2]]
+```
+
+```{r list_extract-check}
+grade_this({
+  if (!uses_call(.user_code, "[[")) {
+    fail("Use double brackets (`[[ ]]`) to extract one list element.")
+  }
+  if (!identical(.result, c(20, 30))) {
+    fail("Extract the second element of `z`.")
+  }
+  pass("Correct: `[[ ]]` extracted the list element itself.")
+})
+```
+
+## Drill 4: Named arguments
+
+The vector `y` contains a missing value. Call `mean()` and explicitly use the named argument `na.rm = TRUE`.
+
+```{r named_argument-setup, include=FALSE}
+y <- c(2, 4, NA, 8)
+```
+
+```{r named_argument, exercise=TRUE, exercise.setup="named_argument-setup"}
+
+```
+
+```{r named_argument-solution}
+mean(y, na.rm = TRUE)
+```
+
+```{r named_argument-check}
+grade_this({
+  if (!uses_call(.user_code, "mean")) {
+    fail("Call `mean()`.")
+  }
+  if (!call_has_named_arg(.user_code, "mean", "na.rm")) {
+    fail("Explicitly name the `na.rm` argument.")
+  }
+  if (!isTRUE(all.equal(.result, mean(y, na.rm = TRUE)))) {
+    fail("The mean should be calculated after removing the missing value.")
+  }
+  pass("Correct: you supplied `na.rm` as a named argument.")
+})
+```
+
+## Drill 5: `$` extraction
+
+Using the built-in `iris` data frame, return the first three values of `Sepal.Length`. Use `$` to select the column.
+
+```{r dollar_extract, exercise=TRUE}
+
+```
+
+```{r dollar_extract-solution}
+iris$Sepal.Length[1:3]
+```
+
+```{r dollar_extract-check}
+grade_this({
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` to select `Sepal.Length` from `iris`.")
+  }
+  if (!identical(.result, iris$Sepal.Length[1:3])) {
+    fail("Return the first three values of `iris$Sepal.Length`.")
+  }
+  pass("Correct: you used `$` for data-frame column extraction.")
+})
+```
+
+## Drill 6: Native pipe
+
+Use the native R pipe `|>` at least once. Starting from `mtcars`, keep the rows where `cyl == 4` and return the number of resulting rows.
+
+```{r native_pipe, exercise=TRUE}
+
+```
+
+```{r native_pipe-solution}
+mtcars |>
+  subset(cyl == 4) |>
+  nrow()
+```
+
+```{r native_pipe-check}
+grade_this({
+  if (!uses_token(.user_code, "|>")) {
+    fail("Use the native R pipe, `|>`.")
+  }
+  if (!identical(.result, nrow(subset(mtcars, cyl == 4)))) {
+    fail("Filter `mtcars` to four-cylinder cars and return the number of rows.")
+  }
+  pass("Correct: you used the native pipe and returned the requested count.")
+})
+```
+
+## Drill 7: Define a function
+
+Create a function called `double` that takes one argument `x` and returns `x * 2`. Put `double(6)` on the final line.
+
+```{r function_definition, exercise=TRUE}
+
+```
+
+```{r function_definition-solution}
+double <- function(x) x * 2
+double(6)
+```
+
+```{r function_definition-check}
+grade_this({
+  if (!uses_call(.user_code, "function")) {
+    fail("Define the function using `function(x)`.")
+  }
+  if (!uses_call(.user_code, "<-")) {
+    fail("Assign the function to the name `double` using `<-`.")
+  }
+  if (!identical(.result, 12)) {
+    fail("Your final expression should be `double(6)`, which returns 12.")
+  }
+  pass("Correct: you defined and called an R function.")
+})
+```
+
+## Drill 8: Logical subsetting
+
+The vector `scores` is provided. Using `[ ]` and a logical comparison, return only the values greater than or equal to 80.
+
+```{r logical_subset-setup, include=FALSE}
+scores <- c(74, 91, 80, 67, 88)
+```
+
+```{r logical_subset, exercise=TRUE, exercise.setup="logical_subset-setup"}
+
+```
+
+```{r logical_subset-solution}
+scores[scores >= 80]
+```
+
+```{r logical_subset-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use `[ ]` for logical subsetting.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use a `>=` comparison to create the logical index.")
+  }
+  if (!identical(.result, scores[scores >= 80])) {
+    fail("Return only scores greater than or equal to 80.")
+  }
+  pass("Correct: you used a logical expression inside `[ ]`.")
+})
+```
+
+## Finished
+
+When each exercise displays a green **Correct** result, your successful attempt has been recorded. If the logging banner at the top ever turns red, correct the connection problem and resubmit the affected exercise.

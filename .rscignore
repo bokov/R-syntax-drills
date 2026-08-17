@@ -1,0 +1,8 @@
+.git
+.gitignore
+README.md
+google-apps-script
+scripts
+output
+roster.csv
+roster.csv.example

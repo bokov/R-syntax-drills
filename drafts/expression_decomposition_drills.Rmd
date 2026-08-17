@@ -1,0 +1,772 @@
+# Recursive expression-decomposition drill bank
+
+These drills train students to read R as a tree of function/operator calls and arguments rather than as an undifferentiated line of text.
+
+**Before these chunks**, source the helper once in the tutorial setup:
+
+```r
+source("R/expression_decomposition.R")
+```
+
+Each drill:
+
+1. shows one R expression;
+2. asks for the outermost function/operator;
+3. asks how many arguments it has;
+4. asks for each argument exactly as an R expression;
+5. asks whether each argument is another call, an atom, or a deliberately missing argument;
+6. recursively repeats the process for every nested call;
+7. classifies terminal atoms as symbols, numeric/integer/character/logical/complex literals, or `NULL`.
+
+Operators such as `$`, `[`, `:`, `==`, `&`, `+`, `<-`, and unary `!`/`-` are intentionally treated as calls too.
+
+## Expression Drill D01: Single function call
+
+Take this expression completely apart:
+
+```r
+mean(x)
+```
+
+```{r expr_d01, echo=FALSE}
+expression_decomposition_quiz(
+  "mean(x)",
+  caption = "Expression Drill D01"
+)
+```
+
+## Expression Drill D02: Function with two arguments
+
+Take this expression completely apart:
+
+```r
+round(3.14159, 2)
+```
+
+```{r expr_d02, echo=FALSE}
+expression_decomposition_quiz(
+  "round(3.14159, 2)",
+  caption = "Expression Drill D02"
+)
+```
+
+## Expression Drill D03: Vector construction
+
+Take this expression completely apart:
+
+```r
+c(4, 7, 9)
+```
+
+```{r expr_d03, echo=FALSE}
+expression_decomposition_quiz(
+  "c(4, 7, 9)",
+  caption = "Expression Drill D03"
+)
+```
+
+## Expression Drill D04: Colon operator
+
+Take this expression completely apart:
+
+```r
+1:10
+```
+
+```{r expr_d04, echo=FALSE}
+expression_decomposition_quiz(
+  "1:10",
+  caption = "Expression Drill D04"
+)
+```
+
+## Expression Drill D05: Dollar extraction
+
+Take this expression completely apart:
+
+```r
+mtcars$mpg
+```
+
+```{r expr_d05, echo=FALSE}
+expression_decomposition_quiz(
+  "mtcars$mpg",
+  caption = "Expression Drill D05"
+)
+```
+
+## Expression Drill D06: Simple vector subscript
+
+Take this expression completely apart:
+
+```r
+x[3]
+```
+
+```{r expr_d06, echo=FALSE}
+expression_decomposition_quiz(
+  "x[3]",
+  caption = "Expression Drill D06"
+)
+```
+
+## Expression Drill D07: Subscript built by c()
+
+Take this expression completely apart:
+
+```r
+x[c(1, 4, 6)]
+```
+
+```{r expr_d07, echo=FALSE}
+expression_decomposition_quiz(
+  "x[c(1, 4, 6)]",
+  caption = "Expression Drill D07"
+)
+```
+
+## Expression Drill D08: Comparison operator
+
+Take this expression completely apart:
+
+```r
+x > 5
+```
+
+```{r expr_d08, echo=FALSE}
+expression_decomposition_quiz(
+  "x > 5",
+  caption = "Expression Drill D08"
+)
+```
+
+## Expression Drill D09: Nested arithmetic
+
+Take this expression completely apart:
+
+```r
+sqrt(16) + 2
+```
+
+```{r expr_d09, echo=FALSE}
+expression_decomposition_quiz(
+  "sqrt(16) + 2",
+  caption = "Expression Drill D09"
+)
+```
+
+## Expression Drill D10: Two-dimensional subsetting
+
+Take this expression completely apart:
+
+```r
+iris[1:5, 1:2]
+```
+
+```{r expr_d10, echo=FALSE}
+expression_decomposition_quiz(
+  "iris[1:5, 1:2]",
+  caption = "Expression Drill D10"
+)
+```
+
+## Expression Drill D11: Function around dollar extraction
+
+Take this expression completely apart:
+
+```r
+mean(mtcars$mpg)
+```
+
+```{r expr_d11, echo=FALSE}
+expression_decomposition_quiz(
+  "mean(mtcars$mpg)",
+  caption = "Expression Drill D11"
+)
+```
+
+## Expression Drill D12: Function around comparison
+
+Take this expression completely apart:
+
+```r
+sum(mtcars$cyl == 4)
+```
+
+```{r expr_d12, echo=FALSE}
+expression_decomposition_quiz(
+  "sum(mtcars$cyl == 4)",
+  caption = "Expression Drill D12"
+)
+```
+
+## Expression Drill D13: Two nested functions
+
+Take this expression completely apart:
+
+```r
+round(mean(mtcars$mpg), 1)
+```
+
+```{r expr_d13, echo=FALSE}
+expression_decomposition_quiz(
+  "round(mean(mtcars$mpg), 1)",
+  caption = "Expression Drill D13"
+)
+```
+
+## Expression Drill D14: Subsetting with a missing column argument
+
+Take this expression completely apart:
+
+```r
+iris[iris$Species == "setosa", ]
+```
+
+```{r expr_d14, echo=FALSE}
+expression_decomposition_quiz(
+  "iris[iris$Species == \"setosa\", ]",
+  caption = "Expression Drill D14"
+)
+```
+
+## Expression Drill D15: Row condition plus selected columns
+
+Take this expression completely apart:
+
+```r
+mtcars[mtcars$cyl == 4, c("mpg", "hp")]
+```
+
+```{r expr_d15, echo=FALSE}
+expression_decomposition_quiz(
+  "mtcars[mtcars$cyl == 4, c(\"mpg\", \"hp\")]",
+  caption = "Expression Drill D15"
+)
+```
+
+## Expression Drill D16: Vector selected by its own values
+
+Take this expression completely apart:
+
+```r
+x[x > 0]
+```
+
+```{r expr_d16, echo=FALSE}
+expression_decomposition_quiz(
+  "x[x > 0]",
+  caption = "Expression Drill D16"
+)
+```
+
+## Expression Drill D17: Function around logical subsetting
+
+Take this expression completely apart:
+
+```r
+mean(x[x > 0])
+```
+
+```{r expr_d17, echo=FALSE}
+expression_decomposition_quiz(
+  "mean(x[x > 0])",
+  caption = "Expression Drill D17"
+)
+```
+
+## Expression Drill D18: Named function argument
+
+Take this expression completely apart:
+
+```r
+paste(first, last, sep = " ")
+```
+
+```{r expr_d18, echo=FALSE}
+expression_decomposition_quiz(
+  "paste(first, last, sep = \" \")",
+  caption = "Expression Drill D18"
+)
+```
+
+## Expression Drill D19: Two nested colon calls
+
+Take this expression completely apart:
+
+```r
+c(1:3, 8:10)
+```
+
+```{r expr_d19, echo=FALSE}
+expression_decomposition_quiz(
+  "c(1:3, 8:10)",
+  caption = "Expression Drill D19"
+)
+```
+
+## Expression Drill D20: Three-argument conditional
+
+Take this expression completely apart:
+
+```r
+ifelse(x > 0, x, 0)
+```
+
+```{r expr_d20, echo=FALSE}
+expression_decomposition_quiz(
+  "ifelse(x > 0, x, 0)",
+  caption = "Expression Drill D20"
+)
+```
+
+## Expression Drill D21: Mean of conditionally selected column
+
+Take this expression completely apart:
+
+```r
+mean(mtcars$mpg[mtcars$cyl == 4])
+```
+
+```{r expr_d21, echo=FALSE}
+expression_decomposition_quiz(
+  "mean(mtcars$mpg[mtcars$cyl == 4])",
+  caption = "Expression Drill D21"
+)
+```
+
+## Expression Drill D22: Missing-value filter inside mean
+
+Take this expression completely apart:
+
+```r
+round(mean(airquality$Ozone[!is.na(airquality$Ozone)]), 1)
+```
+
+```{r expr_d22, echo=FALSE}
+expression_decomposition_quiz(
+  "round(mean(airquality$Ozone[!is.na(airquality$Ozone)]), 1)",
+  caption = "Expression Drill D22"
+)
+```
+
+## Expression Drill D23: Nested summary inside comparison
+
+Take this expression completely apart:
+
+```r
+sum(iris$Sepal.Length > mean(iris$Sepal.Length))
+```
+
+```{r expr_d23, echo=FALSE}
+expression_decomposition_quiz(
+  "sum(iris$Sepal.Length > mean(iris$Sepal.Length))",
+  caption = "Expression Drill D23"
+)
+```
+
+## Expression Drill D24: Compound row condition
+
+Take this expression completely apart:
+
+```r
+mtcars[mtcars$cyl == 4 & mtcars$mpg > 25, c("mpg", "hp", "wt")]
+```
+
+```{r expr_d24, echo=FALSE}
+expression_decomposition_quiz(
+  "mtcars[mtcars$cyl == 4 & mtcars$mpg > 25, c(\"mpg\", \"hp\", \"wt\")]",
+  caption = "Expression Drill D24"
+)
+```
+
+## Expression Drill D25: subset() with named select argument
+
+Take this expression completely apart:
+
+```r
+subset(ToothGrowth, supp == "OJ" & dose == 2, select = c(len, dose))
+```
+
+```{r expr_d25, echo=FALSE}
+expression_decomposition_quiz(
+  "subset(ToothGrowth, supp == \"OJ\" & dose == 2, select = c(len, dose))",
+  caption = "Expression Drill D25"
+)
+```
+
+## Expression Drill D26: Names, subsetting, and paste
+
+Take this expression completely apart:
+
+```r
+paste(names(x)[x > 0], collapse = ", ")
+```
+
+```{r expr_d26, echo=FALSE}
+expression_decomposition_quiz(
+  "paste(names(x)[x > 0], collapse = \", \")",
+  caption = "Expression Drill D26"
+)
+```
+
+## Expression Drill D27: Successive subscripts
+
+Take this expression completely apart:
+
+```r
+x[c(TRUE, FALSE)][1:3]
+```
+
+```{r expr_d27, echo=FALSE}
+expression_decomposition_quiz(
+  "x[c(TRUE, FALSE)][1:3]",
+  caption = "Expression Drill D27"
+)
+```
+
+## Expression Drill D28: Arithmetic expression tree
+
+Take this expression completely apart:
+
+```r
+round(sqrt(sum(x^2)), 2)
+```
+
+```{r expr_d28, echo=FALSE}
+expression_decomposition_quiz(
+  "round(sqrt(sum(x^2)), 2)",
+  caption = "Expression Drill D28"
+)
+```
+
+## Expression Drill D29: Combined vectors inside mean
+
+Take this expression completely apart:
+
+```r
+mean(c(x[1:3], y[4:6]), na.rm = TRUE)
+```
+
+```{r expr_d29, echo=FALSE}
+expression_decomposition_quiz(
+  "mean(c(x[1:3], y[4:6]), na.rm = TRUE)",
+  caption = "Expression Drill D29"
+)
+```
+
+## Expression Drill D30: order() with named argument
+
+Take this expression completely apart:
+
+```r
+order(mtcars$mpg, decreasing = TRUE)
+```
+
+```{r expr_d30, echo=FALSE}
+expression_decomposition_quiz(
+  "order(mtcars$mpg, decreasing = TRUE)",
+  caption = "Expression Drill D30"
+)
+```
+
+## Expression Drill D31: Ordered data-frame rows
+
+Take this expression completely apart:
+
+```r
+mtcars[order(mtcars$mpg, decreasing = TRUE), c("mpg", "cyl", "wt")]
+```
+
+```{r expr_d31, echo=FALSE}
+expression_decomposition_quiz(
+  "mtcars[order(mtcars$mpg, decreasing = TRUE), c(\"mpg\", \"cyl\", \"wt\")]",
+  caption = "Expression Drill D31"
+)
+```
+
+## Expression Drill D32: Membership and comparison inside subsetting
+
+Take this expression completely apart:
+
+```r
+mean(mtcars$mpg[mtcars$cyl %in% c(4, 6) & mtcars$wt < 3])
+```
+
+```{r expr_d32, echo=FALSE}
+expression_decomposition_quiz(
+  "mean(mtcars$mpg[mtcars$cyl %in% c(4, 6) & mtcars$wt < 3])",
+  caption = "Expression Drill D32"
+)
+```
+
+## Expression Drill D33: Variance-like arithmetic
+
+Take this expression completely apart:
+
+```r
+round(sum((x - mean(x))^2) / (length(x) - 1), 2)
+```
+
+```{r expr_d33, echo=FALSE}
+expression_decomposition_quiz(
+  "round(sum((x - mean(x))^2) / (length(x) - 1), 2)",
+  caption = "Expression Drill D33"
+)
+```
+
+## Expression Drill D34: which(), names(), and paste
+
+Take this expression completely apart:
+
+```r
+paste(names(which(x > mean(x))), collapse = ", ")
+```
+
+```{r expr_d34, echo=FALSE}
+expression_decomposition_quiz(
+  "paste(names(which(x > mean(x))), collapse = \", \")",
+  caption = "Expression Drill D34"
+)
+```
+
+## Expression Drill D35: Nested group-specific mean
+
+Take this expression completely apart:
+
+```r
+iris[iris$Sepal.Length > mean(iris$Sepal.Length[iris$Species == "setosa"]), c("Sepal.Length", "Species")]
+```
+
+```{r expr_d35, echo=FALSE}
+expression_decomposition_quiz(
+  "iris[iris$Sepal.Length > mean(iris$Sepal.Length[iris$Species == \"setosa\"]), c(\"Sepal.Length\", \"Species\")]",
+  caption = "Expression Drill D35"
+)
+```
+
+## Expression Drill D36: ifelse() with missing-value replacement
+
+Take this expression completely apart:
+
+```r
+ifelse(is.na(x), mean(x[!is.na(x)]), x)
+```
+
+```{r expr_d36, echo=FALSE}
+expression_decomposition_quiz(
+  "ifelse(is.na(x), mean(x[!is.na(x)]), x)",
+  caption = "Expression Drill D36"
+)
+```
+
+## Expression Drill D37: Two summaries inside a compound condition
+
+Take this expression completely apart:
+
+```r
+sum(mtcars$mpg > mean(mtcars$mpg) & mtcars$hp < median(mtcars$hp))
+```
+
+```{r expr_d37, echo=FALSE}
+expression_decomposition_quiz(
+  "sum(mtcars$mpg > mean(mtcars$mpg) & mtcars$hp < median(mtcars$hp))",
+  caption = "Expression Drill D37"
+)
+```
+
+## Expression Drill D38: Membership filter plus named digits argument
+
+Take this expression completely apart:
+
+```r
+round(mean(airquality$Temp[airquality$Month %in% c(6, 7, 8)]), digits = 1)
+```
+
+```{r expr_d38, echo=FALSE}
+expression_decomposition_quiz(
+  "round(mean(airquality$Temp[airquality$Month %in% c(6, 7, 8)]), digits = 1)",
+  caption = "Expression Drill D38"
+)
+```
+
+## Expression Drill D39: Three nested functions and a named argument
+
+Take this expression completely apart:
+
+```r
+paste(sort(unique(iris$Species)), collapse = " / ")
+```
+
+```{r expr_d39, echo=FALSE}
+expression_decomposition_quiz(
+  "paste(sort(unique(iris$Species)), collapse = \" / \")",
+  caption = "Expression Drill D39"
+)
+```
+
+## Expression Drill D40: Quantile inside a row filter
+
+Take this expression completely apart:
+
+```r
+mtcars[mtcars$mpg > quantile(mtcars$mpg, 0.75), c("mpg", "hp", "wt")]
+```
+
+```{r expr_d40, echo=FALSE}
+expression_decomposition_quiz(
+  "mtcars[mtcars$mpg > quantile(mtcars$mpg, 0.75), c(\"mpg\", \"hp\", \"wt\")]",
+  caption = "Expression Drill D40"
+)
+```
+
+## Expression Drill D41: Nested subgroup median
+
+Take this expression completely apart:
+
+```r
+round(mean(mtcars$mpg[mtcars$cyl == 4 & mtcars$wt < median(mtcars$wt[mtcars$cyl == 4])]), 2)
+```
+
+```{r expr_d41, echo=FALSE}
+expression_decomposition_quiz(
+  "round(mean(mtcars$mpg[mtcars$cyl == 4 & mtcars$wt < median(mtcars$wt[mtcars$cyl == 4])]), 2)",
+  caption = "Expression Drill D41"
+)
+```
+
+## Expression Drill D42: Ordering by two expressions
+
+Take this expression completely apart:
+
+```r
+iris[order(iris$Species, -iris$Sepal.Length), c("Species", "Sepal.Length", "Petal.Length")]
+```
+
+```{r expr_d42, echo=FALSE}
+expression_decomposition_quiz(
+  "iris[order(iris$Species, -iris$Sepal.Length), c(\"Species\", \"Sepal.Length\", \"Petal.Length\")]",
+  caption = "Expression Drill D42"
+)
+```
+
+## Expression Drill D43: Missingness and mean in one logical expression
+
+Take this expression completely apart:
+
+```r
+sum(!is.na(airquality$Ozone) & airquality$Ozone > mean(airquality$Ozone, na.rm = TRUE))
+```
+
+```{r expr_d43, echo=FALSE}
+expression_decomposition_quiz(
+  "sum(!is.na(airquality$Ozone) & airquality$Ozone > mean(airquality$Ozone, na.rm = TRUE))",
+  caption = "Expression Drill D43"
+)
+```
+
+## Expression Drill D44: table(), sort(), names(), paste
+
+Take this expression completely apart:
+
+```r
+paste(names(sort(table(mtcars$cyl), decreasing = TRUE)), collapse = ",")
+```
+
+```{r expr_d44, echo=FALSE}
+expression_decomposition_quiz(
+  "paste(names(sort(table(mtcars$cyl), decreasing = TRUE)), collapse = \",\")",
+  caption = "Expression Drill D44"
+)
+```
+
+## Expression Drill D45: Nested filtering and arithmetic
+
+Take this expression completely apart:
+
+```r
+round(sqrt(sum((x[!is.na(x)] - mean(x, na.rm = TRUE))^2)), 3)
+```
+
+```{r expr_d45, echo=FALSE}
+expression_decomposition_quiz(
+  "round(sqrt(sum((x[!is.na(x)] - mean(x, na.rm = TRUE))^2)), 3)",
+  caption = "Expression Drill D45"
+)
+```
+
+## Expression Drill D46: Assignment as a function call
+
+Take this expression completely apart:
+
+```r
+high_mpg <- mtcars[mtcars$mpg > mean(mtcars$mpg), c("mpg", "cyl", "wt")]
+```
+
+```{r expr_d46, echo=FALSE}
+expression_decomposition_quiz(
+  "high_mpg <- mtcars[mtcars$mpg > mean(mtcars$mpg), c(\"mpg\", \"cyl\", \"wt\")]",
+  caption = "Expression Drill D46"
+)
+```
+
+## Expression Drill D47: Assignment with two quantiles
+
+Take this expression completely apart:
+
+```r
+result <- round(mean(x[x >= quantile(x, 0.25) & x <= quantile(x, 0.75)]), 2)
+```
+
+```{r expr_d47, echo=FALSE}
+expression_decomposition_quiz(
+  "result <- round(mean(x[x >= quantile(x, 0.25) & x <= quantile(x, 0.75)]), 2)",
+  caption = "Expression Drill D47"
+)
+```
+
+## Expression Drill D48: Row names selected by a summary comparison
+
+Take this expression completely apart:
+
+```r
+paste(rownames(USArrests)[USArrests$Murder > mean(USArrests$Murder)], collapse = ", ")
+```
+
+```{r expr_d48, echo=FALSE}
+expression_decomposition_quiz(
+  "paste(rownames(USArrests)[USArrests$Murder > mean(USArrests$Murder)], collapse = \", \")",
+  caption = "Expression Drill D48"
+)
+```
+
+## Expression Drill D49: Names followed by vector subsetting
+
+Take this expression completely apart:
+
+```r
+names(mtcars)[c(1, 3, 5)]
+```
+
+```{r expr_d49, echo=FALSE}
+expression_decomposition_quiz(
+  "names(mtcars)[c(1, 3, 5)]",
+  caption = "Expression Drill D49"
+)
+```
+
+## Expression Drill D50: Row names with nested mean filter
+
+Take this expression completely apart:
+
+```r
+rownames(mtcars)[mtcars$mpg > mean(mtcars$mpg)]
+```
+
+```{r expr_d50, echo=FALSE}
+expression_decomposition_quiz(
+  "rownames(mtcars)[mtcars$mpg > mean(mtcars$mpg)]",
+  caption = "Expression Drill D50"
+)
+```
+

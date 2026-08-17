@@ -1,0 +1,1922 @@
+# Data-frame subsetting drill bank
+
+These chunks are intended to be pasted after the setup/logging/identity sections of the existing `learnr` tutorial.
+
+They use only data frames from the standard `datasets` package that ships with R and is attached by default in a normal R session: `mtcars`, `iris`, `airquality`, `ToothGrowth`, `women`, `USArrests`, `PlantGrowth`, and `faithful`.
+
+The drills intentionally distinguish among:
+
+- `df[rows, columns]`
+- one-dimensional data-frame indexing such as `df["column"]`
+- `$`
+- `[[ ]]`
+- `drop = FALSE`
+- `subset()`
+
+The check chunks assume the existing helpers in `R/syntax_checkers.R`, particularly `uses_call()`, and the existing `gradethis` setup.
+
+## Data-frame Drill DF_R01: First five rows
+
+Using single-bracket data-frame subscripting (`[rows, columns]`) and `:`, return the first 5 rows of `mtcars`. Keep all columns.
+
+```{r df_r01, exercise=TRUE}
+
+```
+
+```{r df_r01-solution}
+mtcars[1:5, ]
+```
+
+```{r df_r01-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, mtcars[1:5, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R02: Selected row numbers
+
+Using single-bracket subscripting and `c()`, return rows 2, 7, and 12 of `iris`, in that order. Keep all columns.
+
+```{r df_r02, exercise=TRUE}
+
+```
+
+```{r df_r02-solution}
+iris[c(2, 7, 12), ]
+```
+
+```{r df_r02-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, iris[c(2, 7, 12), ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R03: Contiguous middle rows
+
+Using single-bracket subscripting and `:`, return rows 10 through 20 of `airquality`. Keep all columns.
+
+```{r df_r03, exercise=TRUE}
+
+```
+
+```{r df_r03-solution}
+airquality[10:20, ]
+```
+
+```{r df_r03-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, airquality[10:20, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R04: Exclude rows by number
+
+Using single-bracket subscripting, return `women` with rows 1 and 15 omitted. Keep all columns.
+
+```{r df_r04, exercise=TRUE}
+
+```
+
+```{r df_r04-solution}
+women[-c(1, 15), ]
+```
+
+```{r df_r04-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, women[-c(1, 15), ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R05: Repeat and reorder rows
+
+Using single-bracket subscripting and `c()`, return rows 3, 3, 1, and 5 of `PlantGrowth`, in exactly that order. Keep all columns.
+
+```{r df_r05, exercise=TRUE}
+
+```
+
+```{r df_r05-solution}
+PlantGrowth[c(3, 3, 1, 5), ]
+```
+
+```{r df_r05-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, PlantGrowth[c(3, 3, 1, 5), ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R06: Named rows
+
+Using row names as character subscripts, return the rows `"Texas"`, `"Oregon"`, and `"Alabama"` from `USArrests`, in that order. Keep all columns.
+
+```{r df_r06, exercise=TRUE}
+
+```
+
+```{r df_r06-solution}
+USArrests[c("Texas", "Oregon", "Alabama"), ]
+```
+
+```{r df_r06-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, USArrests[c("Texas", "Oregon", "Alabama"), ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R07: Single named row
+
+Using a row-name subscript, return the `"Datsun 710"` row of `mtcars` as a one-row data frame.
+
+```{r df_r07, exercise=TRUE}
+
+```
+
+```{r df_r07-solution}
+mtcars["Datsun 710", ]
+```
+
+```{r df_r07-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!identical(.result, mtcars["Datsun 710", ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R08: Rows matching one condition
+
+Using single-bracket subscripting and a logical condition in the row position, return all rows of `mtcars` for cars with 4 cylinders.
+
+```{r df_r08, exercise=TRUE}
+
+```
+
+```{r df_r08-solution}
+mtcars[mtcars$cyl == 4, ]
+```
+
+```{r df_r08-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!identical(.result, mtcars[mtcars$cyl == 4, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R09: Rows above a threshold
+
+Using single-bracket subscripting and a logical condition, return all rows of `mtcars` with `mpg` at least 30.
+
+```{r df_r09, exercise=TRUE}
+
+```
+
+```{r df_r09-solution}
+mtcars[mtcars$mpg >= 30, ]
+```
+
+```{r df_r09-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use `>=` as requested.")
+  }
+  if (!identical(.result, mtcars[mtcars$mpg >= 30, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R10: Rows matching a character/factor value
+
+Using single-bracket subscripting and a logical condition, return all rows of `iris` whose `Species` is `"virginica"`.
+
+```{r df_r10, exercise=TRUE}
+
+```
+
+```{r df_r10-solution}
+iris[iris$Species == "virginica", ]
+```
+
+```{r df_r10-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!identical(.result, iris[iris$Species == "virginica", ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R11: Rows matching two conditions
+
+Using single-bracket subscripting, return rows of `ToothGrowth` where `supp` is `"OJ"` AND `dose` is 2.
+
+```{r df_r11, exercise=TRUE}
+
+```
+
+```{r df_r11-solution}
+ToothGrowth[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 2, ]
+```
+
+```{r df_r11-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!identical(.result, ToothGrowth[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 2, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R12: Rows matching an OR condition
+
+Using single-bracket subscripting, return rows of `women` where height is less than 60 OR greater than 70.
+
+```{r df_r12, exercise=TRUE}
+
+```
+
+```{r df_r12-solution}
+women[women$height < 60 | women$height > 70, ]
+```
+
+```{r df_r12-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "<")) {
+    fail("Use `<` as requested.")
+  }
+  if (!uses_call(.user_code, "|")) {
+    fail("Use `|` as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!identical(.result, women[women$height < 60 | women$height > 70, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R13: Rows using %in%
+
+Using single-bracket subscripting and `%in%`, return rows of `PlantGrowth` whose `group` is either `"trt1"` or `"trt2"`.
+
+```{r df_r13, exercise=TRUE}
+
+```
+
+```{r df_r13-solution}
+PlantGrowth[PlantGrowth$group %in% c("trt1", "trt2"), ]
+```
+
+```{r df_r13-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "%in%")) {
+    fail("Use `%in%` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, PlantGrowth[PlantGrowth$group %in% c("trt1", "trt2"), ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R14: Remove missing values while filtering
+
+Using single-bracket subscripting, return rows of `airquality` where `Ozone` is not missing and is greater than 100.
+
+```{r df_r14, exercise=TRUE}
+
+```
+
+```{r df_r14-solution}
+airquality[!is.na(airquality$Ozone) & airquality$Ozone > 100, ]
+```
+
+```{r df_r14-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "is.na")) {
+    fail("Use `is.na` as requested.")
+  }
+  if (!uses_call(.user_code, "!")) {
+    fail("Use `!` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!identical(.result, airquality[!is.na(airquality$Ozone) & airquality$Ozone > 100, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R15: Logical recycling in the row subscript
+
+Using the explicit logical subscript `c(TRUE, FALSE)` in the row position, return every other row of `women`, beginning with row 1. Keep all columns.
+
+```{r df_r15, exercise=TRUE}
+
+```
+
+```{r df_r15-solution}
+women[c(TRUE, FALSE), ]
+```
+
+```{r df_r15-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, women[c(TRUE, FALSE), ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_R16: Descending row order
+
+Using single-bracket subscripting and `:`, return rows 10 down through 4 of `faithful`, in descending row order. Keep all columns.
+
+```{r df_r16, exercise=TRUE}
+
+```
+
+```{r df_r16-solution}
+faithful[10:4, ]
+```
+
+```{r df_r16-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, faithful[10:4, ])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C01: First four columns as a data frame
+
+Using single-bracket subscripting, return the first four columns of `mtcars` as a data frame.
+
+```{r df_c01, exercise=TRUE}
+
+```
+
+```{r df_c01-solution}
+mtcars[, 1:4]
+```
+
+```{r df_c01-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, mtcars[, 1:4])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C02: Selected columns by number
+
+Using single-bracket subscripting and `c()`, return columns 1, 6, and 9 of `mtcars`, in that order.
+
+```{r df_c02, exercise=TRUE}
+
+```
+
+```{r df_c02-solution}
+mtcars[, c(1, 6, 9)]
+```
+
+```{r df_c02-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, mtcars[, c(1, 6, 9)])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C03: Selected columns by name
+
+Using single-bracket subscripting and a character vector of column names, return `mpg`, `wt`, and `hp` from `mtcars`, in that order.
+
+```{r df_c03, exercise=TRUE}
+
+```
+
+```{r df_c03-solution}
+mtcars[, c("mpg", "wt", "hp")]
+```
+
+```{r df_c03-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, mtcars[, c("mpg", "wt", "hp")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C04: Data-frame-style named column selection
+
+Using the one-dimensional data-frame form `df[c("col1", "col2")]`, return the `Sepal.Length` and `Species` columns of `iris` as a data frame.
+
+```{r df_c04, exercise=TRUE}
+
+```
+
+```{r df_c04-solution}
+iris[c("Sepal.Length", "Species")]
+```
+
+```{r df_c04-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, iris[c("Sepal.Length", "Species")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C05: Reorder columns by name
+
+Using single-bracket subscripting, return the columns of `women` in the order `weight`, then `height`.
+
+```{r df_c05, exercise=TRUE}
+
+```
+
+```{r df_c05-solution}
+women[, c("weight", "height")]
+```
+
+```{r df_c05-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, women[, c("weight", "height")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C06: Exclude one column by number
+
+Using a negative numeric column subscript, return `iris` without its fifth column.
+
+```{r df_c06, exercise=TRUE}
+
+```
+
+```{r df_c06-solution}
+iris[, -5]
+```
+
+```{r df_c06-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!identical(.result, iris[, -5])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C07: Exclude several columns by number
+
+Using a negative numeric column subscript and `c()`, return `mtcars` without columns 2, 8, and 10.
+
+```{r df_c07, exercise=TRUE}
+
+```
+
+```{r df_c07-solution}
+mtcars[, -c(2, 8, 10)]
+```
+
+```{r df_c07-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, mtcars[, -c(2, 8, 10)])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C08: Extract one column with $
+
+Using `$`, extract and return the `Species` column of `iris` as a vector/factor, not as a one-column data frame.
+
+```{r df_c08, exercise=TRUE}
+
+```
+
+```{r df_c08-solution}
+iris$Species
+```
+
+```{r df_c08-check}
+grade_this({
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!identical(.result, iris$Species)) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C09: Extract one named column with [[
+
+Using `[[ ]]` with the column name, extract and return the `Ozone` column of `airquality` as a vector.
+
+```{r df_c09, exercise=TRUE}
+
+```
+
+```{r df_c09-solution}
+airquality[["Ozone"]]
+```
+
+```{r df_c09-check}
+grade_this({
+  if (!uses_call(.user_code, "[[")) {
+    fail("Use double-bracket `[[ ]]` extraction as requested.")
+  }
+  if (!identical(.result, airquality[["Ozone"]])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C10: Extract one numbered column with [[
+
+Using `[[ ]]` with a numeric subscript, extract and return the second column of `women` as a vector.
+
+```{r df_c10, exercise=TRUE}
+
+```
+
+```{r df_c10-solution}
+women[[2]]
+```
+
+```{r df_c10-check}
+grade_this({
+  if (!uses_call(.user_code, "[[")) {
+    fail("Use double-bracket `[[ ]]` extraction as requested.")
+  }
+  if (!identical(.result, women[[2]])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C11: Single column with comma simplifies
+
+Using `[, ]` with the character column name `"mpg"`, extract the `mpg` column of `mtcars` as a vector.
+
+```{r df_c11, exercise=TRUE}
+
+```
+
+```{r df_c11-solution}
+mtcars[, "mpg"]
+```
+
+```{r df_c11-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!identical(.result, mtcars[, "mpg"])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C12: Single column preserved as data frame
+
+Using `[, ]` with `"mpg"` and `drop = FALSE`, return the `mpg` column of `mtcars` as a one-column data frame.
+
+```{r df_c12, exercise=TRUE}
+
+```
+
+```{r df_c12-solution}
+mtcars[, "mpg", drop = FALSE]
+```
+
+```{r df_c12-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_token(.user_code, "drop")) {
+    fail("Include `drop` as requested.")
+  }
+  if (!identical(.result, mtcars[, "mpg", drop = FALSE])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C13: One-dimensional data-frame indexing preserves data frame
+
+Using `df["column"]` syntax, return the `group` column of `PlantGrowth` as a one-column data frame.
+
+```{r df_c13, exercise=TRUE}
+
+```
+
+```{r df_c13-solution}
+PlantGrowth["group"]
+```
+
+```{r df_c13-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!identical(.result, PlantGrowth["group"])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C14: Reorder and repeat columns
+
+Using single-bracket subscripting and column names, return `height`, `weight`, then `height` again from `women`, in that order.
+
+```{r df_c14, exercise=TRUE}
+
+```
+
+```{r df_c14-solution}
+women[, c("height", "weight", "height")]
+```
+
+```{r df_c14-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, women[, c("height", "weight", "height")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C15: Logical column subscript
+
+Using the explicit logical column subscript `c(TRUE, FALSE, TRUE, FALSE)`, return the first and third columns of `USArrests`.
+
+```{r df_c15, exercise=TRUE}
+
+```
+
+```{r df_c15-solution}
+USArrests[, c(TRUE, FALSE, TRUE, FALSE)]
+```
+
+```{r df_c15-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, USArrests[, c(TRUE, FALSE, TRUE, FALSE)])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_C16: Column names from a different built-in data frame
+
+Using single-bracket subscripting by name, return `eruptions` and then `waiting` from `faithful`.
+
+```{r df_c16, exercise=TRUE}
+
+```
+
+```{r df_c16-solution}
+faithful[, c("eruptions", "waiting")]
+```
+
+```{r df_c16-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, faithful[, c("eruptions", "waiting")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B01: Rows and columns by number
+
+Using one single-bracket expression, return rows 1 through 6 and columns 1 through 3 of `mtcars`.
+
+```{r df_b01, exercise=TRUE}
+
+```
+
+```{r df_b01-solution}
+mtcars[1:6, 1:3]
+```
+
+```{r df_b01-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, mtcars[1:6, 1:3])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B02: Rows by number, columns by name
+
+Using one single-bracket expression, return rows 10 through 15 of `iris` and only `Sepal.Length` and `Petal.Length`.
+
+```{r df_b02, exercise=TRUE}
+
+```
+
+```{r df_b02-solution}
+iris[10:15, c("Sepal.Length", "Petal.Length")]
+```
+
+```{r df_b02-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, iris[10:15, c("Sepal.Length", "Petal.Length")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B03: Named rows and named columns
+
+Using row names and column names, return `Texas`, `California`, and `New York` from `USArrests`, with only `Murder` and `Assault`.
+
+```{r df_b03, exercise=TRUE}
+
+```
+
+```{r df_b03-solution}
+USArrests[c("Texas", "California", "New York"), c("Murder", "Assault")]
+```
+
+```{r df_b03-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, USArrests[c("Texas", "California", "New York"), c("Murder", "Assault")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B04: Logical rows and named columns
+
+Using one single-bracket expression, return cars in `mtcars` with 6 cylinders, keeping only `mpg`, `hp`, and `wt`.
+
+```{r df_b04, exercise=TRUE}
+
+```
+
+```{r df_b04-solution}
+mtcars[mtcars$cyl == 6, c("mpg", "hp", "wt")]
+```
+
+```{r df_b04-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, mtcars[mtcars$cyl == 6, c("mpg", "hp", "wt")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B05: Factor condition and selected columns
+
+Using one single-bracket expression, return only `Sepal.Width` and `Petal.Width` for `iris` rows whose `Species` is `"setosa"`.
+
+```{r df_b05, exercise=TRUE}
+
+```
+
+```{r df_b05-solution}
+iris[iris$Species == "setosa", c("Sepal.Width", "Petal.Width")]
+```
+
+```{r df_b05-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, iris[iris$Species == "setosa", c("Sepal.Width", "Petal.Width")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B06: Two conditions and selected columns
+
+Using one single-bracket expression, return `len` and `dose` from `ToothGrowth` where `supp` is `"VC"` and `dose` is 1.
+
+```{r df_b06, exercise=TRUE}
+
+```
+
+```{r df_b06-solution}
+ToothGrowth[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1, c("len", "dose")]
+```
+
+```{r df_b06-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, ToothGrowth[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1, c("len", "dose")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B07: Threshold condition and reordered columns
+
+Using one single-bracket expression, return rows of `women` with height at least 65, with columns ordered `weight`, then `height`.
+
+```{r df_b07, exercise=TRUE}
+
+```
+
+```{r df_b07-solution}
+women[women$height >= 65, c("weight", "height")]
+```
+
+```{r df_b07-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use `>=` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, women[women$height >= 65, c("weight", "height")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B08: Missing-value-safe condition and selected columns
+
+Using one single-bracket expression, return `Ozone`, `Temp`, and `Month` from `airquality` for rows where `Ozone` is not missing and is at least 80.
+
+```{r df_b08, exercise=TRUE}
+
+```
+
+```{r df_b08-solution}
+airquality[!is.na(airquality$Ozone) & airquality$Ozone >= 80, c("Ozone", "Temp", "Month")]
+```
+
+```{r df_b08-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "is.na")) {
+    fail("Use `is.na` as requested.")
+  }
+  if (!uses_call(.user_code, "!")) {
+    fail("Use `!` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use `>=` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, airquality[!is.na(airquality$Ozone) & airquality$Ozone >= 80, c("Ozone", "Temp", "Month")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B09: Exclude rows and select columns
+
+Using one single-bracket expression, omit the first 3 rows of `PlantGrowth` and keep only `weight` and `group`.
+
+```{r df_b09, exercise=TRUE}
+
+```
+
+```{r df_b09-solution}
+PlantGrowth[-c(1, 2, 3), c("weight", "group")]
+```
+
+```{r df_b09-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, PlantGrowth[-c(1, 2, 3), c("weight", "group")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B10: Reverse rows and columns
+
+Using one single-bracket expression, return rows 8 down through 3 of `women`, with the columns in reverse order.
+
+```{r df_b10, exercise=TRUE}
+
+```
+
+```{r df_b10-solution}
+women[8:3, 2:1]
+```
+
+```{r df_b10-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, ":")) {
+    fail("Use the `:` operator as requested.")
+  }
+  if (!identical(.result, women[8:3, 2:1])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B11: %in% rows and selected columns
+
+Using one single-bracket expression and `%in%`, return `Murder` and `UrbanPop` for states whose row names are `"Alabama"`, `"Alaska"`, or `"Arizona"`.
+
+```{r df_b11, exercise=TRUE}
+
+```
+
+```{r df_b11-solution}
+USArrests[rownames(USArrests) %in% c("Alabama", "Alaska", "Arizona"), c("Murder", "UrbanPop")]
+```
+
+```{r df_b11-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "rownames")) {
+    fail("Use `rownames` as requested.")
+  }
+  if (!uses_call(.user_code, "%in%")) {
+    fail("Use `%in%` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, USArrests[rownames(USArrests) %in% c("Alabama", "Alaska", "Arizona"), c("Murder", "UrbanPop")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B12: OR condition and selected columns
+
+Using one single-bracket expression, return `mpg` and `gear` for `mtcars` rows where `gear` is 3 OR 5.
+
+```{r df_b12, exercise=TRUE}
+
+```
+
+```{r df_b12-solution}
+mtcars[mtcars$gear == 3 | mtcars$gear == 5, c("mpg", "gear")]
+```
+
+```{r df_b12-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "|")) {
+    fail("Use `|` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, mtcars[mtcars$gear == 3 | mtcars$gear == 5, c("mpg", "gear")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B13: Compound numeric range
+
+Using one single-bracket expression, return `height` and `weight` from `women` where height is between 62 and 68 inclusive.
+
+```{r df_b13, exercise=TRUE}
+
+```
+
+```{r df_b13-solution}
+women[women$height >= 62 & women$height <= 68, c("height", "weight")]
+```
+
+```{r df_b13-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use `>=` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, "<=")) {
+    fail("Use `<=` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, women[women$height >= 62 & women$height <= 68, c("height", "weight")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B14: Complete cases on selected variables
+
+Using `complete.cases()` in the row subscript, return complete rows of `airquality` with respect to `Ozone` and `Solar.R`, and keep only `Ozone`, `Solar.R`, and `Temp`.
+
+```{r df_b14, exercise=TRUE}
+
+```
+
+```{r df_b14-solution}
+airquality[complete.cases(airquality[, c("Ozone", "Solar.R")]), c("Ozone", "Solar.R", "Temp")]
+```
+
+```{r df_b14-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "complete.cases")) {
+    fail("Use `complete.cases` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, airquality[complete.cases(airquality[, c("Ozone", "Solar.R")]), c("Ozone", "Solar.R", "Temp")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B15: Repeated rows with selected columns
+
+Using one single-bracket expression, return rows 1, 1, 4, and 2 of `faithful`, keeping the columns in the order `waiting`, then `eruptions`.
+
+```{r df_b15, exercise=TRUE}
+
+```
+
+```{r df_b15-solution}
+faithful[c(1, 1, 4, 2), c("waiting", "eruptions")]
+```
+
+```{r df_b15-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, faithful[c(1, 1, 4, 2), c("waiting", "eruptions")])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_B16: Select by condition and drop one column
+
+Using one single-bracket expression, return `iris` rows with `Petal.Length` greater than 5, but omit the `Species` column by using a negative numeric column subscript.
+
+```{r df_b16, exercise=TRUE}
+
+```
+
+```{r df_b16-solution}
+iris[iris$Petal.Length > 5, -5]
+```
+
+```{r df_b16-check}
+grade_this({
+  if (!uses_call(.user_code, "[")) {
+    fail("Use single-bracket `[` subsetting as requested.")
+  }
+  if (!uses_call(.user_code, "$")) {
+    fail("Use `$` extraction as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!identical(.result, iris[iris$Petal.Length > 5, -5])) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S01: subset(): one condition
+
+Using `subset()`, return all rows of `mtcars` with 6 cylinders.
+
+```{r df_s01, exercise=TRUE}
+
+```
+
+```{r df_s01-solution}
+subset(mtcars, cyl == 6)
+```
+
+```{r df_s01-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!identical(.result, subset(mtcars, cyl == 6))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S02: subset(): threshold
+
+Using `subset()`, return rows of `mtcars` where `mpg` is greater than 25.
+
+```{r df_s02, exercise=TRUE}
+
+```
+
+```{r df_s02-solution}
+subset(mtcars, mpg > 25)
+```
+
+```{r df_s02-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!identical(.result, subset(mtcars, mpg > 25))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S03: subset(): select columns
+
+Using `subset()`, return only `mpg`, `hp`, and `wt` from `mtcars`, without filtering rows.
+
+```{r df_s03, exercise=TRUE}
+
+```
+
+```{r df_s03-solution}
+subset(mtcars, select = c(mpg, hp, wt))
+```
+
+```{r df_s03-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_token(.user_code, "select")) {
+    fail("Include `select` as requested.")
+  }
+  if (!identical(.result, subset(mtcars, select = c(mpg, hp, wt)))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S04: subset(): filter and select
+
+Using `subset()`, return cars with 4 cylinders and keep only `mpg`, `hp`, and `wt`.
+
+```{r df_s04, exercise=TRUE}
+
+```
+
+```{r df_s04-solution}
+subset(mtcars, cyl == 4, select = c(mpg, hp, wt))
+```
+
+```{r df_s04-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_token(.user_code, "select")) {
+    fail("Include `select` as requested.")
+  }
+  if (!identical(.result, subset(mtcars, cyl == 4, select = c(mpg, hp, wt)))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S05: subset(): factor value
+
+Using `subset()`, return rows of `iris` whose `Species` is `"versicolor"`.
+
+```{r df_s05, exercise=TRUE}
+
+```
+
+```{r df_s05-solution}
+subset(iris, Species == "versicolor")
+```
+
+```{r df_s05-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!identical(.result, subset(iris, Species == "versicolor"))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S06: subset(): factor value and columns
+
+Using `subset()`, return `Sepal.Length`, `Petal.Length`, and `Species` for `iris` rows whose `Species` is `"virginica"`.
+
+```{r df_s06, exercise=TRUE}
+
+```
+
+```{r df_s06-solution}
+subset(iris, Species == "virginica", select = c(Sepal.Length, Petal.Length, Species))
+```
+
+```{r df_s06-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_token(.user_code, "select")) {
+    fail("Include `select` as requested.")
+  }
+  if (!identical(.result, subset(iris, Species == "virginica", select = c(Sepal.Length, Petal.Length, Species)))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S07: subset(): two conditions
+
+Using `subset()`, return rows of `ToothGrowth` where `supp` is `"OJ"` and `dose` is 0.5.
+
+```{r df_s07, exercise=TRUE}
+
+```
+
+```{r df_s07-solution}
+subset(ToothGrowth, supp == "OJ" & dose == 0.5)
+```
+
+```{r df_s07-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!identical(.result, subset(ToothGrowth, supp == "OJ" & dose == 0.5))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S08: subset(): two conditions and selected columns
+
+Using `subset()`, return only `len` and `supp` from `ToothGrowth` where `dose` is 2 and `len` is greater than 25.
+
+```{r df_s08, exercise=TRUE}
+
+```
+
+```{r df_s08-solution}
+subset(ToothGrowth, dose == 2 & len > 25, select = c(len, supp))
+```
+
+```{r df_s08-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "==")) {
+    fail("Use `==` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_token(.user_code, "select")) {
+    fail("Include `select` as requested.")
+  }
+  if (!identical(.result, subset(ToothGrowth, dose == 2 & len > 25, select = c(len, supp)))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S09: subset(): missing-safe filter
+
+Using `subset()`, return rows of `airquality` where `Ozone` is not missing and exceeds 80.
+
+```{r df_s09, exercise=TRUE}
+
+```
+
+```{r df_s09-solution}
+subset(airquality, !is.na(Ozone) & Ozone > 80)
+```
+
+```{r df_s09-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "is.na")) {
+    fail("Use `is.na` as requested.")
+  }
+  if (!uses_call(.user_code, "!")) {
+    fail("Use `!` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!identical(.result, subset(airquality, !is.na(Ozone) & Ozone > 80))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S10: subset(): missing-safe filter and select
+
+Using `subset()`, return `Ozone`, `Temp`, and `Month` for `airquality` rows where `Ozone` is not missing and exceeds 80.
+
+```{r df_s10, exercise=TRUE}
+
+```
+
+```{r df_s10-solution}
+subset(airquality, !is.na(Ozone) & Ozone > 80, select = c(Ozone, Temp, Month))
+```
+
+```{r df_s10-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "is.na")) {
+    fail("Use `is.na` as requested.")
+  }
+  if (!uses_call(.user_code, "!")) {
+    fail("Use `!` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_token(.user_code, "select")) {
+    fail("Include `select` as requested.")
+  }
+  if (!identical(.result, subset(airquality, !is.na(Ozone) & Ozone > 80, select = c(Ozone, Temp, Month)))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S11: subset(): numeric range
+
+Using `subset()`, return rows of `women` where height is between 63 and 68 inclusive.
+
+```{r df_s11, exercise=TRUE}
+
+```
+
+```{r df_s11-solution}
+subset(women, height >= 63 & height <= 68)
+```
+
+```{r df_s11-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use `>=` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, "<=")) {
+    fail("Use `<=` as requested.")
+  }
+  if (!identical(.result, subset(women, height >= 63 & height <= 68))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S12: subset(): not equal
+
+Using `subset()`, return rows of `PlantGrowth` whose `group` is not `"ctrl"`.
+
+```{r df_s12, exercise=TRUE}
+
+```
+
+```{r df_s12-solution}
+subset(PlantGrowth, group != "ctrl")
+```
+
+```{r df_s12-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "!=")) {
+    fail("Use `!=` as requested.")
+  }
+  if (!identical(.result, subset(PlantGrowth, group != "ctrl"))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S13: subset(): %in%
+
+Using `subset()` and `%in%`, return rows of `PlantGrowth` where `group` is `"ctrl"` or `"trt2"`.
+
+```{r df_s13, exercise=TRUE}
+
+```
+
+```{r df_s13-solution}
+subset(PlantGrowth, group %in% c("ctrl", "trt2"))
+```
+
+```{r df_s13-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, "%in%")) {
+    fail("Use `%in%` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!identical(.result, subset(PlantGrowth, group %in% c("ctrl", "trt2")))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S14: subset(): state crime filter
+
+Using `subset()`, return rows of `USArrests` where `Murder` is at least 10 and `UrbanPop` is below 70.
+
+```{r df_s14, exercise=TRUE}
+
+```
+
+```{r df_s14-solution}
+subset(USArrests, Murder >= 10 & UrbanPop < 70)
+```
+
+```{r df_s14-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use `>=` as requested.")
+  }
+  if (!uses_call(.user_code, "&")) {
+    fail("Use `&` as requested.")
+  }
+  if (!uses_call(.user_code, "<")) {
+    fail("Use `<` as requested.")
+  }
+  if (!identical(.result, subset(USArrests, Murder >= 10 & UrbanPop < 70))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S15: subset(): state crime filter and select
+
+Using `subset()`, return only `Murder` and `Assault` for `USArrests` rows where `Murder` is at least 10.
+
+```{r df_s15, exercise=TRUE}
+
+```
+
+```{r df_s15-solution}
+subset(USArrests, Murder >= 10, select = c(Murder, Assault))
+```
+
+```{r df_s15-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, ">=")) {
+    fail("Use `>=` as requested.")
+  }
+  if (!uses_call(.user_code, "c")) {
+    fail("Use `c()` as requested.")
+  }
+  if (!uses_token(.user_code, "select")) {
+    fail("Include `select` as requested.")
+  }
+  if (!identical(.result, subset(USArrests, Murder >= 10, select = c(Murder, Assault)))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
+## Data-frame Drill DF_S16: subset(): faithful threshold
+
+Using `subset()`, return only the `eruptions` column of `faithful` for rows where `waiting` exceeds 80. Preserve the result as a data frame.
+
+```{r df_s16, exercise=TRUE}
+
+```
+
+```{r df_s16-solution}
+subset(faithful, waiting > 80, select = eruptions)
+```
+
+```{r df_s16-check}
+grade_this({
+  if (!uses_call(.user_code, "subset")) {
+    fail("Use `subset()` as requested.")
+  }
+  if (!uses_call(.user_code, ">")) {
+    fail("Use `>` as requested.")
+  }
+  if (!uses_token(.user_code, "select")) {
+    fail("Include `select` as requested.")
+  }
+  if (!identical(.result, subset(faithful, waiting > 80, select = eruptions))) {
+    fail("The returned object does not exactly match the requested result.")
+  }
+  pass("Correct.")
+})
+```
+
