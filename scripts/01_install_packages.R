@@ -1,6 +1,6 @@
 packages <- c(
   "learnr",
-  "gradethis",
+  #"gradethis", # install manually from github 
   "shiny",
   "rmarkdown",
   "httr2",
