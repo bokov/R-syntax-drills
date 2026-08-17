@@ -95,3 +95,59 @@ test_that("assignment validation detects changed copied questions", {
     "differ from their canonical bank copies"
   )
 })
+
+
+
+
+test_that("deployed runtime can use a prevalidated manifest without the bank", {
+  manifest <- data.frame(
+    item_label = "q1",
+    event = "exercise_result",
+    topic = "basics",
+    points = 1,
+    starter_question = FALSE,
+    question_hash = "abc123",
+    stringsAsFactors = FALSE
+  )
+  
+  tmp <- tempfile()
+  dir.create(tmp)
+  
+  write.csv(
+    manifest,
+    file.path(tmp, "question_manifest.csv"),
+    row.names = FALSE
+  )
+  
+  withr::local_dir(tmp)
+  
+  loaded <- build_question_manifest()
+  
+  expect_equal(loaded$item_label, "q1")
+  expect_equal(loaded$topic, "basics")
+  expect_equal(loaded$points, 1)
+})
+
+
+test_that("current assignment exposes the expected scored items", {
+  root <- normalizePath(file.path(test_path(), "..", ".."))
+  
+  bank <- scan_question_bank(
+    question_bank_source_files(root)
+  )
+  
+  assignment <- validate_assignment_file(
+    file.path(root, "index.Rmd"),
+    bank
+  )
+  
+  scored <- assignment[
+    assignment$event == "exercise_result" &
+      assignment$points > 0,
+    ,
+    drop = FALSE
+  ]
+  
+  expect_equal(nrow(scored), 8)
+  expect_true(all(scored$points == 1))
+})
