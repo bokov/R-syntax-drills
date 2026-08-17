@@ -1,5 +1,8 @@
 const EVENT_SHEET = 'events';
-const HEADERS = [
+const ASSIGNMENT_SHEET = 'assignments';
+const QUESTION_BANK_SHEET = 'question_bank';
+
+const EVENT_HEADERS = [
   'server_timestamp_utc',
   'client_timestamp_utc',
   'schema_version',
@@ -20,7 +23,30 @@ const HEADERS = [
   'time_elapsed_sec',
   'timeout_exceeded',
   'error_message',
-  'topic'
+  'topic',
+  'assignment_id'
+];
+
+const ASSIGNMENT_HEADERS = [
+  'assignment_id',
+  'course_id',
+  'week_id',
+  'student_id',
+  'item_label',
+  'topic',
+  'points',
+  'question_hash',
+  'assigned_at_utc',
+  'assignment_reason'
+];
+
+const QUESTION_BANK_HEADERS = [
+  'item_label',
+  'event',
+  'topic',
+  'points',
+  'starter_question',
+  'question_hash'
 ];
 
 const ALLOWED_EVENTS = [
@@ -36,21 +62,29 @@ function setupGradeSheet() {
 
   PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
 
-  let sheet = ss.getSheetByName(EVENT_SHEET);
-  if (!sheet) sheet = ss.insertSheet(EVENT_SHEET);
-
-  ensureEventSheetHeaders(sheet);
-
-  sheet.setFrozenRows(1);
-  sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
-  sheet.autoResizeColumns(1, HEADERS.length);
+  ensureManagedSheet(ss, EVENT_SHEET, EVENT_HEADERS);
+  ensureManagedSheet(ss, ASSIGNMENT_SHEET, ASSIGNMENT_HEADERS);
+  ensureManagedSheet(ss, QUESTION_BANK_SHEET, QUESTION_BANK_HEADERS);
 
   Logger.log('Grade sheet is ready: ' + ss.getId());
 }
 
-function ensureEventSheetHeaders(sheet) {
+function ensureManagedSheet(ss, sheetName, headers) {
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) sheet = ss.insertSheet(sheetName);
+
+  ensureSheetHeaders(sheet, headers, sheetName);
+
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  sheet.autoResizeColumns(1, headers.length);
+
+  return sheet;
+}
+
+function ensureSheetHeaders(sheet, headers, sheetName) {
   if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
-    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     return;
   }
 
@@ -58,18 +92,22 @@ function ensureEventSheetHeaders(sheet) {
     .getRange(1, 1, 1, sheet.getLastColumn())
     .getValues()[0];
 
-  if (currentHeaders.length > HEADERS.length) {
-    throw new Error('The existing events header has unexpected extra columns. No data were changed.');
+  if (currentHeaders.length > headers.length) {
+    throw new Error(
+      'The existing ' + sheetName + ' header has unexpected extra columns. No data were changed.'
+    );
   }
 
   for (let i = 0; i < currentHeaders.length; i++) {
-    if (currentHeaders[i] !== HEADERS[i]) {
-      throw new Error('The existing events header does not match this logger schema. No data were changed.');
+    if (currentHeaders[i] !== headers[i]) {
+      throw new Error(
+        'The existing ' + sheetName + ' header does not match this schema. No data were changed.'
+      );
     }
   }
 
-  if (currentHeaders.length < HEADERS.length) {
-    const missingHeaders = HEADERS.slice(currentHeaders.length);
+  if (currentHeaders.length < headers.length) {
+    const missingHeaders = headers.slice(currentHeaders.length);
     sheet
       .getRange(1, currentHeaders.length + 1, 1, missingHeaders.length)
       .setValues([missingHeaders]);
@@ -77,7 +115,11 @@ function ensureEventSheetHeaders(sheet) {
 }
 
 function doGet() {
-  return jsonResponse({ok: true, service: 'learnr-grade-logger', schema_version: '1'});
+  return jsonResponse({
+    ok: true,
+    service: 'learnr-grade-logger',
+    schema_version: '1'
+  });
 }
 
 function doPost(e) {
@@ -87,62 +129,318 @@ function doPost(e) {
     }
 
     const data = JSON.parse(e.postData.contents);
-    validatePayload(data);
-
-    const spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-    if (!spreadsheetId) throw new Error('Run setupGradeSheet() before deploying the web app.');
-
-    const ss = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = ss.getSheetByName(EVENT_SHEET);
-    if (!sheet) throw new Error('The events sheet does not exist.');
-    ensureEventSheetHeaders(sheet);
-
-    const row = [
-      new Date().toISOString(),
-      clean(data.client_timestamp_utc, 100),
-      clean(data.schema_version, 20),
-      clean(data.request_id, 200),
-      clean(data.course_id, 200),
-      clean(data.week_id, 200),
-      clean(data.session_token, 300),
-      clean(data.student_id, 200),
-      clean(data.student_name, 300),
-      clean(data.event, 100),
-      clean(data.item_label, 300),
-      clean(data.attempt_id, 300),
-      clean(data.submitted_code, 20000),
-      clean(data.correct, 50),
-      clean(data.answer, 5000),
-      clean(data.checked, 50),
-      clean(data.restore, 50),
-      clean(data.time_elapsed_sec, 100),
-      clean(data.timeout_exceeded, 50),
-      clean(data.error_message, 5000),
-      clean(data.topic, 300)
-    ];
-
-    const lock = LockService.getScriptLock();
-    lock.waitLock(10000);
-    try {
-      sheet.appendRow(row);
-    } finally {
-      lock.releaseLock();
+    const spreadsheetId = PropertiesService
+      .getScriptProperties()
+      .getProperty('SPREADSHEET_ID');
+    if (!spreadsheetId) {
+      throw new Error('Run setupGradeSheet() before deploying the web app.');
     }
 
-    return jsonResponse({ok: true, request_id: data.request_id});
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const requestType = String(data.request_type || 'log_event');
+
+    if (requestType === 'log_event') {
+      return handleLogEvent(data, ss);
+    }
+
+    if (requestType === 'get_assignments') {
+      return handleGetAssignments(data, ss);
+    }
+
+    if (requestType === 'get_or_create_assignments') {
+      return handleGetOrCreateAssignments(data, ss);
+    }
+
+    throw new Error('Unsupported request_type.');
   } catch (err) {
     console.error(err);
-    return jsonResponse({ok: false, error: String(err && err.message ? err.message : err)});
+    return jsonResponse({
+      ok: false,
+      error: String(err && err.message ? err.message : err)
+    });
   }
 }
 
-function validatePayload(data) {
-  if (String(data.schema_version) !== '1') throw new Error('Unsupported schema_version.');
+function handleLogEvent(data, ss) {
+  validateEventPayload(data);
+
+  const sheet = ss.getSheetByName(EVENT_SHEET);
+  if (!sheet) throw new Error('The events sheet does not exist.');
+  ensureSheetHeaders(sheet, EVENT_HEADERS, EVENT_SHEET);
+
+  const row = [
+    new Date().toISOString(),
+    clean(data.client_timestamp_utc, 100),
+    clean(data.schema_version, 20),
+    clean(data.request_id, 200),
+    clean(data.course_id, 200),
+    clean(data.week_id, 200),
+    clean(data.session_token, 300),
+    clean(data.student_id, 200),
+    clean(data.student_name, 300),
+    clean(data.event, 100),
+    clean(data.item_label, 300),
+    clean(data.attempt_id, 300),
+    clean(data.submitted_code, 20000),
+    clean(data.correct, 50),
+    clean(data.answer, 5000),
+    clean(data.checked, 50),
+    clean(data.restore, 50),
+    clean(data.time_elapsed_sec, 100),
+    clean(data.timeout_exceeded, 50),
+    clean(data.error_message, 5000),
+    clean(data.topic, 300),
+    clean(data.assignment_id, 300)
+  ];
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    sheet.appendRow(row);
+  } finally {
+    lock.releaseLock();
+  }
+
+  return jsonResponse({
+    ok: true,
+    request_id: data.request_id
+  });
+}
+
+function handleGetAssignments(data, ss) {
+  validateAssignmentRequest(data, false);
+
+  const sheet = ss.getSheetByName(ASSIGNMENT_SHEET);
+  if (!sheet) throw new Error('The assignments sheet does not exist.');
+  ensureSheetHeaders(sheet, ASSIGNMENT_HEADERS, ASSIGNMENT_SHEET);
+
+  const assignments = getAssignmentsForStudent(
+    sheet,
+    data.course_id,
+    data.week_id,
+    data.student_id
+  );
+
+  return jsonResponse({
+    ok: true,
+    request_id: data.request_id,
+    assignments: assignments
+  });
+}
+
+function handleGetOrCreateAssignments(data, ss) {
+  validateAssignmentRequest(data, true);
+
+  const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
+  if (!assignmentsSheet) throw new Error('The assignments sheet does not exist.');
+  ensureSheetHeaders(assignmentsSheet, ASSIGNMENT_HEADERS, ASSIGNMENT_SHEET);
+
+  const questionBankSheet = ss.getSheetByName(QUESTION_BANK_SHEET);
+  if (!questionBankSheet) throw new Error('The question_bank sheet does not exist.');
+  ensureSheetHeaders(questionBankSheet, QUESTION_BANK_HEADERS, QUESTION_BANK_SHEET);
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+
+  try {
+    const existing = getAssignmentsForStudent(
+      assignmentsSheet,
+      data.course_id,
+      data.week_id,
+      data.student_id
+    );
+
+    if (existing.length) {
+      return jsonResponse({
+        ok: true,
+        request_id: data.request_id,
+        created: false,
+        assignments: existing
+      });
+    }
+
+    const bank = getQuestionBankMap(questionBankSheet);
+    const now = new Date().toISOString();
+
+    const rows = data.item_labels.map(function(itemLabel) {
+      const canonical = bank[String(itemLabel)];
+      if (!canonical) {
+        throw new Error(
+          'Unknown canonical item_label: ' + String(itemLabel) +
+          '. Sync question_bank before creating assignments.'
+        );
+      }
+
+      return [
+        Utilities.getUuid(),
+        clean(data.course_id, 200),
+        clean(data.week_id, 200),
+        clean(data.student_id, 200),
+        clean(itemLabel, 300),
+        clean(canonical.topic, 300),
+        canonical.points,
+        clean(canonical.question_hash, 100),
+        now,
+        clean(data.assignment_reason, 200)
+      ];
+    });
+
+    if (rows.length) {
+      assignmentsSheet
+        .getRange(
+          assignmentsSheet.getLastRow() + 1,
+          1,
+          rows.length,
+          ASSIGNMENT_HEADERS.length
+        )
+        .setValues(rows);
+    }
+
+    const created = rows.map(assignmentRowToObject);
+
+    return jsonResponse({
+      ok: true,
+      request_id: data.request_id,
+      created: true,
+      assignments: created
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function validateEventPayload(data) {
+  validateCommonPayload(data);
+  if (!data.session_token) throw new Error('session_token is required.');
+  if (!ALLOWED_EVENTS.includes(String(data.event))) {
+    throw new Error('Unsupported event type.');
+  }
+}
+
+function validateAssignmentRequest(data, requireItems) {
+  validateCommonPayload(data);
+
+  if (!data.student_id) throw new Error('student_id is required.');
+  if (!/^[A-Za-z0-9._@-]{2,100}$/.test(String(data.student_id))) {
+    throw new Error('student_id has an invalid format.');
+  }
+
+  if (requireItems) {
+    if (!Array.isArray(data.item_labels) || !data.item_labels.length) {
+      throw new Error('item_labels must be a non-empty array.');
+    }
+    if (data.item_labels.length > 500) {
+      throw new Error('Too many item_labels in one assignment request.');
+    }
+
+    const labels = data.item_labels.map(function(x) { return String(x); });
+    if (labels.some(function(x) { return !x || x.length > 300; })) {
+      throw new Error('Each item_label must be a non-empty string of at most 300 characters.');
+    }
+
+    const unique = new Set(labels);
+    if (unique.size !== labels.length) {
+      throw new Error('item_labels must not contain duplicates.');
+    }
+
+    if (!data.assignment_reason) {
+      throw new Error('assignment_reason is required when creating assignments.');
+    }
+  }
+}
+
+function validateCommonPayload(data) {
+  if (String(data.schema_version) !== '1') {
+    throw new Error('Unsupported schema_version.');
+  }
   if (!data.request_id) throw new Error('request_id is required.');
   if (!data.course_id) throw new Error('course_id is required.');
   if (!data.week_id) throw new Error('week_id is required.');
-  if (!data.session_token) throw new Error('session_token is required.');
-  if (!ALLOWED_EVENTS.includes(String(data.event))) throw new Error('Unsupported event type.');
+}
+
+function getAssignmentsForStudent(sheet, courseId, weekId, studentId) {
+  if (sheet.getLastRow() <= 1) return [];
+
+  const rows = sheet
+    .getRange(
+      2,
+      1,
+      sheet.getLastRow() - 1,
+      ASSIGNMENT_HEADERS.length
+    )
+    .getValues();
+
+  const courseKey = clean(courseId, 200);
+  const weekKey = clean(weekId, 200);
+  const studentKey = clean(studentId, 200);
+
+  return rows
+    .filter(function(row) {
+      return (
+        row[1] === courseKey &&
+        row[2] === weekKey &&
+        row[3] === studentKey
+      );
+    })
+    .map(assignmentRowToObject);
+}
+
+function assignmentRowToObject(row) {
+  return {
+    assignment_id: row[0],
+    course_id: row[1],
+    week_id: row[2],
+    student_id: row[3],
+    item_label: row[4],
+    topic: row[5],
+    points: row[6],
+    question_hash: row[7],
+    assigned_at_utc: row[8],
+    assignment_reason: row[9]
+  };
+}
+
+function getQuestionBankMap(sheet) {
+  if (sheet.getLastRow() <= 1) {
+    throw new Error(
+      'The question_bank sheet is empty. Run scripts/06_sync_question_bank.R first.'
+    );
+  }
+
+  const rows = sheet
+    .getRange(
+      2,
+      1,
+      sheet.getLastRow() - 1,
+      QUESTION_BANK_HEADERS.length
+    )
+    .getValues();
+
+  const bank = {};
+
+  rows.forEach(function(row) {
+    const itemLabel = String(row[0] || '');
+    if (!itemLabel) return;
+
+    if (Object.prototype.hasOwnProperty.call(bank, itemLabel)) {
+      throw new Error('Duplicate item_label in question_bank: ' + itemLabel + '.');
+    }
+
+    const points = Number(row[3]);
+    if (!Number.isFinite(points) || points < 0) {
+      throw new Error('Invalid points value for question_bank item ' + itemLabel + '.');
+    }
+
+    bank[itemLabel] = {
+      event: row[1],
+      topic: row[2],
+      points: points,
+      starter_question: row[4],
+      question_hash: row[5]
+    };
+  });
+
+  return bank;
 }
 
 function clean(value, maxLength) {
