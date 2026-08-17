@@ -25,14 +25,16 @@ gradethis::gradethis_setup(
 
 learnr::tutorial_options(
   exercise.timelimit = 10,
-  exercise.reveal_solution = FALSE #,
-  #exercise.warn_invisible = FALSE
+  exercise.reveal_solution = FALSE,
+  exercise.warn_invisible = FALSE
 )
 ```
 
 ```{r logging-start, context="server-start", include=FALSE}
 library(httr2)
 source("R/app_config.R")
+source("R/question_manifest.R")
+build_question_manifest()
 source("R/logging.R")
 register_logging_handlers(APP_CONFIG)
 ```
@@ -99,7 +101,7 @@ shiny::wellPanel(
 
 Create a vector containing the integers 1 through 5. Assign it to `x` using the `<-` operator, then put `x` on the final line so its value is returned.
 
-```{r assignment, exercise=TRUE}
+```{r assignment, exercise=TRUE, topic="vector_creation"}
 
 ```
 
@@ -128,7 +130,7 @@ The vector `v` is provided. Return its **third element using single-bracket inde
 v <- c("alpha", "beta", "gamma", "delta")
 ```
 
-```{r vector_index, exercise=TRUE, exercise.setup="vector_index-setup"}
+```{r vector_index, exercise=TRUE, exercise.setup="vector_index-setup", topic="vector_indexing"}
 
 ```
 
@@ -159,7 +161,7 @@ The list `z` is provided. Extract its second element using **double-bracket extr
 z <- list(first = 10, second = c(20, 30), third = "done")
 ```
 
-```{r list_extract, exercise=TRUE, exercise.setup="list_extract-setup"}
+```{r list_extract, exercise=TRUE, exercise.setup="list_extract-setup", topic="list_indexing"}
 
 ```
 
@@ -187,7 +189,7 @@ The vector `y` contains a missing value. Call `mean()` and explicitly use the na
 y <- c(2, 4, NA, 8)
 ```
 
-```{r named_argument, exercise=TRUE, exercise.setup="named_argument-setup"}
+```{r named_argument, exercise=TRUE, exercise.setup="named_argument-setup", topic="function_arguments"}
 
 ```
 
@@ -214,7 +216,7 @@ grade_this({
 
 Using the built-in `iris` data frame, return the first three values of `Sepal.Length`. Use `$` to select the column.
 
-```{r dollar_extract, exercise=TRUE}
+```{r dollar_extract, exercise=TRUE, topic="dataframe_indexing"}
 
 ```
 
@@ -238,7 +240,7 @@ grade_this({
 
 Use the native R pipe `|>` at least once. Starting from `mtcars`, keep the rows where `cyl == 4` and return the number of resulting rows.
 
-```{r native_pipe, exercise=TRUE}
+```{r native_pipe, exercise=TRUE, topic="piping"}
 
 ```
 
@@ -264,7 +266,7 @@ grade_this({
 
 Create a function called `double` that takes one argument `x` and returns `x * 2`. Put `double(6)` on the final line.
 
-```{r function_definition, exercise=TRUE}
+```{r function_definition, exercise=TRUE, topic="function_definition"}
 
 ```
 
@@ -296,7 +298,7 @@ The vector `scores` is provided. Using `[ ]` and a logical comparison, return on
 scores <- c(74, 91, 80, 67, 88)
 ```
 
-```{r logical_subset, exercise=TRUE, exercise.setup="logical_subset-setup"}
+```{r logical_subset, exercise=TRUE, exercise.setup="logical_subset-setup", topic="vector_indexing"}
 
 ```
 

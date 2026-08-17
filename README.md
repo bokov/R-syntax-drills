@@ -24,7 +24,7 @@ source("scripts/01_install_packages.R")
 2. In that Sheet, open **Extensions > Apps Script**.
 3. Replace the generated `Code.gs` with `google-apps-script/Code.gs` from this project.
 4. If you can edit the Apps Script manifest, replace it with `google-apps-script/appsscript.json`. Otherwise the default manifest is sufficient; Apps Script will request the spreadsheet permission when needed.
-5. In Apps Script, select and run `setupGradeSheet()` once. Approve the requested spreadsheet permission. This creates the `events` tab if needed, verifies the header if it already exists, and freezes the header row. It does **not** erase existing event rows.
+5. In Apps Script, select and run `setupGradeSheet()` once. Approve the requested spreadsheet permission. This creates the `events` tab if needed, verifies the existing header, appends any new trailing logger columns, and freezes the header row. It does **not** erase existing event rows.
 6. Choose **Deploy > New deployment > Web app**.
 7. Configure the web app to **execute as you** (the instructor/script owner). Grant access to **Anyone** if your Google Workspace policy permits it.
 8. Deploy and copy the production URL ending in `/exec` (not the `/dev` test URL).
@@ -45,14 +45,13 @@ APP_CONFIG <- list(
   app_name = "r-syntax-week-01",
   google_sheet_id = "YOUR_SHEET_ID",
   webhook_url = "YOUR_APPS_SCRIPT_EXEC_URL",
-  deadline_utc = NA_character_,
-  scored_items = ...
+  deadline_utc = NA_character_
 )
 ```
 
 `deadline_utc` is optional. If set (for example, `"2026-09-04 23:59:59"`), the gradebook script ignores attempts recorded after that UTC deadline.
 
-Every scored exercise must appear in `scored_items` with the same chunk label used in `index.Rmd`.
+Scored items are derived from the generated question manifest. There is no separate item list in `APP_CONFIG`.
 
 ## 4. Test Google logging before giving the drill to students
 
@@ -72,19 +71,22 @@ In RStudio, open `index.Rmd` and click **Run Document**, or run:
 rmarkdown::run("index.Rmd")
 ```
 
+The tutorial rebuilds `question_manifest.csv` when its server process starts, so
+local runs use the same question metadata as deployed runs.
+
 Enter a test student ID, solve an exercise, and verify that an `exercise_result` row appears in the Sheet.
 
 Each `exercise_result` log contains the exercise label, submitted code, automatic correctness result, elapsed evaluation time, timeout indicator, and error message (if any). Question submissions are logged similarly.
 
 ## 6. Deploy to shinyapps.io
 
-First configure `rsconnect` for your shinyapps.io account in the normal way. Then run:
+First configure `rsconnect` for your shinyapps.io account in the normal way. The deployment script builds `question_manifest.csv` from the R Markdown question chunks before deployment. Then run:
 
 ```r
 source("scripts/03_deploy_shinyapps.R")
 ```
 
-The deployment script sends only the runtime files (`index.Rmd`, `R/`, and `www/`). The Apps Script source, roster, local grade output, and instructor scripts are not deployed.
+The deployment script sends only the runtime files (`index.Rmd`, `question_manifest.csv`, `R/`, and `www/`). The Apps Script source, roster, local grade output, and instructor scripts are not deployed.
 
 Distribute the resulting app URL to students. They need only a browser; they do not need R installed locally.
 
@@ -127,20 +129,21 @@ From the current week's directory:
 Rscript scripts/05_make_next_week.R week-02 ../r-syntax-week-02
 ```
 
-This creates a new project copy and updates the week ID, deployment name, tutorial ID, and tutorial version. Then edit the exercises in `index.Rmd` and update `APP_CONFIG$scored_items`.
+This creates a new project copy and updates the week ID, deployment name, tutorial ID, and tutorial version. Then edit the exercises and their metadata in `index.Rmd`.
 
 A unique tutorial ID/version each week prevents `learnr` from restoring a previous week's browser state into the new assignment.
 
 ## Editing or adding drills
 
-A graded code exercise has four pieces:
+A graded code exercise has three pieces:
 
 ```r
 # exercise chunk
 # solution chunk
 # check chunk using gradethis::grade_this()
-# an entry in APP_CONFIG$scored_items
 ```
+
+The exercise chunk itself is the source of truth for item identity and scoring metadata.
 
 The helper functions in `R/syntax_checkers.R` inspect parsed R code and let you require syntax, not merely the final value. For example:
 
@@ -151,6 +154,42 @@ call_has_named_arg(.user_code, "mean", "na.rm")
 ```
 
 This makes it possible to distinguish “got the right answer” from “used the R syntax this drill is teaching.”
+
+### Topic metadata and the generated question manifest
+
+Add topic metadata directly to an exercise chunk:
+
+````markdown
+```{r vector_index, exercise=TRUE, topic="vector_indexing"}
+```
+````
+
+`topic` and `points` are optional. If `topic` is omitted, the manifest builder
+assigns the question to `unassigned` and emits a warning. An `exercise=TRUE`
+chunk is worth 1 point by default; set `points=0` for a logged practice item or
+set another non-negative numeric value for a different weight. Duplicate or
+missing question labels are hard errors because the event log could not identify
+those questions reliably.
+
+`scripts/03_deploy_shinyapps.R` automatically scans the project R Markdown
+files, validates their question labels and scoring metadata, and writes
+`question_manifest.csv`. `scripts/04_build_gradebook.R` rebuilds the same
+manifest before calculating grades, so the R Markdown chunks remain the only
+item list that must be maintained. The manifest is generated output and should
+not be edited by hand. `examples/` and `tests/` are excluded from the scan.
+
+See `examples/topic_metadata_example.Rmd` for a small complete tutorial showing
+a tagged scored exercise and a zero-point practice exercise using the
+`unassigned` topic fallback.
+
+Run the initial scanner tests with:
+
+```r
+source("tests/testthat.R")
+```
+
+V1.2 assumes the V1.1 event-log schema already includes the `topic` column. No
+further Google Sheet schema change is required for V1.2.
 
 ## Security / reliability notes
 
