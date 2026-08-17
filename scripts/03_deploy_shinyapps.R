@@ -1,6 +1,9 @@
 source("R/app_config.R")
 source("R/question_manifest.R")
 
+# Build and validate locally before deployment. The canonical question bank is
+# deliberately NOT deployed because it contains solutions/checkers that should
+# not be readable by student-submitted R code.
 build_question_manifest()
 
 if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {

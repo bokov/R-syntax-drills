@@ -1,7 +1,15 @@
+<!-- question: vector_index -->
+## Vector index A
+
 ```{r vector_index, exercise=TRUE, topic="vector_indexing"}
 
 ```
+<!-- /question -->
+
+<!-- question: vector_index -->
+## Vector index B
 
 ```{r vector_index, exercise=TRUE, topic="vector_indexing"}
 
 ```
+<!-- /question -->

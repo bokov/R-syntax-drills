@@ -1,5 +1,9 @@
-# Question-bank metadata helpers. Metadata live with the R Markdown chunk that
-# defines each question; the generated CSV is a build artifact.
+# Canonical question-bank and assignment-manifest helpers.
+#
+# Only question-bank/ defines canonical questions. index.Rmd is a derived
+# assignment whose copied question sections are validated against that bank.
+
+`%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
 chunk_option_value <- function(header, option) {
   pattern <- paste0(
@@ -29,6 +33,14 @@ chunk_option_value <- function(header, option) {
   value
 }
 
+parse_bool_metadata <- function(value, default = FALSE) {
+  if (is.null(value) || !nzchar(trimws(value))) return(default)
+  value <- tolower(trimws(value))
+  if (value %in% c("true", "1", "yes")) return(TRUE)
+  if (value %in% c("false", "0", "no")) return(FALSE)
+  stop("Invalid logical metadata value: ", value, ".")
+}
+
 parse_question_chunk <- function(line, source_file, source_line) {
   if (!grepl("^```\\{r(?:\\s|,)", line)) return(NULL)
 
@@ -39,14 +51,14 @@ parse_question_chunk <- function(line, source_file, source_line) {
   exercise <- identical(tolower(chunk_option_value(header, "exercise") %||% ""), "true")
   topic <- chunk_option_value(header, "topic")
   points_text <- chunk_option_value(header, "points")
+  starter_text <- chunk_option_value(header, "starter_question")
 
-  if (!exercise && is.null(topic) && is.null(points_text)) return(NULL)
+  if (!exercise && is.null(topic) && is.null(points_text) && is.null(starter_text)) return(NULL)
   if (is.na(label)) {
     stop("Question chunk without a label in ", source_file, ":", source_line, ".")
   }
 
   if (is.null(topic) || !nzchar(trimws(topic))) topic <- "unassigned"
-
   points <- if (is.null(points_text) || !nzchar(trimws(points_text))) {
     if (exercise) 1 else 0
   } else {
@@ -61,45 +73,143 @@ parse_question_chunk <- function(line, source_file, source_line) {
     event = if (exercise) "exercise_result" else "question_submission",
     topic = topic,
     points = points,
+    starter_question = parse_bool_metadata(starter_text, FALSE),
     source_file = source_file,
     source_line = source_line,
     stringsAsFactors = FALSE
   )
 }
 
-`%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+normalize_question_text <- function(lines) {
+  if (!length(lines)) return("")
+  lines <- sub("[[:space:]]+$", "", lines)
+  while (length(lines) && !nzchar(lines[[1]])) lines <- lines[-1]
+  while (length(lines) && !nzchar(lines[[length(lines)]])) lines <- lines[-length(lines)]
+  paste(lines, collapse = "\n")
+}
+
+question_hash <- function(lines) {
+  path <- tempfile("question-hash-")
+  on.exit(unlink(path), add = TRUE)
+  writeChar(normalize_question_text(lines), path, eos = NULL, useBytes = TRUE)
+  unname(tools::md5sum(path))
+}
+
+record_question_block <- function(lines, source_file, start_line, end_line, marker_id = NULL) {
+  found <- lapply(seq_along(lines), function(i) {
+    parse_question_chunk(lines[[i]], source_file, start_line + i - 1L)
+  })
+  found <- Filter(Negate(is.null), found)
+
+  if (!length(found)) return(NULL)
+  if (length(found) != 1L) {
+    stop(
+      "Question block in ", source_file, ":", start_line, "-", end_line,
+      " contains ", length(found), " question chunks; expected exactly one."
+    )
+  }
+
+  record <- found[[1]]
+  if (!is.null(marker_id) && !identical(marker_id, record$item_label)) {
+    stop(
+      "Question marker '", marker_id, "' does not match chunk label '",
+      record$item_label, "' in ", source_file, ":", start_line, "."
+    )
+  }
+
+  record$source_line <- start_line
+  record$source_end_line <- end_line
+  record$question_hash <- question_hash(lines)
+  record
+}
+
+extract_explicit_question_blocks <- function(lines, source_file) {
+  begin_pattern <- "^<!--\\s*question:\\s*([A-Za-z0-9._-]+)\\s*-->\\s*$"
+  end_pattern <- "^<!--\\s*/question\\s*-->\\s*$"
+  begins <- grep(begin_pattern, lines, perl = TRUE)
+  if (!length(begins)) return(NULL)
+
+  records <- list()
+  for (begin in begins) {
+    marker_id <- sub(begin_pattern, "\\1", lines[[begin]], perl = TRUE)
+    ends <- which(seq_along(lines) > begin & grepl(end_pattern, lines, perl = TRUE))
+    if (!length(ends)) {
+      stop("Unclosed question marker '", marker_id, "' in ", source_file, ":", begin, ".")
+    }
+    end <- ends[[1]]
+    if (any(begins > begin & begins < end)) {
+      stop("Nested question markers are not allowed in ", source_file, ".")
+    }
+
+    body_start <- begin + 1L
+    body_end <- end - 1L
+    body <- if (body_end >= body_start) lines[body_start:body_end] else character()
+    record <- record_question_block(body, source_file, body_start, body_end, marker_id)
+    if (is.null(record)) {
+      stop("Question marker '", marker_id, "' contains no question chunk in ", source_file, ".")
+    }
+    records[[length(records) + 1L]] <- record
+  }
+
+  do.call(rbind, records)
+}
+
+# Compatibility for existing bank/assignment files created before explicit
+# markers. A level-2 section containing exactly one question chunk is treated
+# as one question block. New or modified bank questions should use markers.
+extract_legacy_question_blocks <- function(lines, source_file) {
+  headings <- grep("^##\\s+", lines, perl = TRUE)
+  records <- list()
+
+  for (i in seq_along(headings)) {
+    start <- headings[[i]]
+    end <- if (i < length(headings)) headings[[i + 1L]] - 1L else length(lines)
+    record <- record_question_block(lines[start:end], source_file, start, end)
+    if (!is.null(record)) records[[length(records) + 1L]] <- record
+  }
+
+  if (!length(records)) return(NULL)
+  do.call(rbind, records)
+}
+
+extract_question_records <- function(path) {
+  lines <- readLines(path, warn = FALSE)
+  explicit <- extract_explicit_question_blocks(lines, path)
+  if (!is.null(explicit)) return(explicit)
+  extract_legacy_question_blocks(lines, path)
+}
+
+empty_manifest <- function() {
+  data.frame(
+    item_label = character(),
+    event = character(),
+    topic = character(),
+    points = numeric(),
+    starter_question = logical(),
+    source_file = character(),
+    source_line = integer(),
+    source_end_line = integer(),
+    question_hash = character(),
+    stringsAsFactors = FALSE
+  )
+}
 
 scan_question_bank <- function(files) {
-  items <- lapply(files, function(path) {
-    lines <- readLines(path, warn = FALSE)
-    found <- lapply(seq_along(lines), function(i) {
-      parse_question_chunk(lines[[i]], path, i)
-    })
-    found <- Filter(Negate(is.null), found)
-    if (!length(found)) return(NULL)
-    do.call(rbind, found)
-  })
-
+  if (!length(files)) return(empty_manifest())
+  items <- lapply(files, extract_question_records)
   items <- Filter(Negate(is.null), items)
-  if (!length(items)) {
-    return(data.frame(
-      item_label = character(),
-      event = character(),
-      topic = character(),
-      points = numeric(),
-      source_file = character(),
-      source_line = integer(),
-      stringsAsFactors = FALSE
-    ))
-  }
+  if (!length(items)) return(empty_manifest())
 
   manifest <- do.call(rbind, items)
   rownames(manifest) <- NULL
 
   duplicate_labels <- unique(manifest$item_label[duplicated(manifest$item_label)])
-  duplicate_labels <- duplicate_labels[!is.na(duplicate_labels)]
   if (length(duplicate_labels)) {
-    stop("Duplicate question label(s): ", paste(duplicate_labels, collapse = ", "), ".")
+    stop(
+      "Duplicate canonical question label(s): ",
+      paste(duplicate_labels, collapse = ", "),
+      "."
+    )
   }
 
   unassigned <- manifest$item_label[manifest$topic == "unassigned"]
@@ -114,29 +224,93 @@ scan_question_bank <- function(files) {
   manifest
 }
 
-question_source_files <- function(root = ".") {
-  files <- list.files(
-    root,
+question_bank_source_files <- function(root = ".", bank_dir = "question-bank") {
+  bank_path <- file.path(root, bank_dir)
+  if (!dir.exists(bank_path)) return(character())
+  sort(list.files(
+    bank_path,
     pattern = "\\.[Rr]md$",
     recursive = TRUE,
     full.names = TRUE
-  )
-  files <- gsub("\\\\", "/", files)
-  files <- files[!grepl(
-    "(^|/)(tests|compare|drafts|examples|output|rsconnect|\\.Rproj\\.user)(/|$)",
-    files
-  )]
-  sub("^\\./", "", files)
+  ))
+}
+
+build_question_bank_manifest <- function(
+  root = ".",
+  bank_dir = "question-bank",
+  output = "question_bank_manifest.csv"
+) {
+  files <- question_bank_source_files(root, bank_dir)
+  if (!length(files)) {
+    stop("Canonical question-bank directory contains no .Rmd files: ", bank_dir, ".")
+  }
+  manifest <- scan_question_bank(files)
+  if (!nrow(manifest)) stop("Canonical question bank contains no questions.")
+  write.csv(manifest, output, row.names = FALSE, na = "")
+  message("Canonical question-bank manifest written to ", output, ".")
+  invisible(manifest)
+}
+
+validate_assignment_file <- function(assignment_file = "index.Rmd", bank_manifest) {
+  assignment <- extract_question_records(assignment_file)
+  if (is.null(assignment) || !nrow(assignment)) {
+    stop("Assignment contains no question blocks: ", assignment_file, ".")
+  }
+
+  duplicate_labels <- unique(assignment$item_label[duplicated(assignment$item_label)])
+  if (length(duplicate_labels)) {
+    stop("Duplicate assignment question label(s): ", paste(duplicate_labels, collapse = ", "), ".")
+  }
+
+  missing <- setdiff(assignment$item_label, bank_manifest$item_label)
+  if (length(missing)) {
+    stop(
+      "Assignment question(s) are not in the canonical bank: ",
+      paste(missing, collapse = ", "),
+      "."
+    )
+  }
+
+  expected <- bank_manifest[match(assignment$item_label, bank_manifest$item_label), , drop = FALSE]
+  mismatch <- assignment$item_label[assignment$question_hash != expected$question_hash]
+  if (length(mismatch)) {
+    stop(
+      "Assignment question(s) differ from their canonical bank copies: ",
+      paste(mismatch, collapse = ", "),
+      ". Re-copy the canonical question block(s)."
+    )
+  }
+
+  assignment
 }
 
 build_question_manifest <- function(
   root = ".",
+  assignment_file = "index.Rmd",
+  bank_dir = "question-bank",
+  bank_output = "question_bank_manifest.csv",
   output = "question_manifest.csv"
 ) {
-  manifest <- scan_question_bank(question_source_files(root))
-  write.csv(manifest, output, row.names = FALSE, na = "")
-  message("Question manifest written to ", output, ".")
-  invisible(manifest)
+  # Deployed apps intentionally omit the canonical bank because it contains
+  # solutions/checkers. Use the prevalidated assignment manifest there.
+  if (!dir.exists(file.path(root, bank_dir))) {
+    if (file.exists(output)) return(invisible(read_question_manifest(output)))
+    stop("Canonical question bank and validated question manifest are both missing.")
+  }
+
+  bank <- build_question_bank_manifest(root, bank_dir, bank_output)
+  assignment <- validate_assignment_file(file.path(root, assignment_file), bank)
+  canonical <- bank[
+    match(assignment$item_label, bank$item_label),
+    c("item_label", "event", "topic", "points", "starter_question", "question_hash"),
+    drop = FALSE
+  ]
+  canonical$assignment_source_file <- assignment_file
+  canonical$assignment_source_line <- assignment$source_line
+
+  write.csv(canonical, output, row.names = FALSE, na = "")
+  message("Validated assignment manifest written to ", output, ".")
+  invisible(canonical)
 }
 
 read_question_manifest <- function(path = "question_manifest.csv") {
@@ -146,6 +320,8 @@ read_question_manifest <- function(path = "question_manifest.csv") {
       event = character(),
       topic = character(),
       points = numeric(),
+      starter_question = logical(),
+      question_hash = character(),
       stringsAsFactors = FALSE
     ))
   }

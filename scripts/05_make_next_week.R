@@ -18,7 +18,7 @@ files <- list.files(
   full.names = TRUE
 )
 files <- files[!grepl(
-  "^(./)?(output|rsconnect|\\.Rproj\\.user)(/|$)|question_manifest\\.csv$",
+  "^(./)?(output|rsconnect|\\.Rproj\\.user)(/|$)|question_(bank_)?manifest\\.csv$",
   files
 )]
 
@@ -50,4 +50,4 @@ rmd <- sub('  version: [0-9.]+', paste0('  version: ', format(Sys.Date(), "%Y%m%
 writeLines(rmd, rmd_path)
 
 message("Created: ", destination)
-message("Now edit the drills and their metadata in the new copy.")
+message("Now select canonical question blocks from question-bank/ and copy them into index.Rmd.")
