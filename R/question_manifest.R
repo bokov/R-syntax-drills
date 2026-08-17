@@ -5,6 +5,32 @@
 
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
+# Older bank files predate explicit topic metadata. Keep their stable item-label
+# families as a compatibility registry so every canonical question has a topic
+# without creating a very large mechanical edit to those source banks.
+# Explicit topic= metadata on a question always takes precedence.
+legacy_question_topic <- function(item_label) {
+  rules <- c(
+    "^vector_c[0-9]+$" = "vector_creation",
+    "^vector_e[0-9]+$" = "vector_indexing",
+    "^df_[rcb][0-9]+$" = "dataframe_indexing",
+    "^df_s[0-9]+$" = "subset_function",
+    "^expr_d[0-9]+$" = "expression_decomposition"
+  )
+
+  matched <- names(rules)[vapply(
+    names(rules),
+    function(pattern) grepl(pattern, item_label, perl = TRUE),
+    logical(1)
+  )]
+
+  if (!length(matched)) return(NULL)
+  if (length(matched) > 1) {
+    stop("Multiple legacy topic rules match item_label: ", item_label, ".")
+  }
+  unname(rules[[matched]])
+}
+
 chunk_option_value <- function(header, option) {
   pattern <- paste0(
     "(?:^|,)\\s*",
@@ -48,17 +74,33 @@ parse_question_chunk <- function(line, source_file, source_line) {
   header <- sub("}\\s*$", "", header)
   first <- trimws(sub(",.*$", "", header))
   label <- if (nzchar(first) && !grepl("=", first, fixed = TRUE)) first else NA_character_
+
   exercise <- identical(tolower(chunk_option_value(header, "exercise") %||% ""), "true")
   topic <- chunk_option_value(header, "topic")
   points_text <- chunk_option_value(header, "points")
   starter_text <- chunk_option_value(header, "starter_question")
 
-  if (!exercise && is.null(topic) && is.null(points_text) && is.null(starter_text)) return(NULL)
   if (is.na(label)) {
-    stop("Question chunk without a label in ", source_file, ":", source_line, ".")
+    if (exercise || !is.null(topic) || !is.null(points_text) || !is.null(starter_text)) {
+      stop("Question chunk without a label in ", source_file, ":", source_line, ".")
+    }
+    return(NULL)
   }
 
-  if (is.null(topic) || !nzchar(trimws(topic))) topic <- "unassigned"
+  legacy_topic <- legacy_question_topic(label)
+
+  if (
+    !exercise &&
+    is.null(topic) &&
+    is.null(legacy_topic) &&
+    is.null(points_text) &&
+    is.null(starter_text)
+  ) return(NULL)
+
+  if (is.null(topic) || !nzchar(trimws(topic))) {
+    topic <- legacy_topic %||% "unassigned"
+  }
+
   points <- if (is.null(points_text) || !nzchar(trimws(points_text))) {
     if (exercise) 1 else 0
   } else {
@@ -337,7 +379,13 @@ question_topic <- function(item_label, manifest, default = "unassigned") {
 
   parent <- which(vapply(
     manifest$item_label,
-    function(label) startsWith(item_label, paste0(label, "-")),
+    function(label) {
+      any(vapply(
+        c("-", "_", "."),
+        function(separator) startsWith(item_label, paste0(label, separator)),
+        logical(1)
+      ))
+    },
     logical(1)
   ))
   if (length(parent) == 1) return(manifest$topic[[parent]])

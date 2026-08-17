@@ -1,9 +1,6 @@
 # Server-side logging helpers. Event logging remains append-only. The same Apps
 # Script also exposes assignment lookup/create operations, but no grade/event
 # read endpoint.
-#
-# assignment_id is currently nullable. A later runtime change will attach it to
-# exercise/question events once the tutorial begins loading persistent assignments.
 
 log_scalar <- function(x, default = NA) {
   if (is.null(x) || length(x) == 0) return(default)
@@ -29,6 +26,22 @@ current_identity <- function(session) {
   identity
 }
 
+current_assignment_id <- function(session, item_label) {
+  if (is.null(item_label) || is.na(item_label) || !nzchar(item_label)) {
+    return(NA_character_)
+  }
+
+  ids <- tryCatch(
+    shiny::isolate(session$userData$assignment_ids()),
+    error = function(e) NULL
+  )
+  if (is.null(ids) || !length(ids) || !item_label %in% names(ids)) {
+    return(NA_character_)
+  }
+
+  as.character(ids[[item_label]])
+}
+
 set_logging_status <- function(session, ok, message) {
   tryCatch(
     session$userData$logging_status(list(ok = ok, message = message)),
@@ -45,6 +58,11 @@ post_log_event <- function(
   manifest = read_question_manifest()
 ) {
   identity <- current_identity(session)
+  item_label <- log_scalar(data$label, NA_character_)
+  assignment_id <- log_scalar(
+    data$assignment_id,
+    current_assignment_id(session, item_label)
+  )
 
   payload <- list(
     schema_version = "1",
@@ -56,13 +74,13 @@ post_log_event <- function(
     student_id = log_scalar(identity$student_id, NA_character_),
     student_name = log_scalar(identity$student_name, NA_character_),
     event = event,
-    item_label = log_scalar(data$label, NA_character_),
+    item_label = item_label,
     topic = if (event %in% c("exercise_result", "question_submission")) {
-      question_topic(log_scalar(data$label, NA_character_), manifest)
+      question_topic(item_label, manifest)
     } else {
       NA_character_
     },
-    assignment_id = log_scalar(data$assignment_id, NA_character_),
+    assignment_id = assignment_id,
     attempt_id = log_scalar(data$id, NA_character_),
     submitted_code = log_scalar(data$code, NA_character_),
     correct = if (!is.null(data$feedback$correct)) isTRUE(data$feedback$correct) else log_scalar(data$correct, NA),
