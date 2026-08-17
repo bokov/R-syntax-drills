@@ -25,8 +25,8 @@ gradethis::gradethis_setup(
 
 learnr::tutorial_options(
   exercise.timelimit = 10,
-  exercise.reveal_solution = FALSE,
-  exercise.warn_invisible = FALSE
+  exercise.reveal_solution = FALSE #,
+  #exercise.warn_invisible = FALSE
 )
 ```
 
