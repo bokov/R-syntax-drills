@@ -51,6 +51,67 @@ test_that("question-bank sync rejects unassigned topics", {
   )
 })
 
+assignment_test_bank <- function() {
+  data.frame(
+    item_label = c("q1", "q2", "q3", "q4"),
+    event = rep("exercise_result", 4),
+    topic = c("vectors", "vectors", "lists", "locked"),
+    points = rep(1, 4),
+    starter_question = c(TRUE, FALSE, FALSE, TRUE),
+    question_hash = paste0("h", 1:4),
+    stringsAsFactors = FALSE
+  )
+}
+
+test_that("assignment config validates workload and unlocked topics", {
+  config <- list(
+    questions_per_week = 2L,
+    unlocked_topics = c("vectors", "lists")
+  )
+
+  expect_warning(
+    settings <- validate_assignment_config(config, assignment_test_bank()),
+    "locked topics"
+  )
+  expect_equal(settings$questions_per_week, 2L)
+  expect_equal(settings$unlocked_topics, c("vectors", "lists"))
+})
+
+test_that("assignment config rejects unknown or empty unlocked topics", {
+  expect_error(
+    validate_assignment_config(
+      list(questions_per_week = 2L, unlocked_topics = "unknown"),
+      assignment_test_bank()
+    ),
+    "unknown topic"
+  )
+
+  expect_error(
+    assignment_config(list(questions_per_week = 2L, unlocked_topics = character())),
+    "at least one topic"
+  )
+})
+
+test_that("assignment config requires enough eligible questions and a starter", {
+  expect_error(
+    validate_assignment_config(
+      list(questions_per_week = 3L, unlocked_topics = "vectors"),
+      assignment_test_bank()
+    ),
+    "Only 2"
+  )
+
+  bank <- assignment_test_bank()
+  bank$starter_question <- FALSE
+  expect_error(
+    validate_assignment_config(
+      list(questions_per_week = 2L, unlocked_topics = c("vectors", "lists")),
+      bank
+    ),
+    "No starter questions"
+  )
+})
+
 test_that("assignment lookup payload contains only lookup fields", {
   config <- list(
     course_id = "R101",
@@ -68,45 +129,29 @@ test_that("assignment lookup payload contains only lookup fields", {
   expect_equal(payload$course_id, "R101")
   expect_equal(payload$week_id, "week-01")
   expect_equal(payload$student_id, "abc123")
-  expect_null(payload$item_labels)
-  expect_null(payload$assignment_reason)
+  expect_null(payload$questions_per_week)
+  expect_null(payload$unlocked_topics)
 })
 
-test_that("assignment create payload preserves selected IDs and reason", {
+test_that("dynamic assignment payload carries selection configuration", {
   config <- list(
     course_id = "R101",
-    week_id = "week-01",
+    week_id = "week-02",
+    questions_per_week = 10L,
+    unlocked_topics = c("vector_creation", "vector_indexing"),
     webhook_url = "unused"
   )
 
   payload <- assignment_service_payload(
-    "get_or_create_assignments",
+    "get_or_create_dynamic_assignments",
     student_id = "abc123",
-    config = config,
-    item_labels = c("q1", "q2"),
-    assignment_reason = "static"
+    config = config
   )
 
-  expect_equal(payload$item_labels, c("q1", "q2"))
-  expect_equal(payload$assignment_reason, "static")
-})
-
-test_that("assignment create payload rejects duplicate question IDs", {
-  config <- list(
-    course_id = "R101",
-    week_id = "week-01",
-    webhook_url = "unused"
-  )
-
-  expect_error(
-    assignment_service_payload(
-      "get_or_create_assignments",
-      student_id = "abc123",
-      config = config,
-      item_labels = c("q1", "q1"),
-      assignment_reason = "static"
-    ),
-    "must not contain duplicates"
+  expect_equal(payload$questions_per_week, 10L)
+  expect_equal(
+    payload$unlocked_topics,
+    c("vector_creation", "vector_indexing")
   )
 })
 
@@ -124,7 +169,7 @@ test_that("assignment service response converts to a stable table", {
         points = 1,
         question_hash = "aaa",
         assigned_at_utc = "2026-08-17T12:00:00.000Z",
-        assignment_reason = "static"
+        assignment_reason = "starter"
       ),
       list(
         assignment_id = "a2",
@@ -132,11 +177,11 @@ test_that("assignment service response converts to a stable table", {
         week_id = "week-01",
         student_id = "abc123",
         item_label = "q2",
-        topic = "lists",
+        topic = "vectors",
         points = 1,
         question_hash = "bbb",
         assigned_at_utc = "2026-08-17T12:00:00.000Z",
-        assignment_reason = "static"
+        assignment_reason = "starter"
       )
     )
   )
@@ -148,12 +193,12 @@ test_that("assignment service response converts to a stable table", {
   expect_equal(assignments$points, c(1, 1))
 })
 
-test_that("static assignment validation orders rows and preserves IDs", {
+test_that("dynamic persisted assignment may be a canonical manifest subset", {
   manifest <- data.frame(
-    item_label = c("q1", "q2"),
-    topic = c("vectors", "lists"),
-    points = c(1, 1),
-    question_hash = c("aaa", "bbb"),
+    item_label = c("q1", "q2", "q3"),
+    topic = c("vectors", "vectors", "lists"),
+    points = c(1, 1, 1),
+    question_hash = c("aaa", "bbb", "ccc"),
     stringsAsFactors = FALSE
   )
 
@@ -163,22 +208,22 @@ test_that("static assignment validation orders rows and preserves IDs", {
     week_id = c("week-01", "week-01"),
     student_id = c("abc123", "abc123"),
     item_label = c("q2", "q1"),
-    topic = c("lists", "vectors"),
+    topic = c("vectors", "vectors"),
     points = c(1, 1),
     question_hash = c("bbb", "aaa"),
     assigned_at_utc = c("t", "t"),
-    assignment_reason = c("static", "static"),
+    assignment_reason = c("starter", "starter"),
     stringsAsFactors = FALSE
   )
 
-  validated <- validate_static_assignments(assignments, manifest)
+  validated <- validate_persisted_assignments(assignments, manifest)
   ids <- assignment_id_map(validated)
 
-  expect_equal(validated$item_label, c("q1", "q2"))
+  expect_equal(validated$item_label, c("q2", "q1"))
   expect_equal(unname(ids[c("q1", "q2")]), c("a1", "a2"))
 })
 
-test_that("static assignment validation rejects stale metadata", {
+test_that("dynamic persisted assignment rejects stale metadata", {
   manifest <- data.frame(
     item_label = "q1",
     topic = "vectors",
@@ -197,12 +242,12 @@ test_that("static assignment validation rejects stale metadata", {
     points = 1,
     question_hash = "oldhash",
     assigned_at_utc = "t",
-    assignment_reason = "static",
+    assignment_reason = "starter",
     stringsAsFactors = FALSE
   )
 
   expect_error(
-    validate_static_assignments(assignments, manifest),
-    "do not match the current assignment manifest"
+    validate_persisted_assignments(assignments, manifest),
+    "do not match the current question manifest"
   )
 })

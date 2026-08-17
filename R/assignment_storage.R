@@ -45,6 +45,110 @@ prepare_question_bank_sync <- function(manifest) {
   out
 }
 
+assignment_config <- function(config = APP_CONFIG) {
+  if (is.null(config$questions_per_week) || length(config$questions_per_week) != 1) {
+    stop("APP_CONFIG$questions_per_week must be one positive integer.")
+  }
+
+  questions_per_week <- suppressWarnings(as.numeric(config$questions_per_week))
+  if (
+    is.na(questions_per_week) ||
+    !is.finite(questions_per_week) ||
+    questions_per_week < 1 ||
+    questions_per_week != floor(questions_per_week) ||
+    questions_per_week > 500
+  ) {
+    stop("APP_CONFIG$questions_per_week must be an integer from 1 through 500.")
+  }
+
+  unlocked_topics <- trimws(as.character(config$unlocked_topics))
+  unlocked_topics <- unlocked_topics[nzchar(unlocked_topics)]
+  if (!length(unlocked_topics)) {
+    stop("APP_CONFIG$unlocked_topics must contain at least one topic.")
+  }
+  if (anyDuplicated(unlocked_topics)) {
+    stop("APP_CONFIG$unlocked_topics must not contain duplicates.")
+  }
+
+  list(
+    questions_per_week = as.integer(questions_per_week),
+    unlocked_topics = unlocked_topics
+  )
+}
+
+validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL) {
+  settings <- assignment_config(config)
+
+  if (is.null(bank_manifest)) return(invisible(settings))
+
+  required <- c(
+    "item_label", "event", "topic", "points", "starter_question", "question_hash"
+  )
+  missing <- setdiff(required, names(bank_manifest))
+  if (length(missing)) {
+    stop(
+      "Canonical question bank is missing required column(s): ",
+      paste(missing, collapse = ", "),
+      "."
+    )
+  }
+
+  known_topics <- sort(unique(bank_manifest$topic[bank_manifest$topic != "unassigned"]))
+  unknown_topics <- setdiff(settings$unlocked_topics, known_topics)
+  if (length(unknown_topics)) {
+    stop(
+      "APP_CONFIG$unlocked_topics contains unknown topic(s): ",
+      paste(unknown_topics, collapse = ", "),
+      "."
+    )
+  }
+
+  scored_exercises <- bank_manifest[
+    bank_manifest$event == "exercise_result" &
+      bank_manifest$points > 0,
+    ,
+    drop = FALSE
+  ]
+  eligible <- scored_exercises[
+    scored_exercises$topic %in% settings$unlocked_topics,
+    ,
+    drop = FALSE
+  ]
+
+  if (nrow(eligible) < settings$questions_per_week) {
+    stop(
+      "Only ", nrow(eligible),
+      " scored exercise question(s) are available in unlocked topics, but ",
+      settings$questions_per_week,
+      " questions_per_week were requested."
+    )
+  }
+
+  eligible_starters <- eligible[eligible$starter_question %in% TRUE, , drop = FALSE]
+  if (!nrow(eligible_starters)) {
+    stop(
+      "No starter questions are currently eligible. Mark at least one scored exercise ",
+      "with starter_question=TRUE in an unlocked topic."
+    )
+  }
+
+  locked_starters <- scored_exercises[
+    scored_exercises$starter_question %in% TRUE &
+      !scored_exercises$topic %in% settings$unlocked_topics,
+    ,
+    drop = FALSE
+  ]
+  if (nrow(locked_starters)) {
+    warning(
+      "Starter question(s) in locked topics will not be assigned: ",
+      paste(locked_starters$item_label, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  invisible(settings)
+}
+
 make_service_request_id <- function(prefix = "assignment") {
   paste0(
     prefix, "-",
@@ -56,11 +160,9 @@ make_service_request_id <- function(prefix = "assignment") {
 assignment_service_payload <- function(
   request_type,
   student_id,
-  config = APP_CONFIG,
-  item_labels = NULL,
-  assignment_reason = NULL
+  config = APP_CONFIG
 ) {
-  if (!request_type %in% c("get_assignments", "get_or_create_assignments")) {
+  if (!request_type %in% c("get_assignments", "get_or_create_dynamic_assignments")) {
     stop("Unsupported assignment request_type: ", request_type, ".")
   }
 
@@ -78,24 +180,10 @@ assignment_service_payload <- function(
     student_id = student_id
   )
 
-  if (identical(request_type, "get_or_create_assignments")) {
-    item_labels <- as.character(item_labels)
-    if (!length(item_labels) || anyNA(item_labels) || any(!nzchar(item_labels))) {
-      stop("item_labels must contain at least one non-empty item label.")
-    }
-    if (anyDuplicated(item_labels)) {
-      stop("item_labels must not contain duplicates.")
-    }
-    if (
-      is.null(assignment_reason) ||
-      length(assignment_reason) == 0 ||
-      !nzchar(trimws(as.character(assignment_reason)[[1]]))
-    ) {
-      stop("assignment_reason is required when creating assignments.")
-    }
-
-    payload$item_labels <- unname(item_labels)
-    payload$assignment_reason <- trimws(as.character(assignment_reason)[[1]])
+  if (identical(request_type, "get_or_create_dynamic_assignments")) {
+    settings <- assignment_config(config)
+    payload$questions_per_week <- settings$questions_per_week
+    payload$unlocked_topics <- unname(settings$unlocked_topics)
   }
 
   payload
@@ -111,7 +199,6 @@ post_assignment_service <- function(
   }
 
   response <- httr2::request(config$webhook_url) |>
-    #httr2::req_method("POST") |>
     httr2::req_body_json(payload, auto_unbox = TRUE, null = "null") |>
     httr2::req_timeout(timeout_sec) |>
     httr2::req_perform()
@@ -174,18 +261,7 @@ assignment_response_table <- function(body) {
   out
 }
 
-static_assignment_item_labels <- function(manifest) {
-  labels <- as.character(manifest$item_label)
-  if (!length(labels) || anyNA(labels) || any(!nzchar(labels))) {
-    stop("The current assignment manifest contains invalid item_label values.")
-  }
-  if (anyDuplicated(labels)) {
-    stop("The current assignment manifest contains duplicate item_label values.")
-  }
-  labels
-}
-
-validate_static_assignments <- function(assignments, manifest) {
+validate_persisted_assignments <- function(assignments, manifest) {
   missing_assignment <- setdiff(ASSIGNMENT_COLUMNS, names(assignments))
   if (length(missing_assignment)) {
     stop(
@@ -199,13 +275,11 @@ validate_static_assignments <- function(assignments, manifest) {
   missing_manifest <- setdiff(manifest_required, names(manifest))
   if (length(missing_manifest)) {
     stop(
-      "Current assignment manifest is missing required column(s): ",
+      "Question manifest is missing required column(s): ",
       paste(missing_manifest, collapse = ", "),
       "."
     )
   }
-
-  expected_labels <- static_assignment_item_labels(manifest)
 
   if (anyDuplicated(assignments$item_label)) {
     stop("Persistent assignment rows contain duplicate item_label values.")
@@ -215,6 +289,7 @@ validate_static_assignments <- function(assignments, manifest) {
   }
   if (
     anyNA(assignments$assignment_id) || any(!nzchar(assignments$assignment_id)) ||
+    anyNA(assignments$item_label) || any(!nzchar(assignments$item_label)) ||
     anyNA(assignments$topic) || any(!nzchar(assignments$topic)) ||
     anyNA(assignments$question_hash) || any(!nzchar(assignments$question_hash)) ||
     anyNA(assignments$points)
@@ -222,69 +297,60 @@ validate_static_assignments <- function(assignments, manifest) {
     stop("Persistent assignment rows contain missing required metadata.")
   }
 
-  missing <- setdiff(expected_labels, assignments$item_label)
-  extra <- setdiff(assignments$item_label, expected_labels)
-  if (length(missing) || length(extra)) {
+  missing_from_manifest <- setdiff(assignments$item_label, manifest$item_label)
+  if (length(missing_from_manifest)) {
     stop(
-      "Persistent assignments do not match the current static assignment. ",
-      if (length(missing)) paste0("Missing: ", paste(missing, collapse = ", "), ". ") else "",
-      if (length(extra)) paste0("Extra: ", paste(extra, collapse = ", "), ".") else ""
+      "Persisted assignment question(s) are absent from the deployed question manifest: ",
+      paste(missing_from_manifest, collapse = ", "),
+      ". Rebuild/deploy the player from the canonical bank."
     )
   }
 
-  assignments <- assignments[
-    match(expected_labels, assignments$item_label),
-    ,
-    drop = FALSE
-  ]
   expected <- manifest[
-    match(expected_labels, manifest$item_label),
+    match(assignments$item_label, manifest$item_label),
     ,
     drop = FALSE
   ]
 
   if (
-    anyNA(expected$topic) || any(!nzchar(expected$topic)) ||
-    anyNA(expected$question_hash) || any(!nzchar(expected$question_hash)) ||
-    anyNA(expected$points)
+    any(assignments$topic != expected$topic) ||
+    !isTRUE(all.equal(
+      as.numeric(assignments$points),
+      as.numeric(expected$points),
+      check.attributes = FALSE
+    )) ||
+    any(assignments$question_hash != expected$question_hash)
   ) {
-    stop("Current assignment manifest contains missing required metadata.")
-  }
-
-  topic_mismatch <- assignments$topic != expected$topic
-  points_mismatch <- !isTRUE(all.equal(
-    as.numeric(assignments$points),
-    as.numeric(expected$points),
-    check.attributes = FALSE
-  ))
-  hash_mismatch <- assignments$question_hash != expected$question_hash
-
-  if (any(topic_mismatch) || points_mismatch || any(hash_mismatch)) {
     stop(
-      "Persistent assignment metadata do not match the current assignment manifest. ",
-      "Re-sync question_bank and use a new week_id if the assignment changed after students began."
+      "Persistent assignment metadata do not match the current question manifest. ",
+      "Do not change a canonical question under an item_label after it has been assigned."
     )
   }
 
   assignments
 }
 
-initialize_static_assignments <- function(
+# Backward-compatible name used by the gradebook. Dynamic weekly assignments are
+# intentionally a subset of the deployed manifest, so exact-set validation is no
+# longer appropriate.
+validate_static_assignments <- function(assignments, manifest) {
+  validate_persisted_assignments(assignments, manifest)
+}
+
+initialize_student_assignments <- function(
   student_id,
   manifest = read_question_manifest(),
   config = APP_CONFIG
 ) {
   payload <- assignment_service_payload(
-    "get_or_create_assignments",
+    "get_or_create_dynamic_assignments",
     student_id = student_id,
-    config = config,
-    item_labels = static_assignment_item_labels(manifest),
-    assignment_reason = "static"
+    config = config
   )
 
   body <- post_assignment_service(payload, config = config)
   assignments <- assignment_response_table(body)
-  validate_static_assignments(assignments, manifest)
+  validate_persisted_assignments(assignments, manifest)
 }
 
 assignment_id_map <- function(assignments) {

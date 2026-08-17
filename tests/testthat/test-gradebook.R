@@ -36,7 +36,8 @@ gradebook_test_events <- function(
 
 gradebook_test_assignments <- function(
   item_label = c("q1", "q2", "q3"),
-  student_id = "abc123"
+  student_id = "abc123",
+  assignment_reason = "least_exposed"
 ) {
   n <- length(item_label)
   manifest <- gradebook_test_manifest()
@@ -52,12 +53,12 @@ gradebook_test_assignments <- function(
     points = matched$points,
     question_hash = matched$question_hash,
     assigned_at_utc = rep("2026-08-17T12:00:00Z", n),
-    assignment_reason = rep("static", n),
+    assignment_reason = rep(assignment_reason, n),
     stringsAsFactors = FALSE
   )
 }
 
-test_that("persisted static assignments define the gradebook rows", {
+test_that("persisted dynamic assignments define the gradebook rows", {
   events <- gradebook_test_events(
     item_label = c("q1", "q2", "q2"),
     correct = c("true", "false", "false"),
@@ -81,7 +82,7 @@ test_that("persisted static assignments define the gradebook rows", {
     tables$item_detail$assignment_id,
     c("abc123-a1", "abc123-a2", "abc123-a3")
   )
-  expect_true(all(tables$item_detail$assignment_reason == "static"))
+  expect_true(all(tables$item_detail$assignment_reason == "least_exposed"))
 })
 
 test_that("multiple attempts at one item remain one persisted exposure", {
@@ -184,7 +185,7 @@ test_that("identity backfill fills missing IDs without overwriting explicit IDs"
   expect_equal(q1$attempts[q1$student_id == "student_b"], 1)
 })
 
-test_that("partial persisted static assignments are rejected", {
+test_that("dynamic assignment subset sets the denominator", {
   events <- gradebook_test_events(
     item_label = "q1",
     correct = "true",
@@ -192,16 +193,17 @@ test_that("partial persisted static assignments are rejected", {
   )
   assignments <- gradebook_test_assignments(c("q1", "q2"))
 
-  expect_error(
-    build_gradebook_tables(
-      events = events,
-      assignments = assignments,
-      manifest = gradebook_test_manifest(),
-      course_id = "R101",
-      week_id = "week-01"
-    ),
-    "do not match the current static assignment"
+  tables <- build_gradebook_tables(
+    events = events,
+    assignments = assignments,
+    manifest = gradebook_test_manifest(),
+    course_id = "R101",
+    week_id = "week-01"
   )
+
+  expect_equal(tables$gradebook$points_possible, 2)
+  expect_equal(tables$gradebook$items_possible, 2)
+  expect_setequal(tables$item_detail$item_label, c("q1", "q2"))
 })
 
 test_that("assignment-only audit IDs do not become gradebook students", {
@@ -242,7 +244,7 @@ test_that("logging-test events do not become gradebook students", {
   expect_equal(nrow(tables$item_detail), 0)
 })
 
-test_that("roster students without persisted rows retain the static fallback", {
+test_that("roster students without persisted rows retain the legacy fallback", {
   events <- gradebook_test_events()
   assignments <- empty_assignment_table()
   roster <- data.frame(

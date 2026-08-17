@@ -171,25 +171,15 @@ test_that("real canonical bank has complete topic coverage", {
   expect_true(all(sprintf("expr_d%02d", 1:50) %in% bank$item_label))
 })
 
-test_that("current assignment exposes the expected scored items", {
+test_that("index is now player infrastructure rather than a copied assignment", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
+  assignment <- extract_question_records(file.path(root, "index.Rmd"))
+  expect_null(assignment)
 
-  bank <- scan_question_bank(
-    question_bank_source_files(root)
+  index_text <- paste(
+    readLines(file.path(root, "index.Rmd"), warn = FALSE),
+    collapse = "\n"
   )
-
-  assignment <- validate_assignment_file(
-    file.path(root, "index.Rmd"),
-    bank
-  )
-
-  scored <- assignment[
-    assignment$event == "exercise_result" &
-      assignment$points > 0,
-    ,
-    drop = FALSE
-  ]
-
-  expect_equal(nrow(scored), 8)
-  expect_true(all(scored$points == 1))
+  expect_match(index_text, "runtime_question_pool.Rmd", fixed = TRUE)
+  expect_match(index_text, "initialize_student_assignments", fixed = TRUE)
 })

@@ -1,16 +1,17 @@
 # Weekly `learnr` syntax drills with automatic grading and Google Sheets logging
 
-This project implements a browser-based weekly R syntax drill using:
+This project provides browser-based weekly R syntax drills using:
 
-- `learnr` for the interactive tutorial;
+- `learnr` for interactive exercises;
 - `gradethis` for immediate automatic grading;
-- a Google Apps Script web app for append-only event logging and persistent assignment storage;
-- an instructor-side R script that converts the event and assignment records into a gradebook;
-- `rsconnect` for deployment to shinyapps.io (or another Shiny host).
+- a Google Apps Script web app for append-only event logging and persistent weekly assignments;
+- Google Sheets as the authoritative assignment/event store;
+- an instructor-side gradebook builder;
+- `rsconnect` for deployment to shinyapps.io.
 
-The Google Apps Script design deliberately avoids putting a Google service-account credential inside a `learnr` application that executes student-supplied R code.
+The canonical question bank lives under `question-bank/`. `index.Rmd` is now a stable **player template**, not a weekly hand-edited assignment. Which questions a student sees is determined by persistent assignment rows created from question-bank metadata and `APP_CONFIG`.
 
-## 1. Install the R packages
+## 1. Install packages
 
 From the project directory:
 
@@ -18,48 +19,194 @@ From the project directory:
 source("scripts/01_install_packages.R")
 ```
 
-## 2. Create the Google grading spreadsheet and service
+## 2. Create or update the Google grading service
 
-1. Create a new Google Sheet. It can be private to the instructor.
-2. In that Sheet, open **Extensions > Apps Script**.
-3. Replace the generated `Code.gs` with `google-apps-script/Code.gs` from this project.
-4. If you can edit the Apps Script manifest, replace it with `google-apps-script/appsscript.json`. Otherwise the default manifest is sufficient; Apps Script will request the spreadsheet permission when needed.
-5. In Apps Script, select and run `setupGradeSheet()` once. Approve the requested spreadsheet permission. This creates/verifies the `events`, `assignments`, and `question_bank` tabs, appends any new trailing schema columns, and freezes the header rows. It does **not** erase existing event or assignment rows.
+For a new spreadsheet:
+
+1. Create a private Google Sheet.
+2. Open **Extensions > Apps Script**.
+3. Replace the generated `Code.gs` with `google-apps-script/Code.gs` from this repository.
+4. If you can edit the Apps Script manifest, replace it with `google-apps-script/appsscript.json`; otherwise the default manifest is sufficient.
+5. Run `setupGradeSheet()` once and approve the requested permission. It creates/verifies `events`, `assignments`, and `question_bank` and does not erase existing assignment/event rows.
 6. Choose **Deploy > New deployment > Web app**.
-7. Configure the web app to **execute as you** (the instructor/script owner). Grant access to **Anyone** if your Google Workspace policy permits it.
-8. Deploy and copy the production URL ending in `/exec` (not the `/dev` test URL).
-9. Copy the spreadsheet ID from the Google Sheet URL. It is the long string between `/d/` and `/edit`.
+7. Set **Execute as** to yourself (the instructor/script owner) and permit **Anyone** if your Workspace policy allows it.
+8. Deploy and copy the production URL ending in `/exec`.
+9. Copy the Google Sheet ID from the Sheet URL.
 
-The event-logging operation is append-only. The same POST endpoint also has assignment-service operations that can read a student's assignment rows and create them once, idempotently. It does not provide an endpoint for reading, changing, or deleting grades or event history.
+### Updating an existing installation after assignment-service code changes
 
-**Important:** The Apps Script web app is not student authentication. A determined student who discovers its URL can submit bogus event rows and, because student identity is self-asserted in this lightweight architecture, can query assignment rows using another student's ID. Assignment responses contain assignment metadata, not grades or performance history. For high-stakes assessment, use authenticated hosting/LMS identity.
+When `google-apps-script/Code.gs` changes in this repository, editing the Apps Script source is not by itself enough for an existing versioned web-app deployment. In Apps Script:
 
-## 3. Configure the week
+1. Replace `Code.gs` with the new repository version.
+2. Run `setupGradeSheet()` once to verify the existing sheet schemas.
+3. Open **Deploy > Manage deployments**.
+4. Edit the existing web-app deployment.
+5. Select **New version** and deploy it.
+6. Keep the same `/exec` URL in `R/app_config.R` unless Google gives you a different one.
 
-Edit `R/app_config.R`:
+The event endpoint is append-only. The assignment endpoint can read a student's own requested assignment metadata and idempotently create a weekly assignment. It does not expose grades or event history.
+
+## 3. Configure the course and unlocked topics
+
+The real configuration is `R/app_config.R`, which is ignored by Git. Start from `R/app_config_example.R` if needed.
 
 ```r
 APP_CONFIG <- list(
   course_id = "R101",
   week_id = "week-01",
-  app_name = "r-syntax-week-01",
+  app_name = "r-syntax-drills",
+  questions_per_week = 10L,
+  unlocked_topics = c(
+    "vector_creation",
+    "vector_indexing"
+  ),
   google_sheet_id = "YOUR_SHEET_ID",
   webhook_url = "YOUR_APPS_SCRIPT_EXEC_URL",
   deadline_utc = NA_character_
 )
 ```
 
-`deadline_utc` is optional. If set (for example, `"2026-09-04 23:59:59"`), the gradebook script ignores attempts recorded after that UTC deadline.
+### `app_name`
 
-Scored items are derived from the generated question manifest. There is no separate item list in `APP_CONFIG`.
+Keep `app_name` stable from week to week so `rsconnect` updates the same deployed app and student URL. If you already have a deployed app name you want to preserve, keep that existing value rather than renaming it just to match the example.
 
-After changing the canonical question bank, synchronize its safe metadata to the private `question_bank` tab:
+### `week_id`
+
+`week_id` is the explicit weekly boundary. The system does **not** advance itself based on the calendar. A student's persisted assignment is keyed by `(course_id, week_id, student_id)`.
+
+To start a new week, change only this value if the curriculum settings are otherwise unchanged:
+
+```r
+week_id = "week-02"
+```
+
+Then publish the week as described below.
+
+### `questions_per_week`
+
+This is the number of questions assigned to a **returning** student in a newly created week. It must be a positive integer. New students instead receive every currently eligible question marked `starter_question=TRUE`.
+
+### `unlocked_topics`
+
+This is a hard eligibility filter for automatic assignment. Only scored exercises whose canonical `topic` is listed here can be selected.
+
+For example, early in the course:
+
+```r
+unlocked_topics = c(
+  "vector_creation",
+  "vector_indexing"
+)
+```
+
+Later you might use:
+
+```r
+unlocked_topics = c(
+  "vector_creation",
+  "vector_indexing",
+  "dataframe_indexing",
+  "subset_function"
+)
+```
+
+A topic name must exactly match canonical question metadata. Publishing/sync validation fails on unknown topic names. If a starter question belongs to a locked topic, validation warns that it is not currently starter-eligible.
+
+Changing `unlocked_topics` does not alter an assignment that has already been persisted for the current student/week. It changes only future assignment creation.
+
+### Starter questions
+
+Mark a canonical exercise as a starter directly in its exercise chunk metadata:
+
+````text
+```{r vector_c01c, exercise=TRUE, topic="vector_creation", starter_question=TRUE}
+```
+````
+
+A brand-new student receives **all** scored starter questions whose topics are unlocked. There is no second hard-coded starter list. Publishing fails if no starter question is eligible.
+
+The current vector bank defines these ten starters:
+
+- `vector_c01c`
+- `vector_c03b`
+- `vector_c04d`
+- `vector_c09a`
+- `vector_e01b`
+- `vector_e02c`
+- `vector_e06a`
+- `vector_e09d`
+- `vector_e10b`
+- `vector_e25a`
+
+## 4. Sync and publish everything
+
+The normal instructor workflow is deliberately one command after editing `R/app_config.R` and/or canonical question-bank files:
+
+```r
+source("scripts/08_publish_week.R")
+```
+
+That command does, in order:
+
+1. rebuild and validate the complete canonical question-bank manifest;
+2. validate `questions_per_week`, `unlocked_topics`, and starter availability;
+3. overwrite the private Google Sheet `question_bank` tab with current safe metadata, including `topic`, `points`, `starter_question`, and `question_hash`;
+4. build the deployable scored-question pool and `question_manifest.csv`;
+5. build a runtime copy of the player whose `learnr` tutorial version equals the current `week_id`, preventing browser state from one week from being reused as the next week's tutorial state;
+6. deploy/update the configured shinyapps.io app.
+
+You therefore do **not** manually edit `index.Rmd` when choosing questions or advancing the course.
+
+If you only want to synchronize Google question-bank metadata without deploying:
 
 ```r
 source("scripts/06_sync_question_bank.R")
 ```
 
-## 4. Test Google logging before giving the drill to students
+If you only want to deploy after everything is already synchronized:
+
+```r
+source("scripts/03_deploy_shinyapps.R")
+```
+
+## 5. How assignment selection works
+
+When a valid student ID is saved:
+
+1. If assignment rows already exist for that `(course_id, week_id, student_id)`, those exact rows are returned. Refresh/re-entry never resamples the week.
+2. If this is the student's first assignment in the course, every eligible `starter_question=TRUE` exercise is assigned with `assignment_reason = "starter"`.
+3. Otherwise, only questions in `unlocked_topics` are considered. Prior exposure count is computed from historical `assignments` rows for that student/course.
+4. Questions with the lowest exposure count are preferred. Ties are randomized immediately.
+5. The first `questions_per_week` candidates are persisted with `assignment_reason = "least_exposed"`.
+6. A literal question can appear at most once in one weekly assignment. Multiple submissions during that week remain multiple attempts against the same `assignment_id`, so they count as one exposure.
+
+This is the pre-adaptive selector. A later adaptive-routing change can first choose weak unlocked topics and then apply the same least-exposed/random-tie rule within those topics without changing the persistence/player model.
+
+## 6. Run locally
+
+Use the local player helper rather than running the template directly:
+
+```r
+source("scripts/00_run_local.R")
+```
+
+It validates the bank/config, creates the generated runtime question pool and week-specific runtime Rmd, and launches the tutorial.
+
+Questions remain hidden until a valid student ID has successfully loaded/created its weekly assignment.
+
+## 7. Testing before students use the app
+
+### Automated tests
+
+Run:
+
+```r
+source("tests/testthat.R")
+```
+
+The tests cover canonical metadata, dynamic-assignment payload/config validation, persisted-subset grading behavior, player generation, solution stripping from the runtime pool, week-specific tutorial versioning, and the agreed ten starter IDs.
+
+### Webhook logging smoke test
 
 Run:
 
@@ -67,178 +214,82 @@ Run:
 source("scripts/02_test_webhook.R")
 ```
 
-Confirm that the `events` tab gets one row with student ID `INSTRUCTOR_TEST` and event `logging_test`.
+Confirm one `logging_test` row appears in `events` for `INSTRUCTOR_TEST`.
 
-You can test the assignment service separately with:
+### Dynamic assignment-service smoke test
+
+After updating/redeploying the Apps Script code and synchronizing `question_bank`, run:
 
 ```r
 source("scripts/07_test_assignment_service.R")
 ```
 
-That smoke test deliberately leaves its `INSTRUCTOR_ASSIGNMENT_TEST_*` rows in the `assignments` tab as an audit trail. Those assignment-only test IDs are not treated as students by the gradebook unless they are placed in `roster.csv` or have logged student events.
+The script uses a fresh `INSTRUCTOR_ASSIGNMENT_TEST_*` ID and verifies all of the following against the live Apps Script service:
 
-## 5. Run the tutorial locally
+- the fresh current-week lookup is empty;
+- the first assignment equals the currently eligible starter set;
+- a repeated current-week request returns the same assignment IDs and creates no duplicate exposures;
+- a synthetic next week recognizes the same ID as a returning student;
+- the returning assignment contains exactly `questions_per_week` rows;
+- every selected topic is unlocked;
+- `assignment_reason` changes from `starter` to `least_exposed`;
+- starter questions are not repeated when enough never-exposed eligible questions exist;
+- repeating that synthetic week returns the same IDs.
 
-In RStudio, open `index.Rmd` and click **Run Document**, or run:
+The smoke-test assignment rows are deliberately retained as an audit trail. Assignment-only `INSTRUCTOR_ASSIGNMENT_TEST_*` IDs do not become gradebook students unless they also have student events or are placed in the roster.
 
-```r
-rmarkdown::run("index.Rmd")
-```
+### Manual end-to-end player test
 
-The tutorial rebuilds `question_manifest.csv` when its server process starts, so local runs use the same question metadata as deployed runs.
+Use a never-before-used student ID in an incognito/private browser window and check:
 
-When a valid student ID is saved, the app atomically gets or creates one persistent assignment row for each question in the current static assignment. Re-saving the same student/week identity returns those same rows rather than creating another exposure. The app caches the resulting label-to-`assignment_id` mapping for the session.
+1. No exercise is visible before saving identity.
+2. Saving identity reveals exactly the eligible starter questions; with the default vector configuration this should be 10.
+3. The Google `assignments` tab receives one row per visible question, all with `assignment_reason = starter` and distinct `assignment_id`s.
+4. Submit one wrong and then one correct attempt to the same question. Both event rows should reference the same nonblank `assignment_id`.
+5. Close the browser, reopen the app, enter the same student ID, and verify no new assignment rows are created and the same questions return.
+6. Run `source("scripts/04_build_gradebook.R")` and confirm the denominator equals that student's persisted assignment, not the full deployed question pool.
 
-Each `exercise_result` or `question_submission` event is then logged with the corresponding `assignment_id`. Multiple submissions of the same question during that weekly assignment therefore remain multiple **attempts** against one **exposure**, rather than becoming multiple exposures.
-
-The exercises are not yet hidden before identity is saved. If a student submits an attempt first and then saves identity in the same Shiny session, the existing identity-backfill behavior still recovers the attempt for grading; the historical event may simply lack an `assignment_id`.
-
-## 6. Deploy to shinyapps.io
-
-First configure `rsconnect` for your shinyapps.io account in the normal way. The deployment script builds and validates `question_manifest.csv` from the canonical question bank before deployment. Then run:
-
-```r
-source("scripts/03_deploy_shinyapps.R")
-```
-
-The deployment script sends only the runtime files (`index.Rmd`, `question_manifest.csv`, `R/`, and `www/`). The Apps Script source, roster, local grade output, instructor scripts, and canonical question bank are not deployed.
-
-Distribute the resulting app URL to students. They need only a browser; they do not need R installed locally.
-
-## 7. Automatic grading behavior
-
-`gradethis` checks each submission immediately in the tutorial. The logging handler records the resulting `correct` flag from `learnr`'s `exercise_result` event.
-
-The supplied grading rule is:
-
-> A student earns the configured points for an assigned item if they produce at least one correct submission before the deadline. Unlimited incorrect attempts do not reduce the score.
-
-Multiple attempts affect the attempt count in the detail output but do not create additional assignment exposures.
+For an additional locked-topic check, temporarily configure a narrower `unlocked_topics`, publish to a test app/config, and verify the live assignment service never returns a question outside that set.
 
 ## 8. Build the weekly gradebook
 
-For complete class rosters, copy `roster.csv.example` to `roster.csv` and replace the example rows. `roster.csv` is ignored by Git and not deployed.
-
-Then run:
+Optionally copy `roster.csv.example` to ignored `roster.csv` and populate it. Then run:
 
 ```r
 source("scripts/04_build_gradebook.R")
 ```
 
-On the first run, `googlesheets4` asks the instructor to authenticate interactively. The script:
+The gradebook reads `events` and `assignments`, filters to `APP_CONFIG$course_id` and `APP_CONFIG$week_id`, uses each student's persisted weekly assignment as the denominator, counts attempts separately from exposures, and writes both local CSVs and `grades_<week>` / `detail_<week>` tabs.
 
-1. reads the private `events` and `assignments` tabs;
-2. filters both to `APP_CONFIG$course_id` / `APP_CONFIG$week_id` and applies the optional event deadline;
-3. links attempts to the student's saved identity by Shiny session;
-4. uses each student's persisted assignment rows as the denominator and verifies that the persisted static assignment still matches the current manifest;
-5. determines whether each assigned item was ever answered correctly and counts all attempts separately;
-6. writes `output/grades_<week>.csv` and `output/item_detail_<week>.csv`;
-7. overwrites the corresponding `grades_<week>` and `detail_<week>` tabs in the Google spreadsheet.
+A student earns the assigned points for an item after at least one correct submission before the optional UTC deadline. Incorrect attempts do not reduce the score.
 
-`detail_<week>` includes `assignment_id`, `assignment_reason`, `assigned_at_utc`, and `question_hash`, so one question exposure can be distinguished from the number of attempts made against it.
+## 9. Canonical question authoring
 
-As a migration safeguard, roster/event students who have no persisted assignment rows yet retain the old static-manifest denominator with `assignment_reason = "legacy_static_fallback"`. This prevents pre-migration students and roster no-shows from becoming 0/0 records. Once a student saves identity under the new app, the persisted assignment rows take over.
+Canonical questions live only under `question-bank/`. Question IDs (`item_label`) are permanent and globally unique. Do not reuse an existing ID for a substantially different literal question.
 
-A partial or stale persisted static assignment is treated as an error rather than silently reducing the denominator. If canonical content or scoring changes after students have been assigned a week, use a new `week_id` rather than altering that week's meaning in place.
-
-## 9. Make next week's copy
-
-From the current week's directory:
-
-```bash
-Rscript scripts/05_make_next_week.R week-02 ../r-syntax-week-02
-```
-
-This creates a new project copy and updates the week ID, deployment name, tutorial ID, and tutorial version. Then select canonical question blocks from `question-bank/` and copy them into `index.Rmd`.
-
-A unique tutorial ID/version each week prevents `learnr` from restoring a previous week's browser state into the new assignment.
-
-## Editing or adding drills
-
-A graded code exercise has three pieces:
-
-```r
-# exercise chunk
-# solution chunk
-# check chunk using gradethis::grade_this()
-```
-
-The helper functions in `R/syntax_checkers.R` inspect parsed R code and let you require syntax, not merely the final value. For example:
-
-```r
-uses_call(.user_code, "[[")
-uses_token(.user_code, "|>")
-call_has_named_arg(.user_code, "mean", "na.rm")
-```
-
-This makes it possible to distinguish “got the right answer” from “used the R syntax this drill is teaching.”
-
-### Canonical question bank and assignment copies
-
-Canonical questions live only under `question-bank/`. Question IDs (`item_label`s) are permanent and globally unique there; do not reuse an existing ID for a substantively different question.
-
-The current authoring workflow remains manual: browse `question-bank/`, copy the complete question you want into `index.Rmd`, then run or deploy the tutorial. `index.Rmd` is a derived assignment, not another source of canonical questions.
-
-New or modified canonical questions should have explicit boundaries:
+New/modified canonical questions should use explicit boundaries:
 
 ```text
-<!-- question: vector_c01 -->
-## Vector Drill C01
+<!-- question: vector_c01c -->
+## Question title
 
-[question prompt, setup, exercise, solution, and checker]
+[prompt/setup/exercise/solution/checker]
 
 <!-- /question -->
 ```
 
-The marker ID must equal the exercise/question chunk label. Existing pre-marker bank files remain supported by treating a level-2 section containing one question chunk as one question block.
+The marker ID must match the exercise/question chunk label. Canonical metadata include `topic`, `points`, and `starter_question`.
 
-Canonical metadata include `topic`, `points`, and `starter_question`. New or modified questions should specify `topic=` explicitly. Older bank files predate topic metadata, so `R/question_manifest.R` contains a compatibility registry based on their permanent ID families:
+The generated runtime player includes scored `exercise_result` questions from the canonical bank, but omits their `*-solution` chunks. The canonical bank itself is not deployed. Check chunks remain necessary for server-side grading.
 
-- `vector_c*` → `vector_creation`
-- `vector_e*` → `vector_indexing`
-- `df_r*`, `df_c*`, and `df_b*` → `dataframe_indexing`
-- `df_s*` → `subset_function`
-- `expr_d*` → `expression_decomposition`
+`question_bank_manifest.csv`, `question_manifest.csv`, `runtime_question_pool.Rmd`, and `runtime_index.Rmd` are generated files and should not be edited or committed.
 
-Explicit `topic=` metadata always override the compatibility registry. The real canonical-bank test requires that the complete bank scan without any `unassigned` topic.
-
-The expression-decomposition items are represented in the canonical manifest as zero-point `question_submission` items. They can therefore carry stable IDs/topics for future routing without changing the current eight scored exercises.
-
-`R/question_manifest.R` produces two build artifacts:
-
-- `question_bank_manifest.csv` describes every canonical bank question, including `item_label`, `topic`, `points`, `starter_question`, source location, and a normalized `question_hash`.
-- `question_manifest.csv` describes only the questions copied into the current `index.Rmd`, after verifying that every ID exists in the canonical bank and that the full question content matches its canonical copy.
-
-Both CSVs are generated output and should not be edited by hand. The canonical bank itself is intentionally not deployed to shinyapps.io because it contains solutions and check code. Deployment validates locally and sends only the derived `question_manifest.csv` plus the tutorial runtime files.
-
-`starter_question=TRUE` remains reserved for future first-time-student routing; the current assignment selection is still static and identical for every student.
-
-### Persistent assignments and exposures
-
-The Google workbook separates three concepts:
-
-- `question_bank`: private canonical metadata inventory;
-- `assignments`: which literal questions were assigned to which student/week;
-- `events`: each submission/attempt the student made.
-
-One `assignments` row is one question **exposure**. Several event rows may point to that same `assignment_id`, so repeated attempts within a week do not inflate the future exposure count.
-
-For the current static phase, saving identity calls `get_or_create_assignments` with every item in the validated `question_manifest.csv` and `assignment_reason = "static"`. The backend is all-or-existing and idempotent: if any assignment rows already exist for that student/course/week, it returns them rather than replacing or topping them up. The runtime then verifies that the returned item set and topic/points/hash snapshots exactly match the current static manifest.
-
-This establishes reliable exposure history now while every student still receives the same questions. Later routing PRs can change **which item IDs are selected** without replacing the assignment, logging, or grading data model.
-
-Run the automated R tests with:
-
-```r
-source("tests/testthat.R")
-```
+The former hand-curated Week 01 source is retained under `examples/legacy_static_week01.Rmd` for reference but is no longer part of the canonical bank or automatic selection pool.
 
 ## Security / reliability notes
 
-- `learnr` executes student-submitted R. Treat students as untrusted code authors and use hosting isolation appropriate to the stakes of the course.
-- The Google Sheet remains private. The deployed tutorial has no Google account credential and cannot access the spreadsheet directly; it communicates only through the Apps Script operations exposed by the configured web-app URL.
-- Event logging is append-only. Assignment-service operations can read/create assignment metadata, but there is no web-app operation for reading grades/performance history or changing/deleting event rows.
-- Assignment identity has the same limitation as the rest of this lightweight setup: `student_id` is self-asserted. Do not treat the assignment lookup operation as authentication.
-- The Apps Script validates schemas and field sizes, serializes event writes and assignment creation with `LockService`, and prefixes formula-like text before writing student-controlled values to the Sheet.
-- shinyapps.io local filesystem storage is ephemeral; the authoritative event and assignment records are in the Google Sheet.
-- For high-stakes grading, use an authenticated host or LMS integration.
+- `learnr` executes student-supplied R. Use hosting isolation appropriate to the stakes of the course.
+- The Google Sheet remains private; the deployed app has no Google account credential and communicates only through the Apps Script web endpoint.
+- Student IDs are self-asserted in this lightweight architecture. Assignment lookup is not authentication.
+- A student who deliberately unhides an unassigned exercise in browser developer tools may see/run it, but it has no matching weekly `assignment_id` and is not part of that student's persisted grading denominator.
+- Assignment/event history in Google Sheets is authoritative; shinyapps.io local storage is not.

@@ -1,6 +1,7 @@
 source("R/app_config.R")
 source("R/question_manifest.R")
 source("R/assignment_storage.R")
+source("R/player_builder.R")
 source("R/gradebook.R")
 
 library(googlesheets4)
@@ -12,7 +13,8 @@ if (grepl("PASTE_", APP_CONFIG$google_sheet_id, fixed = TRUE)) {
   stop("Set APP_CONFIG$google_sheet_id in R/app_config.R first.")
 }
 
-manifest <- build_question_manifest()
+build_player_assets(config = APP_CONFIG)
+manifest <- read_question_manifest()
 
 gs4_auth()
 
@@ -53,7 +55,6 @@ week_safe <- gsub("[^A-Za-z0-9_-]", "_", APP_CONFIG$week_id)
 write_csv(gradebook, file.path("output", paste0("grades_", week_safe, ".csv")))
 write_csv(item_detail, file.path("output", paste0("item_detail_", week_safe, ".csv")))
 
-# Also maintain human-readable grade tabs in the same Google spreadsheet.
 sheet_write(
   gradebook,
   ss = APP_CONFIG$google_sheet_id,
