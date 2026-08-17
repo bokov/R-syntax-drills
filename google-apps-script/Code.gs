@@ -19,7 +19,8 @@ const HEADERS = [
   'restore',
   'time_elapsed_sec',
   'timeout_exceeded',
-  'error_message'
+  'error_message',
+  'topic'
 ];
 
 const ALLOWED_EVENTS = [
@@ -38,20 +39,41 @@ function setupGradeSheet() {
   let sheet = ss.getSheetByName(EVENT_SHEET);
   if (!sheet) sheet = ss.insertSheet(EVENT_SHEET);
 
-  if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
-  } else {
-    const currentHeaders = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
-    if (JSON.stringify(currentHeaders) !== JSON.stringify(HEADERS)) {
-      throw new Error('The existing events header does not match this logger schema. No data were changed.');
-    }
-  }
+  ensureEventSheetHeaders(sheet);
 
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
   sheet.autoResizeColumns(1, HEADERS.length);
 
   Logger.log('Grade sheet is ready: ' + ss.getId());
+}
+
+function ensureEventSheetHeaders(sheet) {
+  if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+    return;
+  }
+
+  const currentHeaders = sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getValues()[0];
+
+  if (currentHeaders.length > HEADERS.length) {
+    throw new Error('The existing events header has unexpected extra columns. No data were changed.');
+  }
+
+  for (let i = 0; i < currentHeaders.length; i++) {
+    if (currentHeaders[i] !== HEADERS[i]) {
+      throw new Error('The existing events header does not match this logger schema. No data were changed.');
+    }
+  }
+
+  if (currentHeaders.length < HEADERS.length) {
+    const missingHeaders = HEADERS.slice(currentHeaders.length);
+    sheet
+      .getRange(1, currentHeaders.length + 1, 1, missingHeaders.length)
+      .setValues([missingHeaders]);
+  }
 }
 
 function doGet() {
@@ -73,6 +95,7 @@ function doPost(e) {
     const ss = SpreadsheetApp.openById(spreadsheetId);
     const sheet = ss.getSheetByName(EVENT_SHEET);
     if (!sheet) throw new Error('The events sheet does not exist.');
+    ensureEventSheetHeaders(sheet);
 
     const row = [
       new Date().toISOString(),
@@ -94,7 +117,8 @@ function doPost(e) {
       clean(data.restore, 50),
       clean(data.time_elapsed_sec, 100),
       clean(data.timeout_exceeded, 50),
-      clean(data.error_message, 5000)
+      clean(data.error_message, 5000),
+      clean(data.topic, 300)
     ];
 
     const lock = LockService.getScriptLock();
