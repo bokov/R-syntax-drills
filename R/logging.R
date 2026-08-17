@@ -100,7 +100,7 @@ post_log_event <- function(
 
   result <- tryCatch({
     response <- httr2::request(config$webhook_url) |>
-      httr2::req_method("POST") |>
+      #httr2::req_method("POST") |>
       httr2::req_body_json(payload, auto_unbox = TRUE, null = "null") |>
       httr2::req_timeout(8) |>
       httr2::req_perform()
