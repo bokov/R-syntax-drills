@@ -15,6 +15,7 @@ payload <- list(
   student_name = "",
   event = "logging_test",
   item_label = "webhook_test",
+  assignment_id = "",
   attempt_id = "",
   submitted_code = "",
   correct = TRUE,

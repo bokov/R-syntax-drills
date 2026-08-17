@@ -1,5 +1,9 @@
-# Server-side logging helpers. The Apps Script endpoint is append-only and
-# exposes no read/update/delete operation to the tutorial.
+# Server-side logging helpers. Event logging remains append-only. The same Apps
+# Script also exposes assignment lookup/create operations, but no grade/event
+# read endpoint.
+#
+# assignment_id is currently nullable. A later runtime change will attach it to
+# exercise/question events once the tutorial begins loading persistent assignments.
 
 log_scalar <- function(x, default = NA) {
   if (is.null(x) || length(x) == 0) return(default)
@@ -58,6 +62,7 @@ post_log_event <- function(
     } else {
       NA_character_
     },
+    assignment_id = log_scalar(data$assignment_id, NA_character_),
     attempt_id = log_scalar(data$id, NA_character_),
     submitted_code = log_scalar(data$code, NA_character_),
     correct = if (!is.null(data$feedback$correct)) isTRUE(data$feedback$correct) else log_scalar(data$correct, NA),
