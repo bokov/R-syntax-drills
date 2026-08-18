@@ -44,8 +44,9 @@ test_that("runtime question pool strips solutions but keeps checkers", {
   build_runtime_question_pool(manifest, output)
   text <- paste(readLines(output, warn = FALSE), collapse = "\n")
 
-  expect_match(text, "assignment-question-q1", fixed = TRUE)
   expect_match(text, "#### Example question", fixed = TRUE)
+  expect_match(text, "```{r q1, exercise=TRUE", fixed = TRUE)
+  expect_false(grepl("assignment-question-q1", text, fixed = TRUE))
   expect_false(grepl("q1-solution", text, fixed = TRUE))
   expect_false(grepl("1 + 1", text, fixed = TRUE))
   expect_true(grepl("q1-check", text, fixed = TRUE))
@@ -82,6 +83,22 @@ test_that("assignment-player script is inlined after the generated question pool
   expect_length(script_line, 1)
   expect_length(external_script, 0)
   expect_gt(script_line, pool_line)
+})
+
+test_that("browser player uses Learnr exercise data-labels rather than custom wrappers", {
+  root <- normalizePath(file.path(test_path(), "..", ".."))
+  js <- paste(
+    readLines(file.path(root, "www", "assignment-player.js"), warn = FALSE),
+    collapse = "\n"
+  )
+
+  expect_match(js, ".tutorial-exercise[data-label]", fixed = TRUE)
+  expect_false(grepl("assignment-question-", js, fixed = TRUE))
+  expect_match(
+    js,
+    "addCustomMessageHandler('assignment:clear', function(message)",
+    fixed = TRUE
+  )
 })
 
 test_that("current vector-only configuration has an eligible starter set", {
