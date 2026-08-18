@@ -70,6 +70,18 @@ test_that("runtime index receives the configured week as tutorial version", {
   expect_false(grepl("__WEEK_ID__", text, fixed = TRUE))
 })
 
+test_that("assignment-player script is loaded after the generated question pool", {
+  root <- normalizePath(file.path(test_path(), "..", ".."))
+  lines <- readLines(file.path(root, "index.Rmd"), warn = FALSE)
+
+  pool_line <- grep('child="runtime_question_pool.Rmd"', lines, fixed = TRUE)
+  script_line <- grep('<script src="assignment-player.js"></script>', lines, fixed = TRUE)
+
+  expect_length(pool_line, 1)
+  expect_length(script_line, 1)
+  expect_gt(script_line, pool_line)
+})
+
 test_that("current vector-only configuration has an eligible starter set", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
   bank <- scan_question_bank(question_bank_source_files(root))
