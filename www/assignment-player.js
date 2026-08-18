@@ -1,10 +1,47 @@
 (function() {
   var handlersRegistered = false;
 
+  function exerciseForLabel(label) {
+    var exercises = document.querySelectorAll('.tutorial-exercise[data-label]');
+    var target = String(label);
+
+    for (var ii = 0; ii < exercises.length; ii += 1) {
+      if (exercises[ii].getAttribute('data-label') === target) {
+        return exercises[ii];
+      }
+    }
+
+    return null;
+  }
+
+  function questionBlockForExercise(exercise) {
+    if (!exercise) return null;
+
+    if (exercise.closest) {
+      // Each generated question begins with a level-4 heading, so under the
+      // standard rmarkdown/learnr HTML structure this is the whole prompt +
+      // exercise + checker/support region for one canonical question.
+      var block = exercise.closest('.section.level4');
+      if (block) return block;
+
+      block = exercise.closest('.section');
+      if (block) return block;
+    }
+
+    // Last-resort fallback: at least reveal the learnr exercise itself.
+    return exercise;
+  }
+
   function allQuestionBlocks() {
-    return Array.prototype.slice.call(
-      document.querySelectorAll('.assignment-question')
-    );
+    var exercises = document.querySelectorAll('.tutorial-exercise[data-label]');
+    var blocks = [];
+
+    for (var ii = 0; ii < exercises.length; ii += 1) {
+      var block = questionBlockForExercise(exercises[ii]);
+      if (block && blocks.indexOf(block) < 0) blocks.push(block);
+    }
+
+    return blocks;
   }
 
   function waitingElement() {
@@ -28,36 +65,54 @@
   function showAssignments(message) {
     hideAll();
 
-    var pool = document.getElementById('assignment-question-pool');
     var labels = (message && message.item_labels) || [];
-    var shown = 0;
+    var blocks = [];
+    var missing = [];
 
     labels.forEach(function(label, index) {
-      var block = document.getElementById('assignment-question-' + label);
+      var exercise = exerciseForLabel(label);
+      var block = questionBlockForExercise(exercise);
+
       if (!block) {
         console.error('Assigned question is missing from the player:', label);
+        missing.push(label);
         return;
       }
 
-      // Re-appending places the visible questions in the persisted assignment
-      // order without changing any learnr exercise IDs. If the pool wrapper is
-      // unavailable for any reason, still reveal the matching question in place.
-      if (pool) pool.appendChild(block);
-      block.style.display = 'block';
       block.dataset.assignmentOrder = String(index);
-      shown += 1;
+      blocks.push(block);
     });
+
+    // Preserve persisted assignment order when the question sections share a
+    // common parent (the normal learnr/rmarkdown structure). If they do not,
+    // reveal them in place rather than failing.
+    if (blocks.length) {
+      var parent = blocks[0].parentNode;
+      var sameParent = blocks.every(function(block) {
+        return block.parentNode === parent;
+      });
+
+      if (sameParent && parent) {
+        blocks.forEach(function(block) {
+          parent.appendChild(block);
+        });
+      }
+
+      blocks.forEach(function(block) {
+        block.style.display = 'block';
+      });
+    }
 
     var waiting = waitingElement();
     if (waiting) {
-      if (shown === labels.length && shown > 0) {
+      if (labels.length > 0 && missing.length === 0) {
         waiting.style.display = 'none';
       } else if (labels.length > 0) {
         waiting.style.display = 'block';
         waiting.className = 'alert alert-danger';
         waiting.textContent =
-          'Your assignment was created, but one or more assigned questions ' +
-          'could not be found in this player. Rebuild the local player and reload.';
+          'Your assignment was created, but these assigned questions could not ' +
+          'be found in the rendered Learnr player: ' + missing.join(', ') + '.';
       } else {
         waiting.style.display = 'block';
       }
@@ -69,7 +124,9 @@
     if (!window.Shiny || !window.Shiny.addCustomMessageHandler) return false;
 
     window.Shiny.addCustomMessageHandler('assignment:set', showAssignments);
-    window.Shiny.addCustomMessageHandler('assignment:clear', hideAll);
+    window.Shiny.addCustomMessageHandler('assignment:clear', function(message) {
+      hideAll();
+    });
     handlersRegistered = true;
     return true;
   }
@@ -86,13 +143,15 @@
     }, 50);
   }
 
+  // The script is inlined after the generated question pool, so try immediately
+  // and repeat once DOMContentLoaded fires in case learnr finishes DOM setup later.
+  hideAll();
+  registerWhenReady();
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       hideAll();
       registerWhenReady();
     });
-  } else {
-    hideAll();
-    registerWhenReady();
   }
 })();
