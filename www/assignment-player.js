@@ -1,19 +1,28 @@
 (function() {
   var handlersRegistered = false;
 
+  function waitingElement() {
+    return document.getElementById('assignment-waiting');
+  }
+
+  function assignmentTopic() {
+    var waiting = waitingElement();
+    return waiting ? waiting.closest('.section.level2') : document;
+  }
+
   function exerciseElements() {
     return Array.prototype.slice.call(
-      document.querySelectorAll('.tutorial-exercise[data-label]')
+      assignmentTopic().querySelectorAll('.tutorial-exercise[data-label]')
     );
   }
 
   function questionSection(exercise) {
     if (!exercise) return null;
 
-    // learnr renders tutorials with Pandoc section divs and emits each exercise
-    // as .tutorial-exercise[data-label=<chunk label>]. The nearest level-4
-    // section therefore contains the generated question heading, prompt, and
-    // exercise without requiring a second item-label representation.
+    // learnr's tutorial format uses Pandoc section divs and emits each exercise
+    // as .tutorial-exercise[data-label=<chunk label>]. Each generated question
+    // has a level-4 heading, so its nearest level-4 section is the native
+    // container for the heading, prompt, and exercise.
     var section = exercise.closest('.section.level4');
     if (section) section.classList.add('assignment-question');
     return section;
@@ -33,10 +42,6 @@
       if (section && seen.indexOf(section) < 0) seen.push(section);
     });
     return seen;
-  }
-
-  function waitingElement() {
-    return document.getElementById('assignment-waiting');
   }
 
   function hideAll() {
@@ -69,8 +74,8 @@
 
       if (!destination) destination = block.parentNode;
       if (destination && block.parentNode === destination) {
-        // Re-appending the native learnr section preserves persisted assignment
-        // order while all non-assigned sections remain hidden.
+        // Re-appending native section divs preserves persisted assignment order
+        // while all non-assigned question sections remain hidden.
         destination.appendChild(block);
       }
 
@@ -119,13 +124,8 @@
     }, 50);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      hideAll();
-      registerWhenReady();
-    });
-  } else {
-    hideAll();
-    registerWhenReady();
-  }
+  // This script is inlined after runtime_question_pool.Rmd, so the rendered
+  // question DOM already exists even if Shiny's browser object is not ready yet.
+  hideAll();
+  registerWhenReady();
 })();
