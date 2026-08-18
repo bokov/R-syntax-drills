@@ -139,4 +139,6 @@ Your questions will appear here after you save a valid student ID.
 ```{r question-pool, child="runtime_question_pool.Rmd"}
 ```
 
-<script src="assignment-player.js"></script>
+```{r assignment-player-script, echo=FALSE}
+shiny::includeScript("www/assignment-player.js")
+```
