@@ -364,10 +364,16 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
         unlockedTopics,
         new Date()
       );
+      const exposureCounts = literalExposureCountsFromAttempts(
+        history,
+        eventRows,
+        data.course_id,
+        data.student_id
+      );
 
       selected = selectAdaptiveQuestions(
         eligible,
-        history,
+        exposureCounts,
         topicRetrievabilities,
         data.questions_per_week
       );
@@ -413,17 +419,11 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
 
 function selectAdaptiveQuestions(
   eligible,
-  history,
+  exposureCounts,
   topicRetrievabilities,
   questionsPerWeek,
   randomFn
 ) {
-  const exposureCounts = {};
-  history.forEach(function(assignment) {
-    const label = String(assignment.item_label);
-    exposureCounts[label] = (exposureCounts[label] || 0) + 1;
-  });
-
   const random = randomFn || Math.random;
 
   return eligible
@@ -453,6 +453,41 @@ function selectAdaptiveQuestions(
     })
     .slice(0, questionsPerWeek)
     .map(function(row) { return row.item; });
+}
+
+function literalExposureCountsFromAttempts(
+  history,
+  eventRows,
+  courseId,
+  studentId
+) {
+  const courseKey = clean(courseId, 200);
+  const studentKey = clean(studentId, 200);
+  const assignmentsById = {};
+
+  history.forEach(function(assignment) {
+    const assignmentId = String(assignment.assignment_id || '');
+    if (!assignmentId) return;
+    assignmentsById[assignmentId] = assignment;
+  });
+
+  const attemptedAssignmentIds = new Set();
+  eventRows.forEach(function(row) {
+    if (row[4] !== courseKey || row[7] !== studentKey) return;
+    if (!GRADED_EVENTS.includes(String(row[9] || ''))) return;
+
+    const assignmentId = String(row[21] || '');
+    if (!assignmentsById[assignmentId]) return;
+    attemptedAssignmentIds.add(assignmentId);
+  });
+
+  const exposureCounts = {};
+  attemptedAssignmentIds.forEach(function(assignmentId) {
+    const label = String(assignmentsById[assignmentId].item_label);
+    exposureCounts[label] = (exposureCounts[label] || 0) + 1;
+  });
+
+  return exposureCounts;
 }
 
 function topicRetrievabilitiesFromHistory(
