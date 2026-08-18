@@ -197,9 +197,9 @@ build_gradebook_tables <- function(
   assignments_for_students <- assignments |>
     dplyr::semi_join(students, by = "student_id")
 
-  # During this static phase, any student who has persisted rows must have the
-  # entire current assignment, not a subset. A partial set must never lower the
-  # denominator. The same validator also checks topic/points/hash snapshots.
+  # Persisted assignment rows are the only grading denominator. The gradebook
+  # validates them but never manufactures an assignment for a roster/event
+  # student who has not yet loaded the current week.
   if (nrow(assignments_for_students)) {
     by_student <- split(
       assignments_for_students,
@@ -208,7 +208,7 @@ build_gradebook_tables <- function(
     )
     invisible(lapply(
       by_student,
-      validate_static_assignments,
+      validate_persisted_assignments,
       manifest = manifest
     ))
   }
@@ -236,35 +236,7 @@ build_gradebook_tables <- function(
     stop("A scored persisted assignment is absent from the current scored manifest.")
   }
 
-  students_with_persisted_assignments <- assignments_for_students |>
-    dplyr::distinct(.data$student_id)
-
-  fallback_students <- students |>
-    dplyr::anti_join(students_with_persisted_assignments, by = "student_id") |>
-    dplyr::select(student_id)
-
-  # Transitional compatibility: roster/event students who predate assignment
-  # rows keep the old static denominator until they next save identity.
-  fallback_assignments <- tidyr::crossing(
-    fallback_students,
-    scored_manifest
-  ) |>
-    dplyr::transmute(
-      student_id = .data$student_id,
-      assignment_id = NA_character_,
-      item_label = .data$item_label,
-      event = .data$event,
-      topic = .data$topic,
-      points = .data$points,
-      question_hash = .data$question_hash,
-      assigned_at_utc = NA_character_,
-      assignment_reason = "legacy_static_fallback"
-    )
-
-  effective_assignments <- dplyr::bind_rows(
-    assigned_scored,
-    fallback_assignments
-  )
+  effective_assignments <- assigned_scored
 
   duplicate_effective <- effective_assignments |>
     dplyr::count(.data$student_id, .data$item_label, name = "n") |>

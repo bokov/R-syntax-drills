@@ -9,7 +9,7 @@ This project provides browser-based weekly R syntax drills using:
 - an instructor-side gradebook builder;
 - `rsconnect` for deployment to shinyapps.io.
 
-The canonical question bank lives under `question-bank/`. `index.Rmd` is now a stable **player template**, not a weekly hand-edited assignment. Which questions a student sees is determined by persistent assignment rows created from question-bank metadata and `APP_CONFIG`.
+The canonical question bank lives under `question-bank/`. `index.Rmd` is a stable **player template**, not a weekly hand-edited assignment. Which questions a student sees is determined by persistent assignment rows created from question-bank metadata, prior performance, and `APP_CONFIG`.
 
 ## 1. Install packages
 
@@ -44,7 +44,7 @@ When `google-apps-script/Code.gs` changes in this repository, editing the Apps S
 5. Select **New version** and deploy it.
 6. Keep the same `/exec` URL in `R/app_config.R` unless Google gives you a different one.
 
-The event endpoint is append-only. The assignment endpoint can read a student's own requested assignment metadata and idempotently create a weekly assignment. It does not expose grades or event history.
+The event endpoint is append-only. The assignment endpoint can read a student's own requested assignment metadata and idempotently create a weekly assignment. It does not expose grades or raw event history.
 
 ## 3. Configure the course and unlocked topics
 
@@ -141,8 +141,10 @@ That command does, in order:
 2. validate `questions_per_week`, `unlocked_topics`, and starter availability;
 3. overwrite the private Google Sheet `question_bank` tab with current safe metadata, including `topic`, `points`, `starter_question`, and `question_hash`;
 4. build the deployable scored-question pool and `question_manifest.csv`;
-5. build a runtime copy of the player whose `learnr` tutorial version equals the current `week_id`, preventing browser state from one week from being reused as the next week's tutorial state;
+5. build a runtime copy of the player whose tutorial version equals the current `week_id`;
 6. deploy/update the configured shinyapps.io app.
+
+The player explicitly uses `options(tutorial.storage = "none")`. Exercise code/answers therefore remain available during the current Shiny session but are not restored after a new session is opened. Google `events` remains the authoritative attempt history, and Google `assignments` remains the authoritative weekly-assignment history.
 
 You therefore do **not** manually edit `index.Rmd` when choosing questions or advancing the course.
 
@@ -158,18 +160,23 @@ If you only want to deploy after everything is already synchronized:
 source("scripts/03_deploy_shinyapps.R")
 ```
 
-## 5. How assignment selection works
+## 5. How adaptive assignment selection works
+
+The assignment service uses topic-level FSRS-style memory scheduling. A canonical **topic is one scheduling/memory unit**. The literal questions carrying that topic are interchangeable retrieval probes of the same skill.
 
 When a valid student ID is saved:
 
 1. If assignment rows already exist for that `(course_id, week_id, student_id)`, those exact rows are returned. Refresh/re-entry never resamples the week.
 2. If this is the student's first assignment in the course, every eligible `starter_question=TRUE` exercise is assigned with `assignment_reason = "starter"`.
-3. Otherwise, only questions in `unlocked_topics` are considered. Prior exposure count is computed from historical `assignments` rows for that student/course.
-4. Questions with the lowest exposure count are preferred. Ties are randomized immediately.
-5. The first `questions_per_week` candidates are persisted with `assignment_reason = "least_exposed"`.
-6. A literal question can appear at most once in one weekly assignment. Multiple submissions during that week remain multiple attempts against the same `assignment_id`, so they count as one exposure.
+3. For a returning student, the service reconstructs each unlocked topic's FSRS memory state from prior persisted exposures and their logged **first attempts**.
+4. A correct first attempt is an FSRS **Good** review. An incorrect first attempt is an FSRS **Again** review. Later attempts on the same weekly literal question remain grading/instructional attempts but do not create additional spaced-repetition reviews.
+5. An unlocked topic with no completed historical review has retrievability 0, making it maximally urgent until it has been tested.
+6. Eligible literal questions are ordered first by their topic's current retrievability, lowest first. A substantially weaker topic can therefore receive several of the week's slots; there are no ad-hoc per-topic quotas.
+7. Within equally urgent topic candidates, literal questions with the student's lowest historical exposure count are preferred. Remaining ties are randomized.
+8. The first `questions_per_week` candidates are persisted with `assignment_reason = "fsrs_retrievability"`.
+9. A literal question can appear at most once in one weekly assignment. Multiple submissions during that week remain multiple attempts against the same `assignment_id`, so they count as one exposure.
 
-This is the pre-adaptive selector. A later adaptive-routing change can first choose weak unlocked topics and then apply the same least-exposed/random-tie rule within those topics without changing the persistence/player model.
+The scheduler currently uses the standard FSRS-6 default parameter vector. It does not yet fit personalized FSRS parameters from this course's data; the student's individual history still changes topic difficulty/stability/retrievability through the FSRS state updates.
 
 ## 6. Run locally
 
@@ -193,7 +200,7 @@ Run:
 source("tests/testthat.R")
 ```
 
-The tests cover canonical metadata, dynamic-assignment payload/config validation, persisted-subset grading behavior, player generation, solution stripping from the runtime pool, week-specific tutorial versioning, and validation of the currently configured starter/unlocked-topic rules.
+The tests cover canonical metadata, dynamic-assignment payload/config validation, persisted-only grading behavior, player generation, nonpersistent Learnr answer state, solution stripping from the runtime pool, week-specific tutorial versioning, and FSRS helper behavior when Node.js is available.
 
 ### Webhook logging smoke test
 
@@ -205,7 +212,7 @@ source("scripts/02_test_webhook.R")
 
 Confirm one `logging_test` row appears in `events` for `INSTRUCTOR_TEST`.
 
-### Dynamic assignment-service smoke test
+### Adaptive assignment-service smoke test
 
 After updating/redeploying the Apps Script code and synchronizing `question_bank`, run:
 
@@ -221,8 +228,8 @@ The script uses a fresh `INSTRUCTOR_ASSIGNMENT_TEST_*` ID and verifies all of th
 - a synthetic next week recognizes the same ID as a returning student;
 - the returning assignment contains exactly `questions_per_week` rows;
 - every selected topic is unlocked;
-- `assignment_reason` changes from `starter` to `least_exposed`;
-- starter questions are not repeated when enough never-exposed eligible questions exist;
+- `assignment_reason` changes from `starter` to `fsrs_retrievability`;
+- because that smoke-test ID has no graded event history, all topics begin at retrievability zero and the literal exposure tie-breaker avoids starters when enough unseen probes exist;
 - repeating that synthetic week returns the same IDs.
 
 The smoke-test assignment rows are deliberately retained as an audit trail. Assignment-only `INSTRUCTOR_ASSIGNMENT_TEST_*` IDs do not become gradebook students unless they also have student events or are placed in the roster.
@@ -232,13 +239,13 @@ The smoke-test assignment rows are deliberately retained as an audit trail. Assi
 Use a never-before-used student ID in an incognito/private browser window and check:
 
 1. No exercise is visible before saving identity.
-2. Saving identity reveals exactly the eligible starter questions; with the current vector-only configuration this should be the starter set you marked in canonical metadata.
+2. Saving identity reveals exactly the eligible starter questions.
 3. The Google `assignments` tab receives one row per visible question, all with `assignment_reason = starter` and distinct `assignment_id`s.
 4. Submit one wrong and then one correct attempt to the same question. Both event rows should reference the same nonblank `assignment_id`.
-5. Close the browser, reopen the app, enter the same student ID, and verify no new assignment rows are created and the same questions return.
+5. Close the browser, reopen the app, enter the same student ID, and verify no new assignment rows are created and the same questions return **with blank exercise editors rather than restored old answers**.
 6. Run `source("scripts/04_build_gradebook.R")` and confirm the denominator equals that student's persisted assignment, not the full deployed question pool.
 
-For an additional locked-topic check, temporarily configure a narrower `unlocked_topics`, publish to a test app/config, and verify the live assignment service never returns a question outside that set.
+For an adaptive-routing test, create history in at least two topics with different first-attempt outcomes, advance to a fresh test `week_id`, and confirm the lower-retrievability topic receives priority. For an additional locked-topic check, temporarily configure a narrower `unlocked_topics` and verify the live assignment service never returns a question outside that set.
 
 ## 8. Build the weekly gradebook
 
@@ -248,7 +255,9 @@ Optionally copy `roster.csv.example` to ignored `roster.csv` and populate it. Th
 source("scripts/04_build_gradebook.R")
 ```
 
-The gradebook reads `events` and `assignments`, filters to `APP_CONFIG$course_id` and `APP_CONFIG$week_id`, uses each student's persisted weekly assignment as the denominator, counts attempts separately from exposures, and writes both local CSVs and `grades_<week>` / `detail_<week>` tabs.
+The gradebook reads `events` and `assignments`, filters to `APP_CONFIG$course_id` and `APP_CONFIG$week_id`, uses each student's persisted weekly assignment as the **only** denominator, counts attempts separately from exposures, and writes both local CSVs and `grades_<week>` / `detail_<week>` tabs.
+
+A roster/event student who has not yet loaded a persisted assignment for the current week has zero items/points possible and no detail rows; the gradebook never manufactures a whole-manifest fallback assignment.
 
 A student earns the assigned points for an item after at least one correct submission before the optional UTC deadline. Incorrect attempts do not reduce the score.
 
@@ -281,4 +290,4 @@ The former hand-curated Week 01 source is retained under `examples/legacy_static
 - The Google Sheet remains private; the deployed app has no Google account credential and communicates only through the Apps Script web endpoint.
 - Student IDs are self-asserted in this lightweight architecture. Assignment lookup is not authentication.
 - A student who deliberately unhides an unassigned exercise in browser developer tools may see/run it, but it has no matching weekly `assignment_id` and is not part of that student's persisted grading denominator.
-- Assignment/event history in Google Sheets is authoritative; shinyapps.io local storage is not.
+- Assignment/event history in Google Sheets is authoritative; browser answer state is intentionally nonpersistent.

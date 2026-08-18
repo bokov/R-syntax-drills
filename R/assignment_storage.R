@@ -330,13 +330,6 @@ validate_persisted_assignments <- function(assignments, manifest) {
   assignments
 }
 
-# Backward-compatible name used by the gradebook. Dynamic weekly assignments are
-# intentionally a subset of the deployed manifest, so exact-set validation is no
-# longer appropriate.
-validate_static_assignments <- function(assignments, manifest) {
-  validate_persisted_assignments(assignments, manifest)
-}
-
 initialize_student_assignments <- function(
   student_id,
   manifest = read_question_manifest(),
