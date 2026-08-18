@@ -97,15 +97,9 @@ if (!all(next_table$topic %in% settings$unlocked_topics)) {
   stop("Returning-student assignment included a locked topic.")
 }
 
-# This test ID has no graded event history. All unlocked topics therefore begin
-# equally urgent (retrievability zero), so the literal exposure tie-breaker
-# should avoid already exposed starters when enough unseen probes are available.
-unseen_available <- nrow(eligible) - length(starter_labels)
-if (unseen_available >= settings$questions_per_week) {
-  if (length(intersect(next_table$item_label, starter_labels))) {
-    stop("FSRS routing repeated a starter while enough unseen probes existed.")
-  }
-}
+# This smoke-test ID never submits a question. Its first-week assignment rows
+# therefore do not count as literal exposures; next-week literal tie-breaking is
+# allowed to select either previously assigned or never-assigned probes.
 
 next_repeat <- post_assignment_service(
   assignment_service_payload(
