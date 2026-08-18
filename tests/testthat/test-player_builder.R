@@ -84,6 +84,13 @@ test_that("assignment-player script is inlined after the generated question pool
   expect_gt(script_line, pool_line)
 })
 
+test_that("learnr answer state is not persisted between sessions", {
+  root <- normalizePath(file.path(test_path(), "..", ".."))
+  text <- paste(readLines(file.path(root, "index.Rmd"), warn = FALSE), collapse = "\n")
+
+  expect_match(text, 'options(tutorial.storage = "none")', fixed = TRUE)
+})
+
 test_that("assignment player uses learnr rendered labels instead of parallel question IDs", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
   text <- paste(
