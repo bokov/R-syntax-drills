@@ -28,6 +28,7 @@ vm.runInContext(
       fsrsCurrentRetrievability,
       firstAttemptReviews,
       topicRetrievabilitiesFromHistory,
+      literalExposureCountsFromAttempts,
       selectAdaptiveQuestions,
       FSRS_RATING_AGAIN,
       FSRS_RATING_GOOD
@@ -131,24 +132,46 @@ assert(
   'An unlocked topic with no completed review history should have zero retrievability.'
 );
 
+const redundancyHistory = [
+  { assignment_id: 'e1', item_label: 'weak_used', topic: 'weak' },
+  { assignment_id: 'e2', item_label: 'weak_unattempted', topic: 'weak' },
+  { assignment_id: 'e3', item_label: 'weak_used', topic: 'weak' }
+];
+const redundancyEvents = [
+  eventRow('2026-01-01T12:00:00Z', 'e1', false),
+  eventRow('2026-01-01T12:01:00Z', 'e1', true),
+  eventRow('2026-01-08T12:00:00Z', 'e3', true)
+];
+const exposureCounts = api.literalExposureCountsFromAttempts(
+  redundancyHistory,
+  redundancyEvents,
+  'R101',
+  'abc123'
+);
+assert(
+  exposureCounts.weak_used === 2,
+  'The same literal question should gain one exposure for each attempted weekly assignment.'
+);
+assert(
+  !Object.prototype.hasOwnProperty.call(exposureCounts, 'weak_unattempted'),
+  'An assigned but never-attempted literal question should not count as exposed.'
+);
+
 const eligible = [
   { item_label: 'weak_used', topic: 'weak' },
-  { item_label: 'weak_new', topic: 'weak' },
+  { item_label: 'weak_unattempted', topic: 'weak' },
   { item_label: 'strong_new', topic: 'strong' }
-];
-const exposureHistory = [
-  { item_label: 'weak_used' }
 ];
 const selected = api.selectAdaptiveQuestions(
   eligible,
-  exposureHistory,
+  exposureCounts,
   { weak: 0.4, strong: 0.8 },
   2,
   function() { return 0.5; }
 );
 assert(
-  selected[0].item_label === 'weak_new',
-  'Within a selected topic, the least-exposed literal probe should come first.'
+  selected[0].item_label === 'weak_unattempted',
+  'Within a selected topic, a never-attempted assigned probe should remain least exposed.'
 );
 assert(
   selected[1].item_label === 'weak_used',
