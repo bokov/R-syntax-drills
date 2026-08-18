@@ -37,7 +37,7 @@ gradebook_test_events <- function(
 gradebook_test_assignments <- function(
   item_label = c("q1", "q2", "q3"),
   student_id = "abc123",
-  assignment_reason = "least_exposed"
+  assignment_reason = "fsrs_retrievability"
 ) {
   n <- length(item_label)
   manifest <- gradebook_test_manifest()
@@ -82,7 +82,7 @@ test_that("persisted dynamic assignments define the gradebook rows", {
     tables$item_detail$assignment_id,
     c("abc123-a1", "abc123-a2", "abc123-a3")
   )
-  expect_true(all(tables$item_detail$assignment_reason == "least_exposed"))
+  expect_true(all(tables$item_detail$assignment_reason == "fsrs_retrievability"))
 })
 
 test_that("multiple attempts at one item remain one persisted exposure", {
@@ -244,7 +244,7 @@ test_that("logging-test events do not become gradebook students", {
   expect_equal(nrow(tables$item_detail), 0)
 })
 
-test_that("roster students without persisted rows retain the legacy fallback", {
+test_that("roster students without persisted rows have no grading denominator", {
   events <- gradebook_test_events()
   assignments <- empty_assignment_table()
   roster <- data.frame(
@@ -263,8 +263,9 @@ test_that("roster students without persisted rows retain the legacy fallback", {
   )
 
   expect_equal(tables$gradebook$points_earned, 0)
-  expect_equal(tables$gradebook$points_possible, 3)
-  expect_equal(tables$gradebook$percent, 0)
-  expect_true(all(tables$item_detail$assignment_reason == "legacy_static_fallback"))
-  expect_true(all(is.na(tables$item_detail$assignment_id)))
+  expect_equal(tables$gradebook$points_possible, 0)
+  expect_equal(tables$gradebook$items_possible, 0)
+  expect_true(is.na(tables$gradebook$percent))
+  expect_equal(nrow(tables$item_detail), 0)
+  expect_equal(nrow(tables$effective_assignments), 0)
 })
