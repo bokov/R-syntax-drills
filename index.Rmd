@@ -32,8 +32,6 @@ learnr::tutorial_options(
 )
 ```
 
-<script src="assignment-player.js"></script>
-
 ```{r logging-start, context="server-start", include=FALSE}
 library(httr2)
 source("R/logging.R")
@@ -140,3 +138,5 @@ Your questions will appear here after you save a valid student ID.
 
 ```{r question-pool, child="runtime_question_pool.Rmd"}
 ```
+
+<script src="assignment-player.js"></script>
