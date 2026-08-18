@@ -90,17 +90,20 @@ next_table <- assignment_response_table(next_week)
 if (nrow(next_table) != settings$questions_per_week) {
   stop("Returning-student assignment did not contain questions_per_week rows.")
 }
-if (!all(next_table$assignment_reason == "least_exposed")) {
-  stop("Returning-student assignment_reason was not 'least_exposed'.")
+if (!all(next_table$assignment_reason == "fsrs_retrievability")) {
+  stop("Returning-student assignment_reason was not 'fsrs_retrievability'.")
 }
 if (!all(next_table$topic %in% settings$unlocked_topics)) {
   stop("Returning-student assignment included a locked topic.")
 }
 
+# This test ID has no graded event history. All unlocked topics therefore begin
+# equally urgent (retrievability zero), so the literal exposure tie-breaker
+# should avoid already exposed starters when enough unseen probes are available.
 unseen_available <- nrow(eligible) - length(starter_labels)
 if (unseen_available >= settings$questions_per_week) {
   if (length(intersect(next_table$item_label, starter_labels))) {
-    stop("Returning-student assignment repeated a starter while enough unseen questions existed.")
+    stop("FSRS routing repeated a starter while enough unseen probes existed.")
   }
 }
 
@@ -120,5 +123,5 @@ if (!setequal(next_table$assignment_id, next_repeat_table$assignment_id)) {
   stop("Repeated synthetic next-week call did not return the original assignments.")
 }
 
-message("Dynamic assignment service test passed for student ID: ", student_id)
+message("Adaptive assignment service test passed for student ID: ", student_id)
 message("The test rows remain in the assignments tab as an audit trail.")
