@@ -81,14 +81,10 @@ question_player_lines <- function(record) {
     lines[[heading[[1]]]] <- sub("^##\\s+", "#### ", lines[[heading[[1]]]])
   }
 
-  c(
-    paste0(
-      '::: {#assignment-question-', record$item_label[[1]],
-      ' .assignment-question data-item-label="', record$item_label[[1]], '"}'
-    ),
-    lines,
-    ":::"
-  )
+  # Do not add a second Markdown/HTML wrapper around the question. Learnr emits
+  # each exercise with class="tutorial-exercise" and data-label=<item_label>;
+  # the browser player uses that canonical rendered marker directly.
+  lines
 }
 
 build_runtime_question_pool <- function(
@@ -100,13 +96,7 @@ build_runtime_question_pool <- function(
   })
 
   writeLines(
-    c(
-      "::: {#assignment-question-pool}",
-      "",
-      unlist(blocks, use.names = FALSE),
-      "",
-      ":::"
-    ),
+    unlist(blocks, use.names = FALSE),
     output
   )
 
