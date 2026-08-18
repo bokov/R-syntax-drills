@@ -1,10 +1,38 @@
 (function() {
   var handlersRegistered = false;
 
-  function allQuestionBlocks() {
+  function exerciseElements() {
     return Array.prototype.slice.call(
-      document.querySelectorAll('.assignment-question')
+      document.querySelectorAll('.tutorial-exercise[data-label]')
     );
+  }
+
+  function questionSection(exercise) {
+    if (!exercise) return null;
+
+    // learnr renders tutorials with Pandoc section divs and emits each exercise
+    // as .tutorial-exercise[data-label=<chunk label>]. The nearest level-4
+    // section therefore contains the generated question heading, prompt, and
+    // exercise without requiring a second item-label representation.
+    var section = exercise.closest('.section.level4');
+    if (section) section.classList.add('assignment-question');
+    return section;
+  }
+
+  function questionSectionForLabel(label) {
+    var exercise = exerciseElements().find(function(element) {
+      return element.getAttribute('data-label') === label;
+    });
+    return questionSection(exercise);
+  }
+
+  function allQuestionBlocks() {
+    var seen = [];
+    exerciseElements().forEach(function(exercise) {
+      var section = questionSection(exercise);
+      if (section && seen.indexOf(section) < 0) seen.push(section);
+    });
+    return seen;
   }
 
   function waitingElement() {
@@ -28,21 +56,24 @@
   function showAssignments(message) {
     hideAll();
 
-    var pool = document.getElementById('assignment-question-pool');
     var labels = (message && message.item_labels) || [];
     var shown = 0;
+    var destination = null;
 
     labels.forEach(function(label, index) {
-      var block = document.getElementById('assignment-question-' + label);
+      var block = questionSectionForLabel(label);
       if (!block) {
         console.error('Assigned question is missing from the player:', label);
         return;
       }
 
-      // Re-appending places the visible questions in the persisted assignment
-      // order without changing any learnr exercise IDs. If the pool wrapper is
-      // unavailable for any reason, still reveal the matching question in place.
-      if (pool) pool.appendChild(block);
+      if (!destination) destination = block.parentNode;
+      if (destination && block.parentNode === destination) {
+        // Re-appending the native learnr section preserves persisted assignment
+        // order while all non-assigned sections remain hidden.
+        destination.appendChild(block);
+      }
+
       block.style.display = 'block';
       block.dataset.assignmentOrder = String(index);
       shown += 1;
@@ -69,7 +100,9 @@
     if (!window.Shiny || !window.Shiny.addCustomMessageHandler) return false;
 
     window.Shiny.addCustomMessageHandler('assignment:set', showAssignments);
-    window.Shiny.addCustomMessageHandler('assignment:clear', hideAll);
+    window.Shiny.addCustomMessageHandler('assignment:clear', function(message) {
+      hideAll();
+    });
     handlersRegistered = true;
     return true;
   }
