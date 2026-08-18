@@ -70,15 +70,17 @@ test_that("runtime index receives the configured week as tutorial version", {
   expect_false(grepl("__WEEK_ID__", text, fixed = TRUE))
 })
 
-test_that("assignment-player script is loaded after the generated question pool", {
+test_that("assignment-player script is inlined after the generated question pool", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
   lines <- readLines(file.path(root, "index.Rmd"), warn = FALSE)
 
   pool_line <- grep('child="runtime_question_pool.Rmd"', lines, fixed = TRUE)
-  script_line <- grep('<script src="assignment-player.js"></script>', lines, fixed = TRUE)
+  script_line <- grep('shiny::includeScript("www/assignment-player.js")', lines, fixed = TRUE)
+  external_script <- grep('<script src="assignment-player.js"></script>', lines, fixed = TRUE)
 
   expect_length(pool_line, 1)
   expect_length(script_line, 1)
+  expect_length(external_script, 0)
   expect_gt(script_line, pool_line)
 })
 
