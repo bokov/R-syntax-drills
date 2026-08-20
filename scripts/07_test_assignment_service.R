@@ -27,101 +27,134 @@ student_id <- paste0(
 
 lookup <- post_assignment_service(
   assignment_service_payload(
-    "get_assignments",
+    "get_active_assignments",
     student_id = student_id
   )
 )
 if (length(lookup$assignments)) {
-  stop("Fresh assignment-service test ID unexpectedly already has assignments.")
+  stop("Fresh rolling-queue test ID unexpectedly already has active assignments.")
 }
 
 created <- post_assignment_service(
   assignment_service_payload(
-    "get_or_create_dynamic_assignments",
+    "get_or_create_active_assignments",
     student_id = student_id
   )
 )
 if (!isTRUE(created$created)) {
-  stop("Expected the first dynamic assignment call to create assignments.")
+  stop("Expected the first rolling-queue call to create active assignments.")
 }
 created_table <- assignment_response_table(created)
-if (!setequal(created_table$item_label, starter_labels)) {
-  stop("First-week dynamic assignment did not equal the eligible starter set.")
+if (nrow(created_table) != settings$queue_size) {
+  stop("Initial active queue did not contain queue_size rows.")
 }
-if (!all(created_table$assignment_reason == "starter")) {
-  stop("First-week assignment_reason was not 'starter'.")
+if (!all(created_table$assignment_status == "active")) {
+  stop("Initial rolling queue contained a non-active assignment row.")
+}
+if (!all(starter_labels %in% created_table$item_label)) {
+  stop("Initial rolling queue did not contain every eligible starter question.")
+}
+if (!all(created_table$topic %in% settings$unlocked_topics)) {
+  stop("Initial rolling queue included a locked topic.")
 }
 
 created_ids <- created_table$assignment_id
 
 repeated <- post_assignment_service(
   assignment_service_payload(
-    "get_or_create_dynamic_assignments",
+    "get_or_create_active_assignments",
     student_id = student_id
   )
 )
 if (isTRUE(repeated$created)) {
-  stop("Repeated same-week dynamic call created duplicate assignments.")
+  stop("Repeated rolling-queue load created duplicate assignments.")
 }
 repeated_table <- assignment_response_table(repeated)
-if (!setequal(created_ids, repeated_table$assignment_id)) {
-  stop("Repeated same-week dynamic call did not return the original assignments.")
+if (!identical(created_ids, repeated_table$assignment_id)) {
+  stop("Repeated rolling-queue load did not return the original active queue in order.")
 }
 
-next_config <- APP_CONFIG
-next_config$week_id <- paste0(
-  APP_CONFIG$week_id,
-  "-service-test-next-",
-  format(Sys.time(), "%Y%m%d%H%M%S", tz = "UTC")
-)
-
-next_week <- post_assignment_service(
-  assignment_service_payload(
-    "get_or_create_dynamic_assignments",
+make_test_event <- function(assignment, correct, request_id) {
+  list(
+    schema_version = "1",
+    request_type = "log_event",
+    request_id = request_id,
+    client_timestamp_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
+    course_id = APP_CONFIG$course_id,
+    week_id = APP_CONFIG$week_id,
+    session_token = paste0("SERVICE_TEST_", student_id),
     student_id = student_id,
-    config = next_config
-  ),
-  config = next_config
+    student_name = "Instructor assignment-service test",
+    event = "exercise_result",
+    item_label = assignment$item_label[[1]],
+    topic = assignment$topic[[1]],
+    assignment_id = assignment$assignment_id[[1]],
+    attempt_id = paste0("attempt-", request_id),
+    submitted_code = "1 + 1",
+    correct = correct,
+    checked = TRUE,
+    restore = FALSE,
+    queue_size = settings$queue_size,
+    unlocked_topics = unname(settings$unlocked_topics)
+  )
+}
+
+target <- created_table[1, , drop = FALSE]
+
+wrong_payload <- make_test_event(
+  target,
+  FALSE,
+  make_service_request_id("rolling-wrong")
 )
-if (!isTRUE(next_week$created)) {
-  stop("Expected a new synthetic week to create a returning-student assignment.")
-}
-next_table <- assignment_response_table(next_week)
-if (nrow(next_table) != settings$questions_per_week) {
-  stop("Returning-student assignment did not contain questions_per_week rows.")
-}
-if (!all(next_table$assignment_reason == "fsrs_retrievability")) {
-  stop("Returning-student assignment_reason was not 'fsrs_retrievability'.")
-}
-if (!all(next_table$topic %in% settings$unlocked_topics)) {
-  stop("Returning-student assignment included a locked topic.")
+wrong <- post_assignment_service(wrong_payload)
+wrong_table <- assignment_response_table(wrong)
+if (!identical(created_ids, wrong_table$assignment_id)) {
+  stop("Incorrect first attempt changed the active queue.")
 }
 
-# This test ID has no graded event history. All unlocked topics therefore begin
-# equally urgent (retrievability zero), so the literal exposure tie-breaker
-# should avoid already exposed starters when enough unseen probes are available.
-unseen_available <- nrow(eligible) - length(starter_labels)
-if (unseen_available >= settings$questions_per_week) {
-  if (length(intersect(next_table$item_label, starter_labels))) {
-    stop("FSRS routing repeated a starter while enough unseen probes existed.")
-  }
+correct_payload <- make_test_event(
+  target,
+  TRUE,
+  make_service_request_id("rolling-correct")
+)
+correct <- post_assignment_service(correct_payload)
+correct_table <- assignment_response_table(correct)
+
+if (nrow(correct_table) != settings$queue_size) {
+  stop("Correct answer did not refill the rolling queue to queue_size.")
+}
+if (target$assignment_id[[1]] %in% correct_table$assignment_id) {
+  stop("Correctly answered assignment remained active.")
+}
+new_ids <- setdiff(correct_table$assignment_id, created_ids)
+if (length(new_ids) != 1L) {
+  stop("Correct answer should retire exactly one assignment and create exactly one replacement.")
+}
+if (!identical(tail(correct_table$assignment_id, 1), new_ids)) {
+  stop("Replacement question was not returned last in oldest-to-newest queue order.")
 }
 
-next_repeat <- post_assignment_service(
+# Reposting the identical successful request must be a no-op. This is the
+# server-side prerequisite for the future local outbox retry mechanism.
+duplicate <- post_assignment_service(correct_payload)
+if (!isTRUE(duplicate$duplicate)) {
+  stop("Reposting the same correct request_id was not recognized as a duplicate.")
+}
+duplicate_table <- assignment_response_table(duplicate)
+if (!identical(correct_table$assignment_id, duplicate_table$assignment_id)) {
+  stop("Duplicate correct request changed the rolling queue.")
+}
+
+final_lookup <- post_assignment_service(
   assignment_service_payload(
-    "get_or_create_dynamic_assignments",
-    student_id = student_id,
-    config = next_config
-  ),
-  config = next_config
+    "get_active_assignments",
+    student_id = student_id
+  )
 )
-if (isTRUE(next_repeat$created)) {
-  stop("Repeated synthetic next-week call created duplicate assignments.")
-}
-next_repeat_table <- assignment_response_table(next_repeat)
-if (!setequal(next_table$assignment_id, next_repeat_table$assignment_id)) {
-  stop("Repeated synthetic next-week call did not return the original assignments.")
+final_table <- assignment_response_table(final_lookup)
+if (!identical(correct_table$assignment_id, final_table$assignment_id)) {
+  stop("Active-assignment lookup did not return the current rolling queue.")
 }
 
-message("Adaptive assignment service test passed for student ID: ", student_id)
-message("The test rows remain in the assignments tab as an audit trail.")
+message("Rolling assignment service test passed for student ID: ", student_id)
+message("The test rows remain in assignments/events/reviews as an audit trail.")
