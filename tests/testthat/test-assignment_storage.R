@@ -63,7 +63,7 @@ assignment_test_bank <- function() {
   )
 }
 
-test_that("assignment config validates workload and unlocked topics", {
+test_that("assignment config treats questions_per_week as the temporary queue-size field", {
   config <- list(
     questions_per_week = 2L,
     unlocked_topics = c("vectors", "lists")
@@ -73,6 +73,7 @@ test_that("assignment config validates workload and unlocked topics", {
     settings <- validate_assignment_config(config, assignment_test_bank()),
     "locked topics"
   )
+  expect_equal(settings$queue_size, 2L)
   expect_equal(settings$questions_per_week, 2L)
   expect_equal(settings$unlocked_topics, c("vectors", "lists"))
 })
@@ -112,7 +113,20 @@ test_that("assignment config requires enough eligible questions and a starter", 
   )
 })
 
-test_that("assignment lookup payload contains only lookup fields", {
+test_that("assignment config requires the starter set to fit in the rolling queue", {
+  bank <- assignment_test_bank()
+  bank$starter_question[1:3] <- TRUE
+
+  expect_error(
+    validate_assignment_config(
+      list(questions_per_week = 2L, unlocked_topics = c("vectors", "lists")),
+      bank
+    ),
+    "eligible starter questions"
+  )
+})
+
+test_that("active assignment lookup payload contains only lookup fields", {
   config <- list(
     course_id = "R101",
     week_id = "week-01",
@@ -120,20 +134,20 @@ test_that("assignment lookup payload contains only lookup fields", {
   )
 
   payload <- assignment_service_payload(
-    "get_assignments",
+    "get_active_assignments",
     student_id = "abc123",
     config = config
   )
 
-  expect_equal(payload$request_type, "get_assignments")
+  expect_equal(payload$request_type, "get_active_assignments")
   expect_equal(payload$course_id, "R101")
   expect_equal(payload$week_id, "week-01")
   expect_equal(payload$student_id, "abc123")
-  expect_null(payload$questions_per_week)
+  expect_null(payload$queue_size)
   expect_null(payload$unlocked_topics)
 })
 
-test_that("dynamic assignment payload carries selection configuration", {
+test_that("rolling assignment payload carries queue selection configuration", {
   config <- list(
     course_id = "R101",
     week_id = "week-02",
@@ -143,22 +157,39 @@ test_that("dynamic assignment payload carries selection configuration", {
   )
 
   payload <- assignment_service_payload(
-    "get_or_create_dynamic_assignments",
+    "get_or_create_active_assignments",
     student_id = "abc123",
     config = config
   )
 
-  expect_equal(payload$questions_per_week, 10L)
+  expect_equal(payload$queue_size, 10L)
   expect_equal(
     payload$unlocked_topics,
     c("vector_creation", "vector_indexing")
   )
+  expect_null(payload$questions_per_week)
 })
 
-test_that("assignment service response converts to a stable table", {
+test_that("assignment service response converts active rows in oldest-first order", {
   body <- list(
     ok = TRUE,
     assignments = list(
+      list(
+        assignment_id = "a2",
+        course_id = "R101",
+        week_id = "week-01",
+        student_id = "abc123",
+        item_label = "q2",
+        topic = "vectors",
+        points = 1,
+        question_hash = "bbb",
+        assigned_at_utc = "2026-08-17T12:05:00.000Z",
+        assignment_reason = "fsrs_retrievability",
+        assignment_status = "active",
+        retired_at_utc = "",
+        retired_reason = "",
+        retired_request_id = ""
+      ),
       list(
         assignment_id = "a1",
         course_id = "R101",
@@ -169,19 +200,11 @@ test_that("assignment service response converts to a stable table", {
         points = 1,
         question_hash = "aaa",
         assigned_at_utc = "2026-08-17T12:00:00.000Z",
-        assignment_reason = "starter"
-      ),
-      list(
-        assignment_id = "a2",
-        course_id = "R101",
-        week_id = "week-01",
-        student_id = "abc123",
-        item_label = "q2",
-        topic = "vectors",
-        points = 1,
-        question_hash = "bbb",
-        assigned_at_utc = "2026-08-17T12:00:00.000Z",
-        assignment_reason = "starter"
+        assignment_reason = "starter",
+        assignment_status = "active",
+        retired_at_utc = "",
+        retired_reason = "",
+        retired_request_id = ""
       )
     )
   )
@@ -191,9 +214,10 @@ test_that("assignment service response converts to a stable table", {
   expect_named(assignments, ASSIGNMENT_COLUMNS)
   expect_equal(assignments$item_label, c("q1", "q2"))
   expect_equal(assignments$points, c(1, 1))
+  expect_true(all(assignments$assignment_status == "active"))
 })
 
-test_that("dynamic persisted assignment may be a canonical manifest subset", {
+test_that("rolling active assignment may be a canonical manifest subset", {
   manifest <- data.frame(
     item_label = c("q1", "q2", "q3"),
     topic = c("vectors", "vectors", "lists"),
@@ -211,8 +235,12 @@ test_that("dynamic persisted assignment may be a canonical manifest subset", {
     topic = c("vectors", "vectors"),
     points = c(1, 1),
     question_hash = c("bbb", "aaa"),
-    assigned_at_utc = c("t", "t"),
+    assigned_at_utc = c("t2", "t1"),
     assignment_reason = c("starter", "starter"),
+    assignment_status = c("active", "active"),
+    retired_at_utc = c("", ""),
+    retired_reason = c("", ""),
+    retired_request_id = c("", ""),
     stringsAsFactors = FALSE
   )
 
@@ -223,7 +251,40 @@ test_that("dynamic persisted assignment may be a canonical manifest subset", {
   expect_equal(unname(ids[c("q1", "q2")]), c("a1", "a2"))
 })
 
-test_that("dynamic persisted assignment rejects stale metadata", {
+test_that("active assignment validation rejects retired rows", {
+  manifest <- data.frame(
+    item_label = "q1",
+    topic = "vectors",
+    points = 1,
+    question_hash = "aaa",
+    stringsAsFactors = FALSE
+  )
+
+  assignments <- data.frame(
+    assignment_id = "a1",
+    course_id = "R101",
+    week_id = "week-01",
+    student_id = "abc123",
+    item_label = "q1",
+    topic = "vectors",
+    points = 1,
+    question_hash = "aaa",
+    assigned_at_utc = "t",
+    assignment_reason = "starter",
+    assignment_status = "retired",
+    retired_at_utc = "t2",
+    retired_reason = "correct",
+    retired_request_id = "r1",
+    stringsAsFactors = FALSE
+  )
+
+  expect_error(
+    validate_persisted_assignments(assignments, manifest),
+    "non-active"
+  )
+})
+
+test_that("rolling active assignment rejects stale metadata", {
   manifest <- data.frame(
     item_label = "q1",
     topic = "vectors",
@@ -243,6 +304,10 @@ test_that("dynamic persisted assignment rejects stale metadata", {
     question_hash = "oldhash",
     assigned_at_utc = "t",
     assignment_reason = "starter",
+    assignment_status = "active",
+    retired_at_utc = "",
+    retired_reason = "",
+    retired_request_id = "",
     stringsAsFactors = FALSE
   )
 

@@ -32,8 +32,12 @@ vm.runInContext(
       topicRetrievabilitiesFromReviews,
       topicMasterySummary,
       selectAdaptiveQuestions,
+      activeAssignmentsFromRows,
+      legacyAssignmentMigrationValues,
       FSRS_RATING_AGAIN,
-      FSRS_RATING_GOOD
+      FSRS_RATING_GOOD,
+      ASSIGNMENT_STATUS_ACTIVE,
+      ASSIGNMENT_STATUS_RETIRED
     };
   `,
   context
@@ -86,7 +90,14 @@ assert(
   'Again should produce less stability than Good from the same prior state.'
 );
 
-function assignmentRow(assignmentId, itemLabel, topic, weekId = 'week-01') {
+function assignmentRow(
+  assignmentId,
+  itemLabel,
+  topic,
+  weekId = 'week-01',
+  assignedAt = '2026-01-01T00:00:00Z',
+  status = ''
+) {
   return [
     assignmentId,
     'R101',
@@ -96,8 +107,12 @@ function assignmentRow(assignmentId, itemLabel, topic, weekId = 'week-01') {
     topic,
     1,
     'hash-' + itemLabel,
-    '2026-01-01T00:00:00Z',
-    'test'
+    assignedAt,
+    'test',
+    status,
+    '',
+    '',
+    ''
   ];
 }
 
@@ -215,6 +230,68 @@ assert(
   'Mastery must use the most recent ten observations rather than lifetime accuracy.'
 );
 
+const activeRows = [
+  assignmentRow(
+    'active-new',
+    'q-new',
+    'weak',
+    'week-02',
+    '2026-01-03T00:00:00Z',
+    api.ASSIGNMENT_STATUS_ACTIVE
+  ),
+  assignmentRow(
+    'retired-old',
+    'q-retired',
+    'weak',
+    'week-01',
+    '2026-01-01T00:00:00Z',
+    api.ASSIGNMENT_STATUS_RETIRED
+  ),
+  assignmentRow(
+    'active-old',
+    'q-old',
+    'weak',
+    'week-01',
+    '2026-01-02T00:00:00Z',
+    api.ASSIGNMENT_STATUS_ACTIVE
+  )
+];
+const active = api.activeAssignmentsFromRows(activeRows, 'R101', 'abc123');
+assert(
+  active.map(function(row) { return row.item_label; }).join(',') === 'q-old,q-new',
+  'Only active assignments should be returned, oldest first across former week boundaries.'
+);
+
+const legacyRows = [
+  assignmentRow('legacy-old', 'q-old', 'weak', 'week-01', '2026-01-01T00:00:00Z'),
+  assignmentRow('legacy-current-open', 'q-open', 'weak', 'week-02', '2026-01-08T00:00:00Z'),
+  assignmentRow('legacy-current-done', 'q-done', 'weak', 'week-02', '2026-01-08T00:00:00Z')
+];
+const legacyEvents = [
+  eventRow('2026-01-08T12:00:00Z', 'legacy-current-open', false, 'req-open'),
+  eventRow('2026-01-08T12:01:00Z', 'legacy-current-done', true, 'req-done')
+];
+const migrated = api.legacyAssignmentMigrationValues(
+  legacyRows,
+  legacyEvents,
+  '2026-01-10T00:00:00Z'
+);
+assert(
+  migrated[0][0] === api.ASSIGNMENT_STATUS_RETIRED &&
+    migrated[0][2] === 'legacy_previous_queue',
+  'Older legacy weekly assignments should retire during rolling migration.'
+);
+assert(
+  migrated[1][0] === api.ASSIGNMENT_STATUS_ACTIVE,
+  'An unanswered question in the latest legacy batch should remain active.'
+);
+assert(
+  migrated[2][0] === api.ASSIGNMENT_STATUS_RETIRED &&
+    migrated[2][2] === 'legacy_already_correct' &&
+    migrated[2][3] === 'req-done',
+  'An already-correct question in the latest legacy batch should retire during migration.'
+);
+
 const eligible = [
   { item_label: 'weak_used', topic: 'weak' },
   { item_label: 'weak_new', topic: 'weak' },
@@ -239,4 +316,4 @@ assert(
   'Lower topic retrievability should outrank literal exposure count in another topic.'
 );
 
-console.log('FSRS and compact review-history helper tests passed.');
+console.log('FSRS, review-history, and rolling-queue helper tests passed.');
