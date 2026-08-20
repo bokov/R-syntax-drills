@@ -38,6 +38,8 @@ vm.runInContext(
       validateQueueSelectionConfig,
       activeAssignmentsFromRows,
       legacyAssignmentMigrationValues,
+      includeServiceTiming,
+      serviceTimerSnapshot,
       FSRS_RATING_AGAIN,
       FSRS_RATING_GOOD,
       FSRS_DUE_RETRIEVABILITY,
@@ -428,4 +430,36 @@ assert(
   'The ordered topic_priority payload should be preserved exactly.'
 );
 
-console.log('FSRS, mastery-frontier, review-history, and rolling-queue helper tests passed.');
+assert(
+  api.includeServiceTiming({ include_timing: true }) === true,
+  'Timing diagnostics should require an explicit boolean opt-in.'
+);
+assert(
+  api.includeServiceTiming({ include_timing: 'true' }) === false &&
+    api.includeServiceTiming({}) === false,
+  'Timing diagnostics should stay off for normal or string-valued requests.'
+);
+const timerFixture = {
+  operation: 'log_event',
+  request_id: 'timing-test',
+  started_at_ms: Date.now() - 20,
+  marks: { sheets_ready: 3, lock_acquired: 5 },
+  assignment_count: 10,
+  created_count: 1
+};
+const timerSnapshot = api.serviceTimerSnapshot(timerFixture);
+assert(
+  timerSnapshot.operation === 'log_event' &&
+    timerSnapshot.request_id === 'timing-test' &&
+    timerSnapshot.total_ms >= 0 &&
+    timerSnapshot.marks_ms.sheets_ready === 3 &&
+    timerSnapshot.assignment_count === 10 &&
+    timerSnapshot.created_count === 1,
+  'Timing snapshots should expose stage marks and request metadata.'
+);
+assert(
+  timerSnapshot.marks_ms !== timerFixture.marks,
+  'Timing snapshots should copy marks rather than expose the mutable timer object.'
+);
+
+console.log('FSRS, mastery-frontier, timing, review-history, and rolling-queue helper tests passed.');

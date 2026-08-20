@@ -447,6 +447,7 @@ function handleLogEvent(data, ss) {
     clean(data.assignment_id, 300)
   ];
 
+  markServiceTimer(timer, 'sheets_ready');
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   markServiceTimer(timer, 'lock_acquired');
@@ -478,6 +479,7 @@ function handleLogEvent(data, ss) {
         eventsSheet.getRange(existingRequestRow, 1, 1, EVENT_HEADERS.length).getValues()[0],
         data
       );
+      markServiceTimer(timer, 'duplicate_validated');
     } else {
       eventsSheet
         .getRange(eventsSheet.getLastRow() + 1, 1, 1, EVENT_HEADERS.length)
@@ -504,6 +506,7 @@ function handleLogEvent(data, ss) {
           assignmentRecord.assignment.assignment_id + '.'
         );
       }
+      markServiceTimer(timer, 'review_loaded');
 
       if (eventCorrectBoolean(data.correct)) {
         const retiredReason = review.first_attempt_correct
@@ -544,6 +547,7 @@ function handleLogEvent(data, ss) {
           data.course_id,
           data.student_id
         );
+        markServiceTimer(timer, 'active_queue_loaded');
       }
       timer.assignment_count = activeAssignments.length;
     }
@@ -555,6 +559,10 @@ function handleLogEvent(data, ss) {
       duplicate: duplicate
     };
     if (activeAssignments !== null) response.assignments = activeAssignments;
+    markServiceTimer(timer, 'response_ready');
+    if (includeServiceTiming(data)) {
+      response.service_timing = serviceTimerSnapshot(timer);
+    }
     return jsonResponse(response);
   } finally {
     lock.releaseLock();
@@ -579,22 +587,33 @@ function validateDuplicateEventMatches(existingRow, data) {
 
 function handleGetActiveAssignments(data, ss) {
   validateAssignmentRequest(data);
+  const timer = startServiceTimer('get_active_assignments', data.request_id);
 
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   if (!assignmentsSheet) throw new Error('The assignments sheet does not exist.');
   ensureSheetHeaders(assignmentsSheet, ASSIGNMENT_HEADERS, ASSIGNMENT_SHEET);
+  markServiceTimer(timer, 'sheets_ready');
 
   const assignments = getActiveAssignmentsForStudent(
     assignmentsSheet,
     data.course_id,
     data.student_id
   );
+  markServiceTimer(timer, 'active_queue_loaded');
 
-  return jsonResponse({
+  timer.result = 'existing';
+  timer.assignment_count = assignments.length;
+  const response = {
     ok: true,
     request_id: data.request_id,
     assignments: assignments
-  });
+  };
+  markServiceTimer(timer, 'response_ready');
+  if (includeServiceTiming(data)) {
+    response.service_timing = serviceTimerSnapshot(timer);
+  }
+  logServiceTimer(timer);
+  return jsonResponse(response);
 }
 
 function handleGetOrCreateActiveAssignments(data, ss) {
@@ -617,6 +636,7 @@ function handleGetOrCreateActiveAssignments(data, ss) {
   ensureSheetHeaders(assignmentsSheet, ASSIGNMENT_HEADERS, ASSIGNMENT_SHEET);
   ensureSheetHeaders(questionBankSheet, QUESTION_BANK_HEADERS, QUESTION_BANK_SHEET);
   ensureSheetHeaders(reviewsSheet, REVIEW_HEADERS, REVIEW_SHEET);
+  markServiceTimer(timer, 'sheets_ready');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -632,17 +652,23 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       new Date(),
       null
     );
+    markServiceTimer(timer, 'queue_ensured');
 
     timer.result = ensured.created_count ? 'filled' : 'existing';
     timer.assignment_count = ensured.assignments.length;
     timer.created_count = ensured.created_count;
-    return jsonResponse({
+    const response = {
       ok: true,
       request_id: data.request_id,
       created: ensured.created_count > 0,
       created_count: ensured.created_count,
       assignments: ensured.assignments
-    });
+    };
+    markServiceTimer(timer, 'response_ready');
+    if (includeServiceTiming(data)) {
+      response.service_timing = serviceTimerSnapshot(timer);
+    }
+    return jsonResponse(response);
   } finally {
     lock.releaseLock();
     logServiceTimer(timer);
@@ -1832,13 +1858,17 @@ function markServiceTimer(timer, label) {
   timer.marks[label] = Date.now() - timer.started_at_ms;
 }
 
-function logServiceTimer(timer) {
+function includeServiceTiming(data) {
+  return Boolean(data && data.include_timing === true);
+}
+
+function serviceTimerSnapshot(timer) {
   const output = {
     operation: timer.operation,
     request_id: timer.request_id,
     result: timer.result || '',
     total_ms: Date.now() - timer.started_at_ms,
-    marks_ms: timer.marks
+    marks_ms: Object.assign({}, timer.marks)
   };
   if (typeof timer.assignment_count !== 'undefined') {
     output.assignment_count = timer.assignment_count;
@@ -1849,7 +1879,11 @@ function logServiceTimer(timer) {
   if (typeof timer.created_count !== 'undefined') {
     output.created_count = timer.created_count;
   }
-  console.log('service_timing ' + JSON.stringify(output));
+  return output;
+}
+
+function logServiceTimer(timer) {
+  console.log('service_timing ' + JSON.stringify(serviceTimerSnapshot(timer)));
 }
 
 function sheetBoolean(value) {
