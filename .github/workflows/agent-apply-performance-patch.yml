@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/assignment-service-performance
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
