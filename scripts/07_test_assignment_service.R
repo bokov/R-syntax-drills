@@ -12,6 +12,11 @@ bank <- build_question_bank_manifest()
 settings <- validate_assignment_config(APP_CONFIG, bank)
 curriculum <- settings$topic_priority
 first_topic <- curriculum[[1]]
+service_timeout_sec <- 30
+
+post_test_assignment_service <- function(payload) {
+  post_assignment_service(payload, timeout_sec = service_timeout_sec)
+}
 
 eligible <- bank[
   bank$event == "exercise_result" &
@@ -29,7 +34,7 @@ student_id <- paste0(
   format(Sys.time(), "%Y%m%d%H%M%S", tz = "UTC")
 )
 
-lookup <- post_assignment_service(
+lookup <- post_test_assignment_service(
   assignment_service_payload(
     "get_active_assignments",
     student_id = student_id
@@ -39,7 +44,7 @@ if (length(lookup$assignments)) {
   stop("Fresh rolling-queue test ID unexpectedly already has active assignments.")
 }
 
-created <- post_assignment_service(
+created <- post_test_assignment_service(
   assignment_service_payload(
     "get_or_create_active_assignments",
     student_id = student_id
@@ -64,7 +69,7 @@ if (!all(first_topic_starters %in% created_table$item_label)) {
 
 created_ids <- created_table$assignment_id
 
-repeated <- post_assignment_service(
+repeated <- post_test_assignment_service(
   assignment_service_payload(
     "get_or_create_active_assignments",
     student_id = student_id
@@ -112,7 +117,7 @@ wrong_payload <- make_test_event(
   FALSE,
   make_service_request_id("rolling-wrong")
 )
-wrong <- post_assignment_service(wrong_payload)
+wrong <- post_test_assignment_service(wrong_payload)
 wrong_table <- assignment_response_table(wrong)
 if (!identical(created_ids, wrong_table$assignment_id)) {
   stop("Incorrect first attempt changed the active queue.")
@@ -123,7 +128,7 @@ correct_payload <- make_test_event(
   TRUE,
   make_service_request_id("rolling-correct")
 )
-correct <- post_assignment_service(correct_payload)
+correct <- post_test_assignment_service(correct_payload)
 correct_table <- assignment_response_table(correct)
 
 if (nrow(correct_table) != settings$queue_size) {
@@ -153,7 +158,7 @@ if (
 
 # Reposting the identical successful request must be a no-op. This is the
 # server-side prerequisite for the future local outbox retry mechanism.
-duplicate <- post_assignment_service(correct_payload)
+duplicate <- post_test_assignment_service(correct_payload)
 if (!isTRUE(duplicate$duplicate)) {
   stop("Reposting the same correct request_id was not recognized as a duplicate.")
 }
@@ -175,7 +180,7 @@ first_try_payload <- make_test_event(
   TRUE,
   make_service_request_id("rolling-first-try")
 )
-first_try <- post_assignment_service(first_try_payload)
+first_try <- post_test_assignment_service(first_try_payload)
 first_try_table <- assignment_response_table(first_try)
 first_try_new_ids <- setdiff(
   first_try_table$assignment_id,
@@ -196,7 +201,7 @@ if (
   stop("An unmastered frontier advanced after an early first-try correct answer.")
 }
 
-final_lookup <- post_assignment_service(
+final_lookup <- post_test_assignment_service(
   assignment_service_payload(
     "get_active_assignments",
     student_id = student_id
