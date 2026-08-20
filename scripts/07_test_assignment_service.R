@@ -10,15 +10,19 @@ if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
 
 bank <- build_question_bank_manifest()
 settings <- validate_assignment_config(APP_CONFIG, bank)
+curriculum <- settings$topic_priority
+first_topic <- curriculum[[1]]
 
 eligible <- bank[
   bank$event == "exercise_result" &
     bank$points > 0 &
-    bank$topic %in% settings$unlocked_topics,
+    bank$topic %in% curriculum,
   ,
   drop = FALSE
 ]
-starter_labels <- eligible$item_label[eligible$starter_question %in% TRUE]
+first_topic_starters <- eligible$item_label[
+  eligible$topic == first_topic & eligible$starter_question %in% TRUE
+]
 
 student_id <- paste0(
   "INSTRUCTOR_ASSIGNMENT_TEST_",
@@ -51,11 +55,11 @@ if (nrow(created_table) != settings$queue_size) {
 if (!all(created_table$assignment_status == "active")) {
   stop("Initial rolling queue contained a non-active assignment row.")
 }
-if (!all(starter_labels %in% created_table$item_label)) {
-  stop("Initial rolling queue did not contain every eligible starter question.")
+if (!all(created_table$topic == first_topic)) {
+  stop("Initial rolling queue advanced beyond the first curriculum topic.")
 }
-if (!all(created_table$topic %in% settings$unlocked_topics)) {
-  stop("Initial rolling queue included a locked topic.")
+if (!all(first_topic_starters %in% created_table$item_label)) {
+  stop("Initial rolling queue did not contain every first-topic starter question.")
 }
 
 created_ids <- created_table$assignment_id
@@ -95,7 +99,9 @@ make_test_event <- function(assignment, correct, request_id) {
     checked = TRUE,
     restore = FALSE,
     queue_size = settings$queue_size,
-    unlocked_topics = unname(settings$unlocked_topics)
+    topic_priority = unname(curriculum),
+    # Transitional PR14 alias.
+    unlocked_topics = unname(curriculum)
   )
 }
 
@@ -133,6 +139,17 @@ if (length(new_ids) != 1L) {
 if (!identical(tail(correct_table$assignment_id, 1), new_ids)) {
   stop("Replacement question was not returned last in oldest-to-newest queue order.")
 }
+retry_replacement <- correct_table[
+  correct_table$assignment_id %in% new_ids,
+  ,
+  drop = FALSE
+]
+if (
+  retry_replacement$topic[[1]] != target$topic[[1]] ||
+  retry_replacement$assignment_reason[[1]] != "same_topic_retry"
+) {
+  stop("A question missed on its first attempt was not replaced from the same topic.")
+}
 
 # Reposting the identical successful request must be a no-op. This is the
 # server-side prerequisite for the future local outbox retry mechanism.
@@ -145,6 +162,40 @@ if (!identical(correct_table$assignment_id, duplicate_table$assignment_id)) {
   stop("Duplicate correct request changed the rolling queue.")
 }
 
+# A first-try correct answer this early cannot satisfy the 10-observation/90%
+# mastery rule, so it should remain at the current frontier unless an older
+# introduced topic is due. This fresh test student has only the first topic.
+fresh_target <- correct_table[
+  correct_table$assignment_id != new_ids[[1]],
+  ,
+  drop = FALSE
+][1, , drop = FALSE]
+first_try_payload <- make_test_event(
+  fresh_target,
+  TRUE,
+  make_service_request_id("rolling-first-try")
+)
+first_try <- post_assignment_service(first_try_payload)
+first_try_table <- assignment_response_table(first_try)
+first_try_new_ids <- setdiff(
+  first_try_table$assignment_id,
+  correct_table$assignment_id
+)
+if (length(first_try_new_ids) != 1L) {
+  stop("First-try correct answer did not create exactly one replacement.")
+}
+first_try_replacement <- first_try_table[
+  first_try_table$assignment_id %in% first_try_new_ids,
+  ,
+  drop = FALSE
+]
+if (
+  first_try_replacement$topic[[1]] != first_topic ||
+  first_try_replacement$assignment_reason[[1]] != "frontier_practice"
+) {
+  stop("An unmastered frontier advanced after an early first-try correct answer.")
+}
+
 final_lookup <- post_assignment_service(
   assignment_service_payload(
     "get_active_assignments",
@@ -152,9 +203,9 @@ final_lookup <- post_assignment_service(
   )
 )
 final_table <- assignment_response_table(final_lookup)
-if (!identical(correct_table$assignment_id, final_table$assignment_id)) {
+if (!identical(first_try_table$assignment_id, final_table$assignment_id)) {
   stop("Active-assignment lookup did not return the current rolling queue.")
 }
 
-message("Rolling assignment service test passed for student ID: ", student_id)
+message("Curriculum-aware rolling assignment service test passed for student ID: ", student_id)
 message("The test rows remain in assignments/events/reviews as an audit trail.")

@@ -32,10 +32,15 @@ vm.runInContext(
       topicRetrievabilitiesFromReviews,
       topicMasterySummary,
       selectAdaptiveQuestions,
+      selectLeastUsedQuestion,
+      curriculumStateFromHistory,
+      chooseCurriculumReplacementTopic,
+      validateQueueSelectionConfig,
       activeAssignmentsFromRows,
       legacyAssignmentMigrationValues,
       FSRS_RATING_AGAIN,
       FSRS_RATING_GOOD,
+      FSRS_DUE_RETRIEVABILITY,
       ASSIGNMENT_STATUS_ACTIVE,
       ASSIGNMENT_STATUS_RETIRED
     };
@@ -73,6 +78,10 @@ const afterWeek = api.fsrsCurrentRetrievability(initialGood, oneWeekLater);
 assert(
   afterWeek > 0 && afterWeek < 1,
   'Retrievability should decay as time passes.'
+);
+assert(
+  api.FSRS_DUE_RETRIEVABILITY === 0.9,
+  'Curriculum routing should use 0.90 as the FSRS due-retrievability threshold.'
 );
 
 const afterAgain = api.fsrsReviewMemoryState(
@@ -175,11 +184,11 @@ assert(
   'A topic with no review history should have zero retrievability.'
 );
 
-function masteryReview(index, correct, topic = 'mastery') {
+function masteryReview(index, correct, topic = 'mastery', dayOffset = 0) {
   return {
-    assignment_id: 'm' + index,
+    assignment_id: topic + '-m' + index,
     topic: topic,
-    first_attempt_at: new Date(Date.UTC(2026, 0, index, 12, 0, 0)),
+    first_attempt_at: new Date(Date.UTC(2026, 0, index + dayOffset, 12, 0, 0)),
     first_attempt_correct: correct,
     attempt_count: correct ? 1 : 2
   };
@@ -309,11 +318,114 @@ const selected = api.selectAdaptiveQuestions(
 );
 assert(
   selected[0].item_label === 'weak_new',
-  'Within a selected topic, the least-exposed literal probe should come first.'
+  'Within the legacy selector, the least-exposed literal probe should come first.'
 );
 assert(
   selected[1].item_label === 'weak_used',
   'Lower topic retrievability should outrank literal exposure count in another topic.'
 );
 
-console.log('FSRS, review-history, and rolling-queue helper tests passed.');
+const leastUsed = api.selectLeastUsedQuestion(
+  [
+    { item_label: 'used_twice', topic: 'frontier' },
+    { item_label: 'used_once', topic: 'frontier' },
+    { item_label: 'fresh', topic: 'frontier' },
+    { item_label: 'other', topic: 'other' }
+  ],
+  [
+    { item_label: 'used_twice' },
+    { item_label: 'used_twice' },
+    { item_label: 'used_once' }
+  ],
+  'frontier',
+  function() { return 0.5; }
+);
+assert(
+  leastUsed.item_label === 'fresh',
+  'Within a selected curriculum topic, an unused literal probe should beat repeated probes.'
+);
+
+const curriculum = ['foundation', 'frontier', 'advanced'];
+const frontierHistory = [
+  { item_label: 'f1', topic: 'foundation' },
+  { item_label: 'x1', topic: 'frontier' }
+];
+const frontierState = api.curriculumStateFromHistory(frontierHistory, curriculum);
+assert(
+  frontierState.frontier_topic === 'frontier',
+  'The curriculum frontier should be the most advanced topic ever introduced.'
+);
+
+const unmasteredFrontierReviews = [];
+for (let ii = 1; ii <= 10; ii++) {
+  unmasteredFrontierReviews.push(masteryReview(ii, ii > 2, 'frontier'));
+}
+const unmasteredRoute = api.chooseCurriculumReplacementTopic(
+  frontierHistory,
+  unmasteredFrontierReviews,
+  curriculum,
+  new Set(['frontier', 'advanced']),
+  new Date('2026-01-10T12:00:00Z')
+);
+assert(
+  unmasteredRoute.topic === 'frontier' && unmasteredRoute.reason === 'frontier_practice',
+  'A first-try success must not advance past an unmastered curriculum frontier.'
+);
+
+const masteredFrontierReviews = [];
+for (let ii = 1; ii <= 10; ii++) {
+  masteredFrontierReviews.push(masteryReview(ii, ii !== 1, 'frontier'));
+}
+const advanceRoute = api.chooseCurriculumReplacementTopic(
+  frontierHistory,
+  masteredFrontierReviews,
+  curriculum,
+  new Set(['frontier', 'advanced']),
+  new Date('2026-01-10T12:00:00Z')
+);
+assert(
+  advanceRoute.topic === 'advanced' && advanceRoute.reason === 'curriculum_advance',
+  'A mastered frontier should permit the next curriculum topic when no introduced topic is due.'
+);
+
+const oldFoundationReview = [
+  {
+    assignment_id: 'foundation-old',
+    topic: 'foundation',
+    first_attempt_at: new Date('2025-12-01T12:00:00Z'),
+    first_attempt_correct: true,
+    attempt_count: 1
+  }
+];
+const dueRoute = api.chooseCurriculumReplacementTopic(
+  frontierHistory,
+  oldFoundationReview.concat(masteredFrontierReviews),
+  curriculum,
+  new Set(['foundation', 'frontier', 'advanced']),
+  new Date('2026-01-10T12:00:00Z')
+);
+assert(
+  dueRoute.topic === 'foundation' && dueRoute.reason === 'fsrs_due',
+  'An FSRS-due introduced topic should take precedence over curriculum advancement.'
+);
+
+const advancedHistory = frontierHistory.concat([
+  { item_label: 'a1', topic: 'advanced' }
+]);
+const advancedState = api.curriculumStateFromHistory(advancedHistory, curriculum);
+assert(
+  advancedState.frontier_topic === 'advanced',
+  'Once a topic has been introduced it must remain on the monotonic curriculum frontier.'
+);
+
+const priorityConfig = api.validateQueueSelectionConfig({
+  queue_size: 10,
+  topic_priority: curriculum,
+  unlocked_topics: curriculum
+});
+assert(
+  priorityConfig.topic_priority.join(',') === curriculum.join(','),
+  'The ordered topic_priority payload should be preserved exactly.'
+);
+
+console.log('FSRS, mastery-frontier, review-history, and rolling-queue helper tests passed.');

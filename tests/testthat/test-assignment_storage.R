@@ -63,43 +63,41 @@ assignment_test_bank <- function() {
   )
 }
 
-test_that("assignment config treats questions_per_week as the temporary queue-size field", {
+test_that("assignment config treats legacy topic field as ordered curriculum", {
   config <- list(
     questions_per_week = 2L,
     unlocked_topics = c("vectors", "lists")
   )
 
-  expect_warning(
-    settings <- validate_assignment_config(config, assignment_test_bank()),
-    "locked topics"
-  )
+  settings <- validate_assignment_config(config, assignment_test_bank())
   expect_equal(settings$queue_size, 2L)
   expect_equal(settings$questions_per_week, 2L)
-  expect_equal(settings$unlocked_topics, c("vectors", "lists"))
+  expect_equal(settings$topic_priority, c("vectors", "lists"))
+  expect_equal(settings$unlocked_topics, settings$topic_priority)
 })
 
-test_that("assignment config rejects unknown or empty unlocked topics", {
+test_that("assignment config rejects unknown or empty curriculum topics", {
   expect_error(
     validate_assignment_config(
       list(questions_per_week = 2L, unlocked_topics = "unknown"),
       assignment_test_bank()
     ),
-    "unknown topic"
+    "unknown curriculum topic"
   )
 
   expect_error(
     assignment_config(list(questions_per_week = 2L, unlocked_topics = character())),
-    "at least one topic"
+    "ordered topic curriculum"
   )
 })
 
-test_that("assignment config requires enough eligible questions and a starter", {
+test_that("assignment config requires enough first-topic questions and a starter", {
   expect_error(
     validate_assignment_config(
-      list(questions_per_week = 3L, unlocked_topics = "vectors"),
+      list(questions_per_week = 3L, unlocked_topics = c("vectors", "lists")),
       assignment_test_bank()
     ),
-    "Only 2"
+    "first curriculum topic"
   )
 
   bank <- assignment_test_bank()
@@ -109,20 +107,20 @@ test_that("assignment config requires enough eligible questions and a starter", 
       list(questions_per_week = 2L, unlocked_topics = c("vectors", "lists")),
       bank
     ),
-    "No starter questions"
+    "no starter questions"
   )
 })
 
-test_that("assignment config requires the starter set to fit in the rolling queue", {
+test_that("assignment config requires first-topic starter set to fit queue", {
   bank <- assignment_test_bank()
-  bank$starter_question[1:3] <- TRUE
+  bank$starter_question[1:2] <- TRUE
 
   expect_error(
     validate_assignment_config(
-      list(questions_per_week = 2L, unlocked_topics = c("vectors", "lists")),
+      list(questions_per_week = 1L, unlocked_topics = c("vectors", "lists")),
       bank
     ),
-    "eligible starter questions"
+    "starter questions in the first curriculum topic"
   )
 })
 
@@ -144,10 +142,11 @@ test_that("active assignment lookup payload contains only lookup fields", {
   expect_equal(payload$week_id, "week-01")
   expect_equal(payload$student_id, "abc123")
   expect_null(payload$queue_size)
+  expect_null(payload$topic_priority)
   expect_null(payload$unlocked_topics)
 })
 
-test_that("rolling assignment payload carries queue selection configuration", {
+test_that("rolling assignment payload carries ordered curriculum configuration", {
   config <- list(
     course_id = "R101",
     week_id = "week-02",
@@ -164,9 +163,10 @@ test_that("rolling assignment payload carries queue selection configuration", {
 
   expect_equal(payload$queue_size, 10L)
   expect_equal(
-    payload$unlocked_topics,
+    payload$topic_priority,
     c("vector_creation", "vector_indexing")
   )
+  expect_equal(payload$unlocked_topics, payload$topic_priority)
   expect_null(payload$questions_per_week)
 })
 
@@ -184,7 +184,7 @@ test_that("assignment service response converts active rows in oldest-first orde
         points = 1,
         question_hash = "bbb",
         assigned_at_utc = "2026-08-17T12:05:00.000Z",
-        assignment_reason = "fsrs_retrievability",
+        assignment_reason = "frontier_practice",
         assignment_status = "active",
         retired_at_utc = "",
         retired_reason = "",
@@ -273,7 +273,7 @@ test_that("active assignment validation rejects retired rows", {
     assignment_reason = "starter",
     assignment_status = "retired",
     retired_at_utc = "t2",
-    retired_reason = "correct",
+    retired_reason = "correct_first_try",
     retired_request_id = "r1",
     stringsAsFactors = FALSE
   )

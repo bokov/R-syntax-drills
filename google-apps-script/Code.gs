@@ -83,6 +83,7 @@ const GRADED_EVENTS = [
 
 const ASSIGNMENT_STATUS_ACTIVE = 'active';
 const ASSIGNMENT_STATUS_RETIRED = 'retired';
+const FSRS_DUE_RETRIEVABILITY = 0.9;
 
 // FSRS-6 default parameters from the Open Spaced Repetition reference
 // implementations. Each canonical topic is one FSRS memory item; literal
@@ -130,7 +131,6 @@ function setupGradeSheet() {
   ensureManagedSheet(ss, QUESTION_BANK_SHEET, QUESTION_BANK_HEADERS);
   const reviewSheet = ensureManagedSheet(ss, REVIEW_SHEET, REVIEW_HEADERS);
 
-  // Upgrade existing workbooks without losing the history already collected.
   if (
     reviewSheet.getLastRow() <= 1 &&
     eventSheet.getLastRow() > 1 &&
@@ -470,7 +470,7 @@ function handleLogEvent(data, ss) {
       4,
       clean(data.request_id, 200)
     );
-    let duplicate = Boolean(existingRequestRow);
+    const duplicate = Boolean(existingRequestRow);
     markServiceTimer(timer, 'idempotency_checked');
 
     if (existingRequestRow) {
@@ -487,9 +487,6 @@ function handleLogEvent(data, ss) {
 
     let activeAssignments = null;
     if (isGraded) {
-      // Rebuild this one compact review row from authoritative event rows. This
-      // makes a retry safe even if the prior request failed after writing events
-      // but before updating the compact index.
       refreshReviewForAssignment(
         eventsSheet,
         reviewsSheet,
@@ -497,12 +494,27 @@ function handleLogEvent(data, ss) {
       );
       markServiceTimer(timer, 'review_refreshed');
 
+      const review = getReviewForAssignment(
+        reviewsSheet,
+        assignmentRecord.assignment.assignment_id
+      );
+      if (!review) {
+        throw new Error(
+          'Compact review was not available after graded event for assignment ' +
+          assignmentRecord.assignment.assignment_id + '.'
+        );
+      }
+
       if (eventCorrectBoolean(data.correct)) {
+        const retiredReason = review.first_attempt_correct
+          ? 'correct_first_try'
+          : 'correct_after_retry';
         retireAssignmentIfActive(
           assignmentsSheet,
           assignmentRecord.row_index,
           clean(data.request_id, 200),
-          serverTimestamp
+          serverTimestamp,
+          retiredReason
         );
         markServiceTimer(timer, 'assignment_retired');
 
@@ -514,7 +526,11 @@ function handleLogEvent(data, ss) {
             reviewsSheet,
             data,
             queueConfig,
-            new Date()
+            new Date(),
+            {
+              retired_assignment: assignmentRecord.assignment,
+              first_attempt_correct: review.first_attempt_correct
+            }
           );
           activeAssignments = ensured.assignments;
           timer.created_count = ensured.created_count;
@@ -613,7 +629,8 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       reviewsSheet,
       data,
       queueConfig,
-      new Date()
+      new Date(),
+      null
     );
 
     timer.result = ensured.created_count ? 'filled' : 'existing';
@@ -638,7 +655,8 @@ function ensureActiveQueue(
   reviewsSheet,
   data,
   queueConfig,
-  asOf
+  asOf,
+  replacementContext
 ) {
   let active = getActiveAssignmentsForStudent(
     assignmentsSheet,
@@ -657,85 +675,85 @@ function ensureActiveQueue(
   }
 
   const bank = getQuestionBank(questionBankSheet);
-  const unlocked = new Set(queueConfig.unlocked_topics);
-  const knownTopics = new Set(bank.map(function(item) { return item.topic; }));
-  const unknownTopics = queueConfig.unlocked_topics.filter(function(topic) {
-    return !knownTopics.has(topic);
-  });
-  if (unknownTopics.length) {
-    throw new Error(
-      'Unknown unlocked topic(s): ' + unknownTopics.join(', ') +
-      '. Sync question_bank and check APP_CONFIG$unlocked_topics.'
-    );
-  }
+  validateCurriculumAgainstBank(bank, queueConfig.topic_priority);
 
+  const curriculum = new Set(queueConfig.topic_priority);
   const eligible = bank.filter(function(item) {
     return (
       item.event === 'exercise_result' &&
       item.points > 0 &&
-      unlocked.has(item.topic)
+      curriculum.has(item.topic)
     );
   });
-  if (eligible.length < queueConfig.queue_size) {
-    throw new Error(
-      'Only ' + eligible.length +
-      ' scored exercise question(s) are available in unlocked topics, but queue_size ' +
-      queueConfig.queue_size + ' was requested.'
-    );
-  }
 
   const history = getAssignmentsForStudentHistory(
     assignmentsSheet,
     data.course_id,
     data.student_id
   );
+  validateHistoryAgainstCurriculum(history, queueConfig.topic_priority);
+
   const activeLabels = new Set(active.map(function(item) { return item.item_label; }));
   let candidates = eligible.filter(function(item) {
     return !activeLabels.has(item.item_label);
   });
   const needed = queueConfig.queue_size - active.length;
-  if (candidates.length < needed) {
-    throw new Error('Not enough distinct eligible questions to fill the active queue.');
-  }
 
   const selected = [];
+  const workingHistory = history.slice();
 
   if (!history.length) {
-    const starters = candidates.filter(function(item) { return item.starter_question; });
+    const firstTopic = queueConfig.topic_priority[0];
+    const firstTopicCandidates = candidates.filter(function(item) {
+      return item.topic === firstTopic;
+    });
+    if (firstTopicCandidates.length < needed) {
+      throw new Error(
+        'The first curriculum topic, ' + firstTopic + ', has only ' +
+        firstTopicCandidates.length + ' distinct available question(s), but ' +
+        needed + ' are needed to fill the initial queue.'
+      );
+    }
+
+    const starters = firstTopicCandidates.filter(function(item) {
+      return item.starter_question;
+    });
     if (!starters.length) {
       throw new Error(
-        'No starter questions are eligible. Mark starter_question=TRUE on at least one ' +
-        'scored exercise in an unlocked topic and sync question_bank.'
+        'The first curriculum topic has no starter questions. Mark at least one ' +
+        'scored exercise in ' + firstTopic + ' as starter_question and sync question_bank.'
       );
     }
     if (starters.length > queueConfig.queue_size) {
       throw new Error(
-        'There are ' + starters.length + ' eligible starter questions but queue_size is only ' +
-        queueConfig.queue_size + '. Increase the queue or reduce the starter set.'
+        'There are ' + starters.length + ' starter questions in the first curriculum topic ' +
+        'but queue_size is only ' + queueConfig.queue_size + '.'
       );
     }
 
-    starters.forEach(function(item) {
+    starters.slice(0, needed).forEach(function(item) {
       selected.push({ item: item, reason: 'starter' });
+      workingHistory.push({ item_label: item.item_label, topic: item.topic });
     });
-    const selectedLabels = new Set(starters.map(function(item) { return item.item_label; }));
+
+    const selectedLabels = new Set(selected.map(function(x) { return x.item.item_label; }));
     candidates = candidates.filter(function(item) {
       return !selectedLabels.has(item.item_label);
     });
 
-    const remaining = needed - selected.length;
-    if (remaining > 0) {
-      const retrievabilities = {};
-      queueConfig.unlocked_topics.forEach(function(topic) {
-        retrievabilities[topic] = 0;
-      });
-      selectAdaptiveQuestions(
+    while (selected.length < needed) {
+      const item = selectLeastUsedQuestion(
         candidates,
-        history,
-        retrievabilities,
-        remaining
-      ).forEach(function(item) {
-        selected.push({ item: item, reason: 'initial_fill' });
+        workingHistory,
+        firstTopic
+      );
+      if (!item) {
+        throw new Error('Not enough first-topic questions to complete the initial queue.');
+      }
+      selected.push({ item: item, reason: 'initial_fill' });
+      workingHistory.push({ item_label: item.item_label, topic: item.topic });
+      candidates = candidates.filter(function(candidate) {
+        return candidate.item_label !== item.item_label;
       });
     }
   } else {
@@ -744,19 +762,48 @@ function ensureActiveQueue(
       data.course_id,
       data.student_id
     );
-    const topicRetrievabilities = topicRetrievabilitiesFromReviews(
-      reviews,
-      queueConfig.unlocked_topics,
-      asOf
-    );
-    selectAdaptiveQuestions(
-      candidates,
-      history,
-      topicRetrievabilities,
-      needed
-    ).forEach(function(item) {
-      selected.push({ item: item, reason: 'fsrs_retrievability' });
-    });
+
+    while (selected.length < needed) {
+      let route;
+      if (
+        selected.length === 0 &&
+        replacementContext &&
+        replacementContext.first_attempt_correct === false
+      ) {
+        route = {
+          topic: replacementContext.retired_assignment.topic,
+          reason: 'same_topic_retry'
+        };
+      } else {
+        const availableTopics = new Set(candidates.map(function(item) {
+          return item.topic;
+        }));
+        route = chooseCurriculumReplacementTopic(
+          workingHistory,
+          reviews,
+          queueConfig.topic_priority,
+          availableTopics,
+          asOf
+        );
+      }
+
+      const item = selectLeastUsedQuestion(
+        candidates,
+        workingHistory,
+        route.topic
+      );
+      if (!item) {
+        throw new Error(
+          'No distinct replacement question is available in selected topic ' + route.topic + '.'
+        );
+      }
+
+      selected.push({ item: item, reason: route.reason });
+      workingHistory.push({ item_label: item.item_label, topic: item.topic });
+      candidates = candidates.filter(function(candidate) {
+        return candidate.item_label !== item.item_label;
+      });
+    }
   }
 
   if (selected.length !== needed) {
@@ -777,6 +824,196 @@ function ensureActiveQueue(
   }
 
   return { assignments: active, created_count: selected.length };
+}
+
+function validateCurriculumAgainstBank(bank, topicPriority) {
+  const scoredTopics = new Set(
+    bank
+      .filter(function(item) {
+        return item.event === 'exercise_result' && item.points > 0;
+      })
+      .map(function(item) { return item.topic; })
+  );
+
+  const missing = topicPriority.filter(function(topic) {
+    return !scoredTopics.has(topic);
+  });
+  if (missing.length) {
+    throw new Error(
+      'Curriculum topic(s) contain no scored exercise questions: ' + missing.join(', ') + '.'
+    );
+  }
+}
+
+function validateHistoryAgainstCurriculum(history, topicPriority) {
+  const known = new Set(topicPriority);
+  const unknown = Array.from(new Set(
+    history
+      .map(function(assignment) { return String(assignment.topic || ''); })
+      .filter(function(topic) { return topic && !known.has(topic); })
+  ));
+  if (unknown.length) {
+    throw new Error(
+      'Historical assignment topic(s) are absent from the configured curriculum: ' +
+      unknown.join(', ') + '. Keep previously introduced topics in the curriculum order.'
+    );
+  }
+}
+
+function curriculumStateFromHistory(history, topicPriority) {
+  validateHistoryAgainstCurriculum(history, topicPriority);
+
+  const introduced = new Set();
+  history.forEach(function(assignment) {
+    if (topicPriority.includes(assignment.topic)) introduced.add(assignment.topic);
+  });
+
+  if (!introduced.size) {
+    return {
+      introduced_topics: [],
+      frontier_topic: topicPriority[0],
+      frontier_index: 0
+    };
+  }
+
+  let frontierIndex = 0;
+  topicPriority.forEach(function(topic, index) {
+    if (introduced.has(topic) && index > frontierIndex) frontierIndex = index;
+  });
+
+  return {
+    introduced_topics: topicPriority.filter(function(topic) {
+      return introduced.has(topic);
+    }),
+    frontier_topic: topicPriority[frontierIndex],
+    frontier_index: frontierIndex
+  };
+}
+
+function chooseCurriculumReplacementTopic(
+  history,
+  reviews,
+  topicPriority,
+  availableTopics,
+  asOf
+) {
+  const state = curriculumStateFromHistory(history, topicPriority);
+  const introduced = state.introduced_topics;
+
+  if (!introduced.length) {
+    return { topic: topicPriority[0], reason: 'frontier_practice' };
+  }
+
+  const retrievabilities = topicRetrievabilitiesFromReviews(
+    reviews,
+    introduced,
+    asOf
+  );
+
+  const priorityIndex = {};
+  topicPriority.forEach(function(topic, index) {
+    priorityIndex[topic] = index;
+  });
+
+  const due = introduced
+    .filter(function(topic) {
+      return (
+        availableTopics.has(topic) &&
+        retrievabilities[topic] < FSRS_DUE_RETRIEVABILITY
+      );
+    })
+    .sort(function(aa, bb) {
+      if (retrievabilities[aa] !== retrievabilities[bb]) {
+        return retrievabilities[aa] - retrievabilities[bb];
+      }
+      return priorityIndex[aa] - priorityIndex[bb];
+    });
+
+  if (due.length) {
+    return {
+      topic: due[0],
+      reason: 'fsrs_due',
+      retrievability: retrievabilities[due[0]]
+    };
+  }
+
+  const frontierMastery = topicMasterySummary(
+    reviews,
+    state.frontier_topic
+  );
+  const nextIndex = state.frontier_index + 1;
+
+  if (
+    frontierMastery.mastered &&
+    nextIndex < topicPriority.length &&
+    availableTopics.has(topicPriority[nextIndex])
+  ) {
+    return {
+      topic: topicPriority[nextIndex],
+      reason: 'curriculum_advance'
+    };
+  }
+
+  if (availableTopics.has(state.frontier_topic)) {
+    return {
+      topic: state.frontier_topic,
+      reason: 'frontier_practice'
+    };
+  }
+
+  const introducedAvailable = introduced
+    .filter(function(topic) { return availableTopics.has(topic); })
+    .sort(function(aa, bb) {
+      if (retrievabilities[aa] !== retrievabilities[bb]) {
+        return retrievabilities[aa] - retrievabilities[bb];
+      }
+      return priorityIndex[bb] - priorityIndex[aa];
+    });
+
+  if (introducedAvailable.length) {
+    return {
+      topic: introducedAvailable[0],
+      reason: 'introduced_practice'
+    };
+  }
+
+  if (frontierMastery.mastered && nextIndex < topicPriority.length) {
+    throw new Error(
+      'The next curriculum topic, ' + topicPriority[nextIndex] +
+      ', has no distinct question available for this queue.'
+    );
+  }
+
+  throw new Error(
+    'No distinct question is available without advancing past the unmastered curriculum frontier.'
+  );
+}
+
+function selectLeastUsedQuestion(eligible, history, topic, randomFn) {
+  const exposureCounts = {};
+  history.forEach(function(assignment) {
+    const label = String(assignment.item_label);
+    exposureCounts[label] = (exposureCounts[label] || 0) + 1;
+  });
+
+  const random = randomFn || Math.random;
+  const ranked = eligible
+    .filter(function(item) { return item.topic === topic; })
+    .map(function(item) {
+      return {
+        item: item,
+        exposure_count: exposureCounts[item.item_label] || 0,
+        random_key: random()
+      };
+    })
+    .sort(function(aa, bb) {
+      if (aa.exposure_count !== bb.exposure_count) {
+        return aa.exposure_count - bb.exposure_count;
+      }
+      return aa.random_key - bb.random_key;
+    });
+
+  return ranked.length ? ranked[0].item : null;
 }
 
 function appendActiveAssignments(assignmentsSheet, selected, data, assignedAt) {
@@ -816,7 +1053,8 @@ function retireAssignmentIfActive(
   assignmentsSheet,
   rowIndex,
   requestId,
-  retiredAt
+  retiredAt,
+  retiredReason
 ) {
   const row = assignmentsSheet
     .getRange(rowIndex, 1, 1, ASSIGNMENT_HEADERS.length)
@@ -833,12 +1071,13 @@ function retireAssignmentIfActive(
   assignmentsSheet.getRange(rowIndex, 11, 1, 4).setValues([[
     ASSIGNMENT_STATUS_RETIRED,
     retiredAt,
-    'correct',
+    retiredReason || 'correct',
     requestId
   ]]);
   return true;
 }
 
+// Retained for compatibility/tests until PR15 removes the old all-topic selector.
 function selectAdaptiveQuestions(
   eligible,
   history,
@@ -1059,6 +1298,16 @@ function refreshReviewForAssignment(eventsSheet, reviewsSheet, assignment) {
       .getRange(reviewsSheet.getLastRow() + 1, 1, 1, REVIEW_HEADERS.length)
       .setValues([compact[0]]);
   }
+}
+
+function getReviewForAssignment(reviewsSheet, assignmentId) {
+  const rowIndex = findSheetRowByValue(reviewsSheet, 1, assignmentId);
+  if (!rowIndex) return null;
+  return reviewRowToObject(
+    reviewsSheet
+      .getRange(rowIndex, 1, 1, REVIEW_HEADERS.length)
+      .getValues()[0]
+  );
 }
 
 function getGradedEventRowsForAssignment(eventsSheet, assignment) {
@@ -1290,22 +1539,34 @@ function validateQueueSelectionConfig(data) {
     throw new Error('queue_size must be an integer from 1 through 500.');
   }
 
-  if (!Array.isArray(data.unlocked_topics) || !data.unlocked_topics.length) {
-    throw new Error('unlocked_topics must be a non-empty array.');
+  let rawTopics = data.topic_priority;
+  if (!Array.isArray(rawTopics) || !rawTopics.length) {
+    rawTopics = data.unlocked_topics;
+  }
+  if (!Array.isArray(rawTopics) || !rawTopics.length) {
+    throw new Error('topic_priority must be a non-empty ordered array.');
   }
 
-  const topics = data.unlocked_topics.map(function(x) {
+  const topics = rawTopics.map(function(x) {
     return String(x).trim();
   });
   if (topics.some(function(x) { return !x || x.length > 300; })) {
-    throw new Error('Each unlocked topic must be a non-empty string of at most 300 characters.');
+    throw new Error('Each curriculum topic must be a non-empty string of at most 300 characters.');
   }
   if (new Set(topics).size !== topics.length) {
-    throw new Error('unlocked_topics must not contain duplicates.');
+    throw new Error('topic_priority must not contain duplicates.');
+  }
+
+  if (Array.isArray(data.topic_priority) && Array.isArray(data.unlocked_topics)) {
+    const legacy = data.unlocked_topics.map(function(x) { return String(x).trim(); });
+    if (JSON.stringify(legacy) !== JSON.stringify(topics)) {
+      throw new Error('topic_priority and transitional unlocked_topics disagree.');
+    }
   }
 
   return {
     queue_size: queueSize,
+    topic_priority: topics,
     unlocked_topics: topics
   };
 }
@@ -1315,10 +1576,13 @@ function optionalQueueSelectionConfig(data) {
     typeof data.queue_size === 'undefined' &&
     typeof data.questions_per_week === 'undefined'
   );
-  const hasTopics = typeof data.unlocked_topics !== 'undefined';
+  const hasTopics = (
+    typeof data.topic_priority !== 'undefined' ||
+    typeof data.unlocked_topics !== 'undefined'
+  );
   if (!hasSize && !hasTopics) return null;
   if (!hasSize || !hasTopics) {
-    throw new Error('queue_size and unlocked_topics must be supplied together.');
+    throw new Error('queue_size and topic_priority must be supplied together.');
   }
   return validateQueueSelectionConfig(data);
 }
@@ -1329,8 +1593,6 @@ function validateCommonPayload(data) {
   }
   if (!data.request_id) throw new Error('request_id is required.');
   if (!data.course_id) throw new Error('course_id is required.');
-  // week_id remains as provenance during the transition away from weekly
-  // assignment semantics. Active-queue identity no longer depends on it.
   if (!data.week_id) throw new Error('week_id is required.');
 }
 
@@ -1617,7 +1879,6 @@ function clean(value, maxLength) {
   let text = String(value);
   if (text.length > maxLength) text = text.substring(0, maxLength);
 
-  // Prevent spreadsheet-formula injection from student-controlled text.
   if (/^[=+\-@]/.test(text)) text = "'" + text;
   return text;
 }

@@ -105,7 +105,9 @@ post_log_event <- function(
   if (graded_event) {
     settings <- assignment_config(config)
     payload$queue_size <- settings$queue_size
-    payload$unlocked_topics <- unname(settings$unlocked_topics)
+    payload$topic_priority <- unname(settings$topic_priority)
+    # Transitional protocol alias; PR15 removes the old terminology.
+    payload$unlocked_topics <- unname(settings$topic_priority)
   }
 
   if (!nzchar(config$webhook_url) || grepl("PASTE_", config$webhook_url, fixed = TRUE)) {
