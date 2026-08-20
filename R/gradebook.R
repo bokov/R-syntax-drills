@@ -10,6 +10,71 @@ require_columns <- function(data, required, object_name) {
   invisible(TRUE)
 }
 
+GRADEBOOK_ASSIGNMENT_COLUMNS <- c(
+  "assignment_id",
+  "course_id",
+  "week_id",
+  "student_id",
+  "item_label",
+  "topic",
+  "points",
+  "question_hash",
+  "assigned_at_utc",
+  "assignment_reason"
+)
+
+validate_gradebook_assignment_metadata <- function(assignments, manifest) {
+  require_columns(assignments, GRADEBOOK_ASSIGNMENT_COLUMNS, "Assignments")
+
+  manifest_required <- c("item_label", "topic", "points", "question_hash")
+  require_columns(manifest, manifest_required, "Question manifest")
+
+  if (anyDuplicated(assignments$assignment_id)) {
+    stop("Assignments contain duplicate assignment_id values.")
+  }
+  if (
+    anyNA(assignments$assignment_id) || any(!nzchar(assignments$assignment_id)) ||
+    anyNA(assignments$item_label) || any(!nzchar(assignments$item_label)) ||
+    anyNA(assignments$topic) || any(!nzchar(assignments$topic)) ||
+    anyNA(assignments$question_hash) || any(!nzchar(assignments$question_hash)) ||
+    anyNA(assignments$points)
+  ) {
+    stop("Assignments contain missing required metadata.")
+  }
+
+  missing_from_manifest <- setdiff(assignments$item_label, manifest$item_label)
+  if (length(missing_from_manifest)) {
+    stop(
+      "Persisted assignment question(s) are absent from the current question manifest: ",
+      paste(missing_from_manifest, collapse = ", "),
+      "."
+    )
+  }
+
+  expected <- manifest[
+    match(assignments$item_label, manifest$item_label),
+    ,
+    drop = FALSE
+  ]
+
+  if (
+    any(assignments$topic != expected$topic) ||
+    !isTRUE(all.equal(
+      as.numeric(assignments$points),
+      as.numeric(expected$points),
+      check.attributes = FALSE
+    )) ||
+    any(assignments$question_hash != expected$question_hash)
+  ) {
+    stop(
+      "Persistent assignment metadata do not match the current question manifest. ",
+      "Do not change a canonical question under an item_label after it has been assigned."
+    )
+  }
+
+  assignments
+}
+
 build_gradebook_tables <- function(
   events,
   assignments,
@@ -111,7 +176,7 @@ build_gradebook_tables <- function(
   }
 
   if (is.null(assignments)) assignments <- empty_assignment_table()
-  require_columns(assignments, ASSIGNMENT_COLUMNS, "Assignments")
+  require_columns(assignments, GRADEBOOK_ASSIGNMENT_COLUMNS, "Assignments")
 
   assignments <- assignments |>
     dplyr::mutate(
@@ -145,13 +210,6 @@ build_gradebook_tables <- function(
   }
   if (any(is.na(assignments$points) | assignments$points < 0)) {
     stop("Assignments contain invalid points values.")
-  }
-
-  duplicate_assignment_items <- assignments |>
-    dplyr::count(.data$student_id, .data$item_label, name = "n") |>
-    dplyr::filter(.data$n > 1)
-  if (nrow(duplicate_assignment_items)) {
-    stop("Assignments contain duplicate student/week/item exposures.")
   }
   if (anyDuplicated(assignments$assignment_id)) {
     stop("Assignments contain duplicate assignment_id values.")
@@ -197,9 +255,9 @@ build_gradebook_tables <- function(
   assignments_for_students <- assignments |>
     dplyr::semi_join(students, by = "student_id")
 
-  # Persisted assignment rows are the only grading denominator. The gradebook
-  # validates them but never manufactures an assignment for a roster/event
-  # student who has not yet loaded the current week.
+  # Historical assignment rows, including retired rolling-queue exposures, are
+  # valid gradebook/reporting input. Only the player-facing service requires all
+  # returned rows to have assignment_status == "active".
   if (nrow(assignments_for_students)) {
     by_student <- split(
       assignments_for_students,
@@ -208,7 +266,7 @@ build_gradebook_tables <- function(
     )
     invisible(lapply(
       by_student,
-      validate_persisted_assignments,
+      validate_gradebook_assignment_metadata,
       manifest = manifest
     ))
   }
@@ -238,32 +296,38 @@ build_gradebook_tables <- function(
 
   effective_assignments <- assigned_scored
 
-  duplicate_effective <- effective_assignments |>
-    dplyr::count(.data$student_id, .data$item_label, name = "n") |>
-    dplyr::filter(.data$n > 1)
-  if (nrow(duplicate_effective)) {
-    stop("Effective assignments contain duplicate student/item rows.")
+  if (anyDuplicated(effective_assignments$assignment_id)) {
+    stop("Effective assignments contain duplicate assignment_id values.")
   }
-
-  persisted_keys <- assignments_for_students |>
-    dplyr::select(student_id, item_label, persisted_assignment_id = assignment_id)
 
   graded_event_candidates <- events |>
     dplyr::filter(
       !is.na(.data$student_id),
       !is.na(.data$item_label),
       .data$event %in% c("exercise_result", "question_submission")
-    ) |>
-    dplyr::left_join(
-      persisted_keys,
-      by = c("student_id", "item_label")
     )
 
-  bad_assignment_ids <- graded_event_candidates |>
+  # Normal rolling-queue events have assignment_id and are matched to one exact
+  # exposure. A literal question may legitimately occur in more than one
+  # historical exposure, so student_id + item_label is no longer a unique key.
+  persisted_by_id <- assignments_for_students |>
+    dplyr::select(
+      student_id,
+      assignment_id,
+      persisted_item_label = item_label
+    )
+
+  explicit_events <- graded_event_candidates |>
+    dplyr::filter(!is.na(.data$assignment_id)) |>
+    dplyr::left_join(
+      persisted_by_id,
+      by = c("student_id", "assignment_id")
+    )
+
+  bad_assignment_ids <- explicit_events |>
     dplyr::filter(
-      !is.na(.data$assignment_id),
-      is.na(.data$persisted_assignment_id) |
-        .data$assignment_id != .data$persisted_assignment_id
+      is.na(.data$persisted_item_label) |
+        .data$item_label != .data$persisted_item_label
     )
 
   if (nrow(bad_assignment_ids)) {
@@ -274,22 +338,64 @@ build_gradebook_tables <- function(
     )
   }
 
-  attempt_events <- graded_event_candidates |>
+  explicit_attempts <- explicit_events |>
     dplyr::filter(
-      is.na(.data$assignment_id) |
-        (!is.na(.data$persisted_assignment_id) &
-          .data$assignment_id == .data$persisted_assignment_id)
+      !is.na(.data$persisted_item_label),
+      .data$item_label == .data$persisted_item_label
     ) |>
+    dplyr::select(-persisted_item_label)
+
+  # Legacy events written before assignment_id existed can still be rescued when
+  # exactly one persisted exposure matches that student + literal question. If
+  # the same literal has multiple exposures, guessing would misattribute an
+  # attempt, so those legacy events are excluded instead.
+  unique_legacy_keys <- assignments_for_students |>
+    dplyr::group_by(.data$student_id, .data$item_label) |>
+    dplyr::filter(dplyr::n() == 1L) |>
+    dplyr::ungroup() |>
+    dplyr::select(
+      student_id,
+      item_label,
+      persisted_assignment_id = assignment_id
+    )
+
+  legacy_events <- graded_event_candidates |>
+    dplyr::filter(is.na(.data$assignment_id)) |>
+    dplyr::left_join(
+      unique_legacy_keys,
+      by = c("student_id", "item_label")
+    )
+
+  ambiguous_legacy <- legacy_events |>
+    dplyr::filter(is.na(.data$persisted_assignment_id))
+  if (nrow(ambiguous_legacy)) {
+    warning(
+      nrow(ambiguous_legacy),
+      " graded event(s) without assignment_id could not be uniquely linked to a persisted exposure and were excluded.",
+      call. = FALSE
+    )
+  }
+
+  legacy_attempts <- legacy_events |>
+    dplyr::filter(!is.na(.data$persisted_assignment_id)) |>
+    dplyr::mutate(assignment_id = .data$persisted_assignment_id) |>
     dplyr::select(-persisted_assignment_id)
+
+  attempt_events <- dplyr::bind_rows(explicit_attempts, legacy_attempts)
 
   attempts <- attempt_events |>
     dplyr::inner_join(
       effective_assignments |>
-        dplyr::select(student_id, item_label, assignment_event = event),
-      by = c("student_id", "item_label")
+        dplyr::select(
+          student_id,
+          assignment_id,
+          item_label,
+          assignment_event = event
+        ),
+      by = c("student_id", "assignment_id", "item_label")
     ) |>
     dplyr::filter(.data$event == .data$assignment_event) |>
-    dplyr::group_by(.data$student_id, .data$item_label) |>
+    dplyr::group_by(.data$student_id, .data$assignment_id, .data$item_label) |>
     dplyr::summarise(
       attempts = dplyr::n(),
       ever_correct = any(.data$correct_bool, na.rm = TRUE),
@@ -303,7 +409,10 @@ build_gradebook_tables <- function(
 
   item_detail <- effective_assignments |>
     dplyr::left_join(students, by = "student_id") |>
-    dplyr::left_join(attempts, by = c("student_id", "item_label")) |>
+    dplyr::left_join(
+      attempts,
+      by = c("student_id", "assignment_id", "item_label")
+    ) |>
     dplyr::mutate(
       attempts = dplyr::coalesce(.data$attempts, 0L),
       ever_correct = dplyr::coalesce(.data$ever_correct, FALSE),
