@@ -269,3 +269,57 @@ test_that("roster students without persisted rows have no grading denominator", 
   expect_equal(nrow(tables$item_detail), 0)
   expect_equal(nrow(tables$effective_assignments), 0)
 })
+
+test_that("retired rolling assignments remain valid historical gradebook rows", {
+  assignments <- gradebook_test_assignments(c("q1", "q2"))
+  assignments$assignment_status <- c("retired", "active")
+  assignments$retired_at_utc <- c("2026-08-17T12:05:00Z", "")
+  assignments$retired_reason <- c("correct", "")
+  assignments$retired_request_id <- c("req-retire-q1", "")
+  events <- gradebook_test_events(
+    item_label = "q1",
+    correct = "true",
+    assignment_id = "abc123-a1"
+  )
+
+  tables <- build_gradebook_tables(
+    events = events,
+    assignments = assignments,
+    manifest = gradebook_test_manifest(),
+    course_id = "R101",
+    week_id = "week-01"
+  )
+
+  expect_equal(tables$gradebook$points_possible, 2)
+  expect_equal(tables$gradebook$points_earned, 1)
+  expect_setequal(tables$item_detail$assignment_id, c("abc123-a1", "abc123-a2"))
+})
+
+test_that("repeated literal questions remain distinct rolling exposures", {
+  assignments <- gradebook_test_assignments(c("q1", "q1"))
+  assignments$assignment_id <- c("abc123-old-q1", "abc123-new-q1")
+  assignments$assigned_at_utc <- c(
+    "2026-08-17T12:00:00Z",
+    "2026-08-17T12:10:00Z"
+  )
+  events <- gradebook_test_events(
+    item_label = c("q1", "q1"),
+    correct = c("true", "false"),
+    assignment_id = c("abc123-old-q1", "abc123-new-q1")
+  )
+
+  tables <- build_gradebook_tables(
+    events = events,
+    assignments = assignments,
+    manifest = gradebook_test_manifest(),
+    course_id = "R101",
+    week_id = "week-01"
+  )
+
+  q1 <- tables$item_detail[tables$item_detail$item_label == "q1", , drop = FALSE]
+  expect_equal(nrow(q1), 2)
+  expect_setequal(q1$assignment_id, c("abc123-old-q1", "abc123-new-q1"))
+  expect_equal(sum(q1$attempts), 2)
+  expect_equal(sum(q1$points_earned), 1)
+  expect_equal(tables$gradebook$points_possible, 2)
+})
