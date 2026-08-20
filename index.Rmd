@@ -46,7 +46,7 @@ session$userData$assignment_ids <- shiny::reactiveVal(
   stats::setNames(character(), character())
 )
 session$userData$logging_status <- shiny::reactiveVal(
-  list(ok = NA, message = "Enter your student ID to load this week's assignment.")
+  list(ok = NA, message = "Enter your student ID to load your active drills.")
 )
 
 clear_assignment_player <- function() {
@@ -81,21 +81,16 @@ shiny::observeEvent(input$save_identity, {
     clear_assignment_player()
     session$userData$logging_status(list(
       ok = FALSE,
-      message = paste("Could not load your assignment:", conditionMessage(assignments))
+      message = paste("Could not load your drills:", conditionMessage(assignments))
     ))
     return()
   }
 
-  session$userData$assignment_ids(assignment_id_map(assignments))
   session$userData$identity(list(
     student_id = student_id,
     student_name = student_name
   ))
-
-  session$sendCustomMessage(
-    "assignment:set",
-    list(item_labels = unname(as.character(assignments$item_label)))
-  )
+  set_active_assignment_player(session, assignments)
 
   post_log_event(
     session,
@@ -120,19 +115,19 @@ output$identity_status <- shiny::renderUI({
 
 ## Before you begin
 
-Your responses are graded immediately and recorded for your instructor. Enter the same student ID your course uses for grading. Your assignment is fixed once it is created for the current week; reopening the app with the same ID returns the same questions.
+Your responses are graded immediately and recorded for your instructor. Enter the same student ID each time. A question stays in your active drill list until you answer it correctly; it is then replaced by another question selected from your learning history.
 
 ```{r identity-ui, echo=FALSE}
 shiny::wellPanel(
   shiny::textInput("student_id", "Student ID", placeholder = "e.g., abc123"),
   shiny::textInput("student_name", "Name (optional)", placeholder = "e.g., Ada Lovelace"),
-  shiny::actionButton("save_identity", "Save identity and load assignment"),
+  shiny::actionButton("save_identity", "Save identity and load drills"),
   shiny::br(), shiny::br(),
   shiny::uiOutput("identity_status")
 )
 ```
 
-## Your assignment
+## Your drills
 
 <div id="assignment-waiting" class="alert alert-info">
 Your questions will appear here after you save a valid student ID.
