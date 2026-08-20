@@ -412,6 +412,7 @@ function handleLogEvent(data, ss) {
   if (!eventsSheet) throw new Error('The events sheet does not exist.');
 
   const isGraded = GRADED_EVENTS.includes(String(data.event));
+  const isCorrect = isGraded && eventCorrectBoolean(data.correct);
   let assignmentsSheet = null;
   let reviewsSheet = null;
   let questionBankSheet = null;
@@ -454,109 +455,167 @@ function handleLogEvent(data, ss) {
   ];
 
   markServiceTimer(timer, 'sheets_ready');
+
+  // Slow Spreadsheet reads happen before the global write lock. Concurrent
+  // requests reconcile only rows appended after these snapshots once they hold
+  // the lock. Existing assignment status is rechecked only when correctness can
+  // retire the submitted assignment.
+  const eventSnapshot = readSheetSnapshot(eventsSheet, EVENT_HEADERS.length);
+  markServiceTimer(timer, 'events_snapshotted');
+
+  let assignmentSnapshot = null;
+  let reviewIndexSnapshot = null;
+  let assignmentRecord = null;
+  let queueConfig = null;
+  let bank = null;
+
+  if (isGraded) {
+    assignmentSnapshot = readSheetSnapshot(
+      assignmentsSheet,
+      ASSIGNMENT_HEADERS.length
+    );
+    assignmentRecord = getAssignmentRecordByIdFromRows(
+      assignmentSnapshot.rows,
+      clean(data.assignment_id, 300)
+    );
+    if (!assignmentRecord) {
+      throw new Error('Unknown assignment_id for graded event.');
+    }
+    validateGradedEventAgainstAssignment(data, assignmentRecord.assignment);
+    markServiceTimer(timer, 'assignment_validated');
+
+    reviewIndexSnapshot = readColumnSnapshot(reviewsSheet, 1);
+    markServiceTimer(timer, 'review_index_snapshotted');
+
+    if (isCorrect) {
+      queueConfig = optionalQueueSelectionConfig(data);
+      if (queueConfig) {
+        bank = getQuestionBank(questionBankSheet);
+        markServiceTimer(timer, 'question_bank_loaded');
+      }
+    }
+  }
+
+  const preexistingRequest = findEventRowByRequestIdFromRows(
+    eventSnapshot.rows,
+    clean(data.request_id, 200)
+  );
+  if (preexistingRequest) {
+    validateDuplicateEventMatches(preexistingRequest.row, data);
+  }
+  markServiceTimer(timer, 'idempotency_prechecked');
+
   const lock = LockService.getScriptLock();
+  timer.lock_requested_at_ms = Date.now();
   lock.waitLock(10000);
+  timer.lock_acquired_at_ms = Date.now();
+  timer.lock_wait_ms = timer.lock_acquired_at_ms - timer.lock_requested_at_ms;
   markServiceTimer(timer, 'lock_acquired');
 
   try {
-    let assignmentRecord = null;
+    extendSheetSnapshot(eventsSheet, eventSnapshot, EVENT_HEADERS.length);
     if (isGraded) {
-      assignmentRecord = getAssignmentRecordById(
+      extendSheetSnapshot(
         assignmentsSheet,
-        clean(data.assignment_id, 300)
+        assignmentSnapshot,
+        ASSIGNMENT_HEADERS.length
       );
-      if (!assignmentRecord) {
-        throw new Error('Unknown assignment_id for graded event.');
-      }
-      validateGradedEventAgainstAssignment(data, assignmentRecord.assignment);
-      markServiceTimer(timer, 'assignment_validated');
+      extendColumnSnapshot(reviewsSheet, reviewIndexSnapshot, 1);
     }
+    markServiceTimer(timer, 'snapshots_reconciled');
 
-    const existingRequestRow = findSheetRowByValue(
-      eventsSheet,
-      4,
+    const existingRequest = findEventRowByRequestIdFromRows(
+      eventSnapshot.rows,
       clean(data.request_id, 200)
     );
-    const duplicate = Boolean(existingRequestRow);
-    markServiceTimer(timer, 'idempotency_checked');
-
-    let existingReviewRecord = null;
-    let repairReviewFromEvents = duplicate;
-    if (isGraded && !duplicate) {
-      existingReviewRecord = getReviewRecordByAssignmentId(
-        reviewsSheet,
-        assignmentRecord.assignment.assignment_id
-      );
-      markServiceTimer(timer, 'review_index_checked');
-      if (
-        !existingReviewRecord &&
-        hasEventForAssignment(eventsSheet, assignmentRecord.assignment.assignment_id)
-      ) {
-        repairReviewFromEvents = true;
-        markServiceTimer(timer, 'prior_assignment_event_found');
-      }
-    }
-
-    if (existingRequestRow) {
-      validateDuplicateEventMatches(
-        eventsSheet.getRange(existingRequestRow, 1, 1, EVENT_HEADERS.length).getValues()[0],
-        data
-      );
+    const duplicate = Boolean(existingRequest);
+    if (duplicate) {
+      validateDuplicateEventMatches(existingRequest.row, data);
       markServiceTimer(timer, 'duplicate_validated');
     } else {
-      eventsSheet
-        .getRange(eventsSheet.getLastRow() + 1, 1, 1, EVENT_HEADERS.length)
-        .setValues([row]);
+      appendRowToSnapshot(
+        eventsSheet,
+        eventSnapshot,
+        row,
+        EVENT_HEADERS.length
+      );
       markServiceTimer(timer, 'event_written');
     }
 
     let activeAssignments = null;
     if (isGraded) {
-      let review;
-      if (repairReviewFromEvents) {
-        review = refreshReviewForAssignment(
-          eventsSheet,
-          reviewsSheet,
-          assignmentRecord.assignment
-        );
-        markServiceTimer(timer, 'review_rebuilt');
-      } else {
-        review = updateReviewForNewEvent(
-          reviewsSheet,
-          assignmentRecord.assignment,
-          serverTimestamp,
-          data.correct,
-          existingReviewRecord
-        );
-        markServiceTimer(timer, 'review_updated');
+      let effectiveAssignmentRows = applyCorrectEventRetirementsToAssignmentRows(
+        assignmentSnapshot.rows,
+        eventSnapshot.rows
+      );
+      assignmentRecord = getAssignmentRecordByIdFromRows(
+        effectiveAssignmentRows,
+        clean(data.assignment_id, 300)
+      );
+      if (!assignmentRecord) {
+        throw new Error('Unknown assignment_id after snapshot reconciliation.');
       }
 
-      if (!review) {
-        throw new Error(
-          'Compact review was not available after graded event for assignment ' +
-          assignmentRecord.assignment.assignment_id + '.'
-        );
-      }
+      const compactReviewRow = compactReviewRowForAssignment(
+        effectiveAssignmentRows,
+        eventSnapshot.rows,
+        assignmentRecord.assignment
+      );
+      upsertReviewRowFromSnapshot(
+        reviewsSheet,
+        reviewIndexSnapshot,
+        assignmentRecord.assignment.assignment_id,
+        compactReviewRow
+      );
+      const review = reviewRowToObject(compactReviewRow);
+      markServiceTimer(timer, duplicate ? 'review_rebuilt' : 'review_updated');
 
-      if (eventCorrectBoolean(data.correct)) {
-        const retiredReason = review.first_attempt_correct
-          ? 'correct_first_try'
-          : 'correct_after_retry';
-        retireAssignmentIfActive(
-          assignmentsSheet,
-          assignmentRecord.row_index,
-          clean(data.request_id, 200),
-          serverTimestamp,
-          retiredReason
-        );
+      if (isCorrect) {
+        // A same-student request may have retired this row after our pre-lock
+        // snapshot. Re-read only the four rolling-state cells, not the row/table.
+        const currentState = assignmentsSheet
+          .getRange(assignmentRecord.row_index, 11, 1, 4)
+          .getValues()[0];
+        const currentStatus = String(currentState[0] || '');
+        markServiceTimer(timer, 'assignment_status_checked');
+
+        if (currentStatus === ASSIGNMENT_STATUS_ACTIVE) {
+          const retiredReason = review.first_attempt_correct
+            ? 'correct_first_try'
+            : 'correct_after_retry';
+          assignmentsSheet
+            .getRange(assignmentRecord.row_index, 11, 1, 4)
+            .setValues([[
+              ASSIGNMENT_STATUS_RETIRED,
+              serverTimestamp,
+              retiredReason,
+              clean(data.request_id, 200)
+            ]]);
+        } else if (currentStatus !== ASSIGNMENT_STATUS_RETIRED) {
+          throw new Error(
+            'Assignment has no rolling status. Run setupGradeSheet() before using the rolling queue.'
+          );
+        }
         markServiceTimer(timer, 'assignment_retired');
 
-        const queueConfig = optionalQueueSelectionConfig(data);
+        // The event log is authoritative for logical retirement while the
+        // assignment snapshot may have been read before a concurrent write.
+        effectiveAssignmentRows = applyCorrectEventRetirementsToAssignmentRows(
+          assignmentSnapshot.rows,
+          eventSnapshot.rows
+        );
+
         if (queueConfig) {
-          const ensured = ensureActiveQueue(
-            assignmentsSheet,
-            questionBankSheet,
-            reviewsSheet,
+          const reviews = reviewsForStudentFromEvents(
+            effectiveAssignmentRows,
+            eventSnapshot.rows,
+            data.course_id,
+            data.student_id
+          );
+          const plan = planActiveQueueFromSnapshots(
+            effectiveAssignmentRows,
+            bank,
+            reviews,
             data,
             queueConfig,
             new Date(),
@@ -565,21 +624,39 @@ function handleLogEvent(data, ss) {
               first_attempt_correct: review.first_attempt_correct
             }
           );
-          activeAssignments = ensured.assignments;
-          timer.created_count = ensured.created_count;
+          const createdAssignments = appendActiveAssignments(
+            assignmentsSheet,
+            plan.selected,
+            data,
+            new Date().toISOString(),
+            assignmentSnapshot
+          );
+          activeAssignments = sortAssignmentsOldestFirst(
+            plan.active.concat(createdAssignments)
+          );
+          if (activeAssignments.length !== queueConfig.queue_size) {
+            throw new Error(
+              'Active queue did not reach the requested size after assignment creation.'
+            );
+          }
+          timer.created_count = createdAssignments.length;
           markServiceTimer(timer, 'queue_refilled');
+        } else {
+          activeAssignments = activeAssignmentsFromRows(
+            effectiveAssignmentRows,
+            data.course_id,
+            data.student_id
+          );
+          markServiceTimer(timer, 'active_queue_loaded');
         }
       }
 
-      if (activeAssignments === null) {
-        activeAssignments = getActiveAssignmentsForStudent(
-          assignmentsSheet,
-          data.course_id,
-          data.student_id
-        );
-        markServiceTimer(timer, 'active_queue_loaded');
+      // Incorrect answers intentionally do not reload/return the unchanged
+      // queue. The R client does not apply it, and keeping the stale question in
+      // a duplicate browser tab is the current intended behavior.
+      if (activeAssignments !== null) {
+        timer.assignment_count = activeAssignments.length;
       }
-      timer.assignment_count = activeAssignments.length;
     }
 
     timer.result = duplicate ? 'duplicate' : 'written';
@@ -589,12 +666,20 @@ function handleLogEvent(data, ss) {
       duplicate: duplicate
     };
     if (activeAssignments !== null) response.assignments = activeAssignments;
+    markServiceTimer(timer, 'critical_section_done');
+    timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
     markServiceTimer(timer, 'response_ready');
     if (includeServiceTiming(data)) {
       response.service_timing = serviceTimerSnapshot(timer);
     }
     return jsonResponse(response);
   } finally {
+    if (
+      typeof timer.lock_acquired_at_ms !== 'undefined' &&
+      typeof timer.lock_hold_ms === 'undefined'
+    ) {
+      timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
+    }
     lock.releaseLock();
     logServiceTimer(timer);
   }
@@ -657,45 +742,129 @@ function handleGetOrCreateActiveAssignments(data, ss) {
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   const questionBankSheet = ss.getSheetByName(QUESTION_BANK_SHEET);
   const reviewsSheet = ss.getSheetByName(REVIEW_SHEET);
-  if (!assignmentsSheet || !questionBankSheet || !reviewsSheet) {
+  const eventsSheet = ss.getSheetByName(EVENT_SHEET);
+  if (!assignmentsSheet || !questionBankSheet || !reviewsSheet || !eventsSheet) {
     throw new Error(
-      'assignments, question_bank, and reviews must exist. Run setupGradeSheet() after updating Code.gs.'
+      'assignments, question_bank, reviews, and events must exist. Run setupGradeSheet() after updating Code.gs.'
     );
   }
   markServiceTimer(timer, 'sheets_ready');
 
+  const assignmentSnapshot = readSheetSnapshot(
+    assignmentsSheet,
+    ASSIGNMENT_HEADERS.length
+  );
+  const existing = activeAssignmentsFromRows(
+    assignmentSnapshot.rows,
+    data.course_id,
+    data.student_id
+  );
+  if (existing.length > queueConfig.queue_size) {
+    throw new Error(
+      'Student has ' + existing.length + ' active questions, exceeding queue_size ' +
+      queueConfig.queue_size + '. No assignments were changed.'
+    );
+  }
+
+  // The common reload path is read-only and needs neither the event history nor
+  // the global lock.
+  if (existing.length === queueConfig.queue_size) {
+    timer.result = 'existing';
+    timer.assignment_count = existing.length;
+    timer.created_count = 0;
+    const response = {
+      ok: true,
+      request_id: data.request_id,
+      created: false,
+      created_count: 0,
+      assignments: existing
+    };
+    markServiceTimer(timer, 'response_ready');
+    if (includeServiceTiming(data)) {
+      response.service_timing = serviceTimerSnapshot(timer);
+    }
+    logServiceTimer(timer);
+    return jsonResponse(response);
+  }
+
+  const eventSnapshot = readSheetSnapshot(eventsSheet, EVENT_HEADERS.length);
+  const bank = getQuestionBank(questionBankSheet);
+  markServiceTimer(timer, 'snapshots_ready');
+
   const lock = LockService.getScriptLock();
+  timer.lock_requested_at_ms = Date.now();
   lock.waitLock(10000);
+  timer.lock_acquired_at_ms = Date.now();
+  timer.lock_wait_ms = timer.lock_acquired_at_ms - timer.lock_requested_at_ms;
   markServiceTimer(timer, 'lock_acquired');
 
   try {
-    const ensured = ensureActiveQueue(
+    extendSheetSnapshot(eventsSheet, eventSnapshot, EVENT_HEADERS.length);
+    extendSheetSnapshot(
       assignmentsSheet,
-      questionBankSheet,
-      reviewsSheet,
+      assignmentSnapshot,
+      ASSIGNMENT_HEADERS.length
+    );
+    markServiceTimer(timer, 'snapshots_reconciled');
+
+    const effectiveAssignmentRows = applyCorrectEventRetirementsToAssignmentRows(
+      assignmentSnapshot.rows,
+      eventSnapshot.rows
+    );
+    const reviews = reviewsForStudentFromEvents(
+      effectiveAssignmentRows,
+      eventSnapshot.rows,
+      data.course_id,
+      data.student_id
+    );
+    const plan = planActiveQueueFromSnapshots(
+      effectiveAssignmentRows,
+      bank,
+      reviews,
       data,
       queueConfig,
       new Date(),
       null
     );
+    const createdAssignments = appendActiveAssignments(
+      assignmentsSheet,
+      plan.selected,
+      data,
+      new Date().toISOString(),
+      assignmentSnapshot
+    );
+    const assignments = sortAssignmentsOldestFirst(
+      plan.active.concat(createdAssignments)
+    );
+    if (assignments.length !== queueConfig.queue_size) {
+      throw new Error('Active queue did not reach the requested size after assignment creation.');
+    }
     markServiceTimer(timer, 'queue_ensured');
 
-    timer.result = ensured.created_count ? 'filled' : 'existing';
-    timer.assignment_count = ensured.assignments.length;
-    timer.created_count = ensured.created_count;
+    timer.result = createdAssignments.length ? 'filled' : 'existing';
+    timer.assignment_count = assignments.length;
+    timer.created_count = createdAssignments.length;
     const response = {
       ok: true,
       request_id: data.request_id,
-      created: ensured.created_count > 0,
-      created_count: ensured.created_count,
-      assignments: ensured.assignments
+      created: createdAssignments.length > 0,
+      created_count: createdAssignments.length,
+      assignments: assignments
     };
+    markServiceTimer(timer, 'critical_section_done');
+    timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
     markServiceTimer(timer, 'response_ready');
     if (includeServiceTiming(data)) {
       response.service_timing = serviceTimerSnapshot(timer);
     }
     return jsonResponse(response);
   } finally {
+    if (
+      typeof timer.lock_acquired_at_ms !== 'undefined' &&
+      typeof timer.lock_hold_ms === 'undefined'
+    ) {
+      timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
+    }
     lock.releaseLock();
     logServiceTimer(timer);
   }
@@ -711,7 +880,46 @@ function ensureActiveQueue(
   replacementContext
 ) {
   const assignmentRows = getAssignmentRows(assignmentsSheet);
-  let active = activeAssignmentsFromRows(
+  const bank = getQuestionBank(questionBankSheet);
+  const reviews = getReviewsForStudent(
+    reviewsSheet,
+    data.course_id,
+    data.student_id
+  );
+  const plan = planActiveQueueFromSnapshots(
+    assignmentRows,
+    bank,
+    reviews,
+    data,
+    queueConfig,
+    asOf,
+    replacementContext
+  );
+  const createdAssignments = appendActiveAssignments(
+    assignmentsSheet,
+    plan.selected,
+    data,
+    new Date().toISOString()
+  );
+  const active = sortAssignmentsOldestFirst(
+    plan.active.concat(createdAssignments)
+  );
+  if (active.length !== queueConfig.queue_size) {
+    throw new Error('Active queue did not reach the requested size after assignment creation.');
+  }
+  return { assignments: active, created_count: createdAssignments.length };
+}
+
+function planActiveQueueFromSnapshots(
+  assignmentRows,
+  bank,
+  reviews,
+  data,
+  queueConfig,
+  asOf,
+  replacementContext
+) {
+  const active = activeAssignmentsFromRows(
     assignmentRows,
     data.course_id,
     data.student_id
@@ -724,10 +932,9 @@ function ensureActiveQueue(
     );
   }
   if (active.length === queueConfig.queue_size) {
-    return { assignments: active, created_count: 0 };
+    return { active: active, selected: [] };
   }
 
-  const bank = getQuestionBank(questionBankSheet);
   validateCurriculumAgainstBank(bank, queueConfig.topic_priority);
 
   const curriculum = new Set(queueConfig.topic_priority);
@@ -810,12 +1017,6 @@ function ensureActiveQueue(
       });
     }
   } else {
-    const reviews = getReviewsForStudent(
-      reviewsSheet,
-      data.course_id,
-      data.student_id
-    );
-
     while (selected.length < needed) {
       let route;
       if (
@@ -865,19 +1066,7 @@ function ensureActiveQueue(
     );
   }
 
-  const createdAssignments = appendActiveAssignments(
-    assignmentsSheet,
-    selected,
-    data,
-    new Date().toISOString()
-  );
-  active = sortAssignmentsOldestFirst(active.concat(createdAssignments));
-
-  if (active.length !== queueConfig.queue_size) {
-    throw new Error('Active queue did not reach the requested size after assignment creation.');
-  }
-
-  return { assignments: active, created_count: selected.length };
+  return { active: active, selected: selected };
 }
 
 function validateCurriculumAgainstBank(bank, topicPriority) {
@@ -1070,7 +1259,13 @@ function selectLeastUsedQuestion(eligible, history, topic, randomFn) {
   return ranked.length ? ranked[0].item : null;
 }
 
-function appendActiveAssignments(assignmentsSheet, selected, data, assignedAt) {
+function appendActiveAssignments(
+  assignmentsSheet,
+  selected,
+  data,
+  assignedAt,
+  assignmentSnapshot
+) {
   if (!selected.length) return [];
 
   const rows = selected.map(function(selection) {
@@ -1093,14 +1288,22 @@ function appendActiveAssignments(assignmentsSheet, selected, data, assignedAt) {
     ];
   });
 
+  const firstRow = assignmentSnapshot
+    ? Math.max(2, assignmentSnapshot.last_row + 1)
+    : assignmentsSheet.getLastRow() + 1;
   assignmentsSheet
     .getRange(
-      assignmentsSheet.getLastRow() + 1,
+      firstRow,
       1,
       rows.length,
       ASSIGNMENT_HEADERS.length
     )
     .setValues(rows);
+
+  if (assignmentSnapshot) {
+    assignmentSnapshot.rows = assignmentSnapshot.rows.concat(rows);
+    assignmentSnapshot.last_row = firstRow + rows.length - 1;
+  }
 
   return rows.map(assignmentRowToObject);
 }
@@ -1758,6 +1961,176 @@ function optionalQueueSelectionConfig(data) {
   return validateQueueSelectionConfig(data);
 }
 
+function readSheetSnapshot(sheet, width) {
+  const lastRow = sheet.getLastRow();
+  return {
+    last_row: lastRow,
+    rows: lastRow <= 1
+      ? []
+      : sheet.getRange(2, 1, lastRow - 1, width).getValues()
+  };
+}
+
+function extendSheetSnapshot(sheet, snapshot, width) {
+  const currentLastRow = sheet.getLastRow();
+  if (currentLastRow < snapshot.last_row) {
+    throw new Error('Managed sheet rows were removed during a live request. Retry the request.');
+  }
+  if (currentLastRow > snapshot.last_row) {
+    const firstNewRow = Math.max(2, snapshot.last_row + 1);
+    const count = currentLastRow - firstNewRow + 1;
+    snapshot.rows = snapshot.rows.concat(
+      sheet.getRange(firstNewRow, 1, count, width).getValues()
+    );
+  }
+  snapshot.last_row = currentLastRow;
+  return snapshot;
+}
+
+function readColumnSnapshot(sheet, columnIndex) {
+  const lastRow = sheet.getLastRow();
+  return {
+    last_row: lastRow,
+    values: lastRow <= 1
+      ? []
+      : sheet.getRange(2, columnIndex, lastRow - 1, 1).getValues().map(function(row) {
+          return row[0];
+        })
+  };
+}
+
+function extendColumnSnapshot(sheet, snapshot, columnIndex) {
+  const currentLastRow = sheet.getLastRow();
+  if (currentLastRow < snapshot.last_row) {
+    throw new Error('Managed sheet rows were removed during a live request. Retry the request.');
+  }
+  if (currentLastRow > snapshot.last_row) {
+    const firstNewRow = Math.max(2, snapshot.last_row + 1);
+    const count = currentLastRow - firstNewRow + 1;
+    const values = sheet
+      .getRange(firstNewRow, columnIndex, count, 1)
+      .getValues()
+      .map(function(row) { return row[0]; });
+    snapshot.values = snapshot.values.concat(values);
+  }
+  snapshot.last_row = currentLastRow;
+  return snapshot;
+}
+
+function appendRowToSnapshot(sheet, snapshot, row, width) {
+  const rowIndex = Math.max(2, snapshot.last_row + 1);
+  sheet.getRange(rowIndex, 1, 1, width).setValues([row]);
+  snapshot.rows.push(row);
+  snapshot.last_row = rowIndex;
+  return rowIndex;
+}
+
+function findEventRowByRequestIdFromRows(eventRows, requestId) {
+  const key = String(requestId || '');
+  for (let ii = 0; ii < eventRows.length; ii++) {
+    if (String(eventRows[ii][3] || '') === key) {
+      return { row_index: ii + 2, row: eventRows[ii] };
+    }
+  }
+  return null;
+}
+
+function getAssignmentRecordByIdFromRows(assignmentRows, assignmentId) {
+  const key = String(assignmentId || '');
+  for (let ii = 0; ii < assignmentRows.length; ii++) {
+    if (String(assignmentRows[ii][0] || '') === key) {
+      return {
+        row_index: ii + 2,
+        row: assignmentRows[ii],
+        assignment: assignmentRowToObject(assignmentRows[ii])
+      };
+    }
+  }
+  return null;
+}
+
+function findRowInColumnSnapshot(snapshot, value) {
+  const key = String(value || '');
+  for (let ii = 0; ii < snapshot.values.length; ii++) {
+    if (String(snapshot.values[ii] || '') === key) return ii + 2;
+  }
+  return 0;
+}
+
+function upsertReviewRowFromSnapshot(
+  reviewsSheet,
+  reviewIndexSnapshot,
+  assignmentId,
+  reviewRow
+) {
+  let rowIndex = findRowInColumnSnapshot(reviewIndexSnapshot, assignmentId);
+  if (rowIndex) {
+    reviewsSheet
+      .getRange(rowIndex, 1, 1, REVIEW_HEADERS.length)
+      .setValues([reviewRow]);
+    return rowIndex;
+  }
+
+  rowIndex = Math.max(2, reviewIndexSnapshot.last_row + 1);
+  reviewsSheet
+    .getRange(rowIndex, 1, 1, REVIEW_HEADERS.length)
+    .setValues([reviewRow]);
+  reviewIndexSnapshot.values.push(assignmentId);
+  reviewIndexSnapshot.last_row = rowIndex;
+  return rowIndex;
+}
+
+function compactReviewRowForAssignment(assignmentRows, eventRows, assignment) {
+  const compact = compactReviewRowsFromEvents(
+    assignmentRows.filter(function(row) {
+      return String(row[0] || '') === String(assignment.assignment_id || '');
+    }),
+    eventRows
+  );
+  if (compact.length !== 1) {
+    throw new Error(
+      'Expected exactly one compact review row for assignment ' +
+      assignment.assignment_id + '.'
+    );
+  }
+  return compact[0];
+}
+
+function reviewsForStudentFromEvents(assignmentRows, eventRows, courseId, studentId) {
+  const courseKey = clean(courseId, 200);
+  const studentKey = clean(studentId, 200);
+  return compactReviewRowsFromEvents(assignmentRows, eventRows)
+    .map(reviewRowToObject)
+    .filter(function(review) {
+      return review.course_id === courseKey && review.student_id === studentKey;
+    });
+}
+
+function applyCorrectEventRetirementsToAssignmentRows(assignmentRows, eventRows) {
+  const output = assignmentRows.map(function(row) { return row.slice(); });
+  const byId = {};
+  output.forEach(function(row) {
+    const assignmentId = String(row[0] || '');
+    if (assignmentId) byId[assignmentId] = row;
+  });
+
+  eventRows.forEach(function(eventRow) {
+    if (!GRADED_EVENTS.includes(String(eventRow[9] || ''))) return;
+    if (!eventCorrectBoolean(eventRow[13])) return;
+    const assignmentId = String(eventRow[21] || '');
+    const row = byId[assignmentId];
+    if (!row) return;
+    if (String(eventRow[4] || '') !== String(row[1] || '')) return;
+    if (String(eventRow[7] || '') !== String(row[3] || '')) return;
+
+    row[10] = ASSIGNMENT_STATUS_RETIRED;
+    if (!String(row[11] || '')) row[11] = String(eventRow[0] || '');
+    if (!String(row[13] || '')) row[13] = String(eventRow[3] || '');
+  });
+
+  return output;
+}
+
 function validateCommonPayload(data) {
   if (String(data.schema_version) !== '1') {
     throw new Error('Unsupported schema_version.');
@@ -1768,38 +2141,26 @@ function validateCommonPayload(data) {
 }
 
 function getAssignmentRows(sheet) {
-  if (sheet.getLastRow() <= 1) return [];
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
   return sheet
-    .getRange(
-      2,
-      1,
-      sheet.getLastRow() - 1,
-      ASSIGNMENT_HEADERS.length
-    )
+    .getRange(2, 1, lastRow - 1, ASSIGNMENT_HEADERS.length)
     .getValues();
 }
 
 function getEventRows(sheet) {
-  if (sheet.getLastRow() <= 1) return [];
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
   return sheet
-    .getRange(
-      2,
-      1,
-      sheet.getLastRow() - 1,
-      EVENT_HEADERS.length
-    )
+    .getRange(2, 1, lastRow - 1, EVENT_HEADERS.length)
     .getValues();
 }
 
 function getReviewRows(sheet) {
-  if (sheet.getLastRow() <= 1) return [];
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
   return sheet
-    .getRange(
-      2,
-      1,
-      sheet.getLastRow() - 1,
-      REVIEW_HEADERS.length
-    )
+    .getRange(2, 1, lastRow - 1, REVIEW_HEADERS.length)
     .getValues();
 }
 
@@ -1871,15 +2232,7 @@ function getReviewsForStudent(sheet, courseId, studentId) {
 }
 
 function getAssignmentRecordById(sheet, assignmentId) {
-  const rowIndex = findSheetRowByValue(sheet, 1, assignmentId);
-  if (!rowIndex) return null;
-  const row = sheet
-    .getRange(rowIndex, 1, 1, ASSIGNMENT_HEADERS.length)
-    .getValues()[0];
-  return {
-    row_index: rowIndex,
-    assignment: assignmentRowToObject(row)
-  };
+  return getAssignmentRecordByIdFromRows(getAssignmentRows(sheet), assignmentId);
 }
 
 function assignmentRowToObject(row) {
@@ -1950,21 +2303,20 @@ function reviewRowToObject(row) {
 }
 
 function getQuestionBank(sheet) {
-  if (sheet.getLastRow() <= 1) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
     throw new Error(
       'The question_bank sheet is empty. Run scripts/06_sync_question_bank.R first.'
     );
   }
+  return questionBankFromRows(
+    sheet
+      .getRange(2, 1, lastRow - 1, QUESTION_BANK_HEADERS.length)
+      .getValues()
+  );
+}
 
-  const rows = sheet
-    .getRange(
-      2,
-      1,
-      sheet.getLastRow() - 1,
-      QUESTION_BANK_HEADERS.length
-    )
-    .getValues();
-
+function questionBankFromRows(rows) {
   const seen = new Set();
   const bank = [];
 
@@ -1996,9 +2348,10 @@ function getQuestionBank(sheet) {
 }
 
 function findSheetRowByValue(sheet, columnIndex, value) {
-  if (sheet.getLastRow() <= 1) return 0;
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return 0;
   const match = sheet
-    .getRange(2, columnIndex, sheet.getLastRow() - 1, 1)
+    .getRange(2, columnIndex, lastRow - 1, 1)
     .createTextFinder(String(value))
     .matchEntireCell(true)
     .findNext();
@@ -2045,6 +2398,12 @@ function serviceTimerSnapshot(timer) {
   }
   if (typeof timer.created_count !== 'undefined') {
     output.created_count = timer.created_count;
+  }
+  if (typeof timer.lock_wait_ms !== 'undefined') {
+    output.lock_wait_ms = timer.lock_wait_ms;
+  }
+  if (typeof timer.lock_hold_ms !== 'undefined') {
+    output.lock_hold_ms = timer.lock_hold_ms;
   }
   return output;
 }
