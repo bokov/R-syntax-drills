@@ -127,7 +127,14 @@ post_log_event <- function(
       stop(body$error %||% "The logging endpoint returned ok=false.")
     }
 
-    if (graded_event && !is.null(body$assignments)) {
+    # Incorrect answers leave the queue unchanged, so avoid moving DOM nodes and
+    # disturbing learnr's just-rendered feedback. A correct answer retires the
+    # current assignment and the returned queue must be applied immediately.
+    if (
+      graded_event &&
+      isTRUE(as.logical(payload$correct)) &&
+      !is.null(body$assignments)
+    ) {
       assignments <- assignment_response_table(body)
       assignments <- validate_persisted_assignments(assignments, manifest)
       set_active_assignment_player(session, assignments)
