@@ -18,6 +18,7 @@ const context = {
   String,
   Array,
   Error,
+  JSON,
   isNaN
 };
 vm.createContext(context);
@@ -26,8 +27,10 @@ vm.runInContext(
     globalThis.__fsrsTestApi = {
       fsrsReviewMemoryState,
       fsrsCurrentRetrievability,
-      firstAttemptReviews,
-      topicRetrievabilitiesFromHistory,
+      compactReviewRowsFromEvents,
+      reviewRowToObject,
+      topicRetrievabilitiesFromReviews,
+      topicMasterySummary,
       selectAdaptiveQuestions,
       FSRS_RATING_AGAIN,
       FSRS_RATING_GOOD
@@ -83,14 +86,25 @@ assert(
   'Again should produce less stability than Good from the same prior state.'
 );
 
-const history = [
-  { assignment_id: 'a1', item_label: 'q1', topic: 'weak' },
-  { assignment_id: 'a2', item_label: 'q2', topic: 'strong' }
-];
+function assignmentRow(assignmentId, itemLabel, topic, weekId = 'week-01') {
+  return [
+    assignmentId,
+    'R101',
+    weekId,
+    'abc123',
+    itemLabel,
+    topic,
+    1,
+    'hash-' + itemLabel,
+    '2026-01-01T00:00:00Z',
+    'test'
+  ];
+}
 
-function eventRow(timestamp, assignmentId, correct) {
+function eventRow(timestamp, assignmentId, correct, requestId) {
   const row = new Array(22).fill('');
   row[0] = timestamp;
+  row[3] = requestId || ('req-' + assignmentId + '-' + timestamp);
   row[4] = 'R101';
   row[7] = 'abc123';
   row[9] = 'exercise_result';
@@ -99,26 +113,41 @@ function eventRow(timestamp, assignmentId, correct) {
   return row;
 }
 
+const assignmentRows = [
+  assignmentRow('a1', 'q1', 'weak'),
+  assignmentRow('a2', 'q2', 'strong')
+];
 const events = [
   eventRow('2026-01-01T12:00:00Z', 'a1', false),
   eventRow('2026-01-01T12:01:00Z', 'a1', true),
   eventRow('2026-01-01T12:00:00Z', 'a2', true)
 ];
 
-const reviews = api.firstAttemptReviews(history, events, 'R101', 'abc123');
-const weakReview = reviews.find(function(review) {
+const compactRows = api.compactReviewRowsFromEvents(assignmentRows, events);
+assert(
+  compactRows.length === 2,
+  'Compaction should create one row per attempted assignment exposure.'
+);
+const compactReviews = compactRows.map(api.reviewRowToObject);
+const weakReview = compactReviews.find(function(review) {
   return review.topic === 'weak';
 });
 assert(
-  weakReview.rating === api.FSRS_RATING_AGAIN,
-  'Only the first attempt on one persisted exposure should rate the topic.'
+  weakReview.first_attempt_correct === false,
+  'The compact review row should preserve only the first-attempt outcome for FSRS/mastery.'
+);
+assert(
+  weakReview.attempt_count === 2,
+  'The compact review row should retain the total number of tries for the exposure.'
+);
+assert(
+  weakReview.last_attempt_at.getTime() ===
+    new Date('2026-01-01T12:01:00Z').getTime(),
+  'The compact review row should retain the last-attempt timestamp.'
 );
 
-const retrievabilities = api.topicRetrievabilitiesFromHistory(
-  history,
-  events,
-  'R101',
-  'abc123',
+const retrievabilities = api.topicRetrievabilitiesFromReviews(
+  compactReviews,
   ['weak', 'strong', 'new_topic'],
   oneWeekLater
 );
@@ -128,7 +157,62 @@ assert(
 );
 assert(
   retrievabilities.new_topic === 0,
-  'An unlocked topic with no completed review history should have zero retrievability.'
+  'A topic with no review history should have zero retrievability.'
+);
+
+function masteryReview(index, correct, topic = 'mastery') {
+  return {
+    assignment_id: 'm' + index,
+    topic: topic,
+    first_attempt_at: new Date(Date.UTC(2026, 0, index, 12, 0, 0)),
+    first_attempt_correct: correct,
+    attempt_count: correct ? 1 : 2
+  };
+}
+
+const nineOfTen = [];
+for (let ii = 1; ii <= 10; ii++) {
+  nineOfTen.push(masteryReview(ii, ii !== 1));
+}
+const mastered = api.topicMasterySummary(nineOfTen, 'mastery');
+assert(
+  mastered.observations === 10,
+  'Mastery should count first-attempt observations by topic.'
+);
+assert(
+  mastered.recent_correct === 9,
+  'Mastery should count first-attempt correctness in the recent window.'
+);
+assert(
+  mastered.recent_accuracy === 0.9,
+  'Nine of the most recent ten should yield 0.9 mastery.'
+);
+assert(
+  mastered.mastered === true,
+  'At least ten observations with 90% recent first-attempt accuracy should master a topic.'
+);
+
+const eightOfTen = nineOfTen.map(function(review, index) {
+  return Object.assign({}, review, { first_attempt_correct: index >= 2 });
+});
+assert(
+  api.topicMasterySummary(eightOfTen, 'mastery').mastered === false,
+  'Eight of the most recent ten should not master a topic.'
+);
+assert(
+  api.topicMasterySummary(nineOfTen.slice(0, 9), 'mastery').mastered === false,
+  'Fewer than ten observations should never master a topic.'
+);
+
+const movingWindow = [masteryReview(1, false)].concat(
+  Array.from({ length: 10 }, function(_, index) {
+    return masteryReview(index + 2, true);
+  })
+);
+const movingSummary = api.topicMasterySummary(movingWindow, 'mastery');
+assert(
+  movingSummary.recent_accuracy === 1,
+  'Mastery must use the most recent ten observations rather than lifetime accuracy.'
 );
 
 const eligible = [
@@ -155,4 +239,4 @@ assert(
   'Lower topic retrievability should outrank literal exposure count in another topic.'
 );
 
-console.log('FSRS helper tests passed.');
+console.log('FSRS and compact review-history helper tests passed.');
