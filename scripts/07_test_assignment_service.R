@@ -14,8 +14,60 @@ curriculum <- settings$topic_priority
 first_topic <- curriculum[[1]]
 service_timeout_sec <- 30
 
-post_test_assignment_service <- function(payload) {
-  post_assignment_service(payload, timeout_sec = service_timeout_sec)
+service_timing_number <- function(x) {
+  if (is.null(x) || !length(x)) return(NA_real_)
+  suppressWarnings(as.numeric(x[[1]]))
+}
+
+print_service_timing <- function(label, body, round_trip_ms) {
+  timing <- body$service_timing
+  if (is.null(timing)) {
+    stop(
+      "The assignment service did not return timing diagnostics. ",
+      "Deploy the current google-apps-script/Code.gs as a new web-app version first."
+    )
+  }
+
+  handler_total_ms <- service_timing_number(timing$total_ms)
+  marks <- timing$marks_ms
+  mark_values <- if (is.null(marks) || !length(marks)) {
+    numeric()
+  } else {
+    vapply(marks, service_timing_number, numeric(1))
+  }
+  stage_values <- if (length(mark_values)) {
+    c(mark_values[[1]], diff(mark_values))
+  } else {
+    numeric()
+  }
+  names(stage_values) <- names(mark_values)
+
+  message("\nService timing -- ", label)
+  message(sprintf("  %-30s %8.3f s", "round_trip", round_trip_ms / 1000))
+  message(sprintf("  %-30s %8.3f s", "handler_total", handler_total_ms / 1000))
+  if (length(stage_values)) {
+    for (ii in seq_along(stage_values)) {
+      message(sprintf(
+        "  %-30s %8.3f s",
+        names(stage_values)[[ii]],
+        stage_values[[ii]] / 1000
+      ))
+    }
+  }
+  message(sprintf(
+    "  %-30s %8.3f s",
+    "outside_handler_or_network",
+    max(0, round_trip_ms - handler_total_ms) / 1000
+  ))
+}
+
+post_test_assignment_service <- function(payload, label) {
+  payload$include_timing <- TRUE
+  started <- proc.time()[["elapsed"]]
+  body <- post_assignment_service(payload, timeout_sec = service_timeout_sec)
+  round_trip_ms <- (proc.time()[["elapsed"]] - started) * 1000
+  print_service_timing(label, body, round_trip_ms)
+  body
 }
 
 eligible <- bank[
@@ -38,7 +90,8 @@ lookup <- post_test_assignment_service(
   assignment_service_payload(
     "get_active_assignments",
     student_id = student_id
-  )
+  ),
+  "fresh active lookup"
 )
 if (length(lookup$assignments)) {
   stop("Fresh rolling-queue test ID unexpectedly already has active assignments.")
@@ -48,7 +101,8 @@ created <- post_test_assignment_service(
   assignment_service_payload(
     "get_or_create_active_assignments",
     student_id = student_id
-  )
+  ),
+  "initial queue creation"
 )
 if (!isTRUE(created$created)) {
   stop("Expected the first rolling-queue call to create active assignments.")
@@ -73,7 +127,8 @@ repeated <- post_test_assignment_service(
   assignment_service_payload(
     "get_or_create_active_assignments",
     student_id = student_id
-  )
+  ),
+  "repeat queue load"
 )
 if (isTRUE(repeated$created)) {
   stop("Repeated rolling-queue load created duplicate assignments.")
@@ -117,7 +172,7 @@ wrong_payload <- make_test_event(
   FALSE,
   make_service_request_id("rolling-wrong")
 )
-wrong <- post_test_assignment_service(wrong_payload)
+wrong <- post_test_assignment_service(wrong_payload, "wrong first attempt")
 wrong_table <- assignment_response_table(wrong)
 if (!identical(created_ids, wrong_table$assignment_id)) {
   stop("Incorrect first attempt changed the active queue.")
@@ -128,7 +183,7 @@ correct_payload <- make_test_event(
   TRUE,
   make_service_request_id("rolling-correct")
 )
-correct <- post_test_assignment_service(correct_payload)
+correct <- post_test_assignment_service(correct_payload, "correct after retry")
 correct_table <- assignment_response_table(correct)
 
 if (nrow(correct_table) != settings$queue_size) {
@@ -158,7 +213,7 @@ if (
 
 # Reposting the identical successful request must be a no-op. This is the
 # server-side prerequisite for the future local outbox retry mechanism.
-duplicate <- post_test_assignment_service(correct_payload)
+duplicate <- post_test_assignment_service(correct_payload, "duplicate correct retry")
 if (!isTRUE(duplicate$duplicate)) {
   stop("Reposting the same correct request_id was not recognized as a duplicate.")
 }
@@ -180,7 +235,7 @@ first_try_payload <- make_test_event(
   TRUE,
   make_service_request_id("rolling-first-try")
 )
-first_try <- post_test_assignment_service(first_try_payload)
+first_try <- post_test_assignment_service(first_try_payload, "first-try correct")
 first_try_table <- assignment_response_table(first_try)
 first_try_new_ids <- setdiff(
   first_try_table$assignment_id,
@@ -205,12 +260,13 @@ final_lookup <- post_test_assignment_service(
   assignment_service_payload(
     "get_active_assignments",
     student_id = student_id
-  )
+  ),
+  "final active lookup"
 )
 final_table <- assignment_response_table(final_lookup)
 if (!identical(first_try_table$assignment_id, final_table$assignment_id)) {
   stop("Active-assignment lookup did not return the current rolling queue.")
 }
 
-message("Curriculum-aware rolling assignment service test passed for student ID: ", student_id)
+message("\nCurriculum-aware rolling assignment service test passed for student ID: ", student_id)
 message("The test rows remain in assignments/events/reviews as an audit trail.")
