@@ -50,8 +50,10 @@ prepare_question_bank_sync <- function(manifest) {
 }
 
 assignment_config <- function(config = APP_CONFIG) {
-  # The APP_CONFIG field is retained temporarily for compatibility; under the
-  # rolling model it is the active queue size, not a weekly workload.
+  # These APP_CONFIG names are retained through PR14 for compatibility. Under
+  # the rolling model questions_per_week is queue size, and unlocked_topics is
+  # an ordered curriculum from earliest to most advanced topic. PR15 will rename
+  # the fields once the behavioral transition is complete.
   if (is.null(config$questions_per_week) || length(config$questions_per_week) != 1) {
     stop("APP_CONFIG$questions_per_week must be one positive integer.")
   }
@@ -67,19 +69,21 @@ assignment_config <- function(config = APP_CONFIG) {
     stop("APP_CONFIG$questions_per_week must be an integer from 1 through 500.")
   }
 
-  unlocked_topics <- trimws(as.character(config$unlocked_topics))
-  unlocked_topics <- unlocked_topics[nzchar(unlocked_topics)]
-  if (!length(unlocked_topics)) {
-    stop("APP_CONFIG$unlocked_topics must contain at least one topic.")
+  topic_priority <- trimws(as.character(config$unlocked_topics))
+  topic_priority <- topic_priority[nzchar(topic_priority)]
+  if (!length(topic_priority)) {
+    stop("APP_CONFIG$unlocked_topics must contain the ordered topic curriculum.")
   }
-  if (anyDuplicated(unlocked_topics)) {
+  if (anyDuplicated(topic_priority)) {
     stop("APP_CONFIG$unlocked_topics must not contain duplicates.")
   }
 
   list(
     queue_size = as.integer(queue_size),
     questions_per_week = as.integer(queue_size),
-    unlocked_topics = unlocked_topics
+    topic_priority = topic_priority,
+    # Compatibility alias until PR15 removes the old terminology.
+    unlocked_topics = topic_priority
   )
 }
 
@@ -101,10 +105,10 @@ validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL
   }
 
   known_topics <- sort(unique(bank_manifest$topic[bank_manifest$topic != "unassigned"]))
-  unknown_topics <- setdiff(settings$unlocked_topics, known_topics)
+  unknown_topics <- setdiff(settings$topic_priority, known_topics)
   if (length(unknown_topics)) {
     stop(
-      "APP_CONFIG$unlocked_topics contains unknown topic(s): ",
+      "APP_CONFIG$unlocked_topics contains unknown curriculum topic(s): ",
       paste(unknown_topics, collapse = ", "),
       "."
     )
@@ -116,46 +120,48 @@ validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL
     ,
     drop = FALSE
   ]
-  eligible <- scored_exercises[
-    scored_exercises$topic %in% settings$unlocked_topics,
+
+  empty_topics <- settings$topic_priority[
+    !settings$topic_priority %in% unique(scored_exercises$topic)
+  ]
+  if (length(empty_topics)) {
+    stop(
+      "Curriculum topic(s) contain no scored exercise questions: ",
+      paste(empty_topics, collapse = ", "),
+      "."
+    )
+  }
+
+  first_topic <- settings$topic_priority[[1]]
+  first_topic_questions <- scored_exercises[
+    scored_exercises$topic == first_topic,
     ,
     drop = FALSE
   ]
-
-  if (nrow(eligible) < settings$queue_size) {
+  if (nrow(first_topic_questions) < settings$queue_size) {
     stop(
-      "Only ", nrow(eligible),
-      " scored exercise question(s) are available in unlocked topics, but active queue size ",
-      settings$queue_size, " was requested."
+      "The first curriculum topic, ", first_topic, ", has only ",
+      nrow(first_topic_questions), " scored exercise question(s), but active queue size ",
+      settings$queue_size, " requires that many distinct initial questions."
     )
   }
 
-  eligible_starters <- eligible[eligible$starter_question %in% TRUE, , drop = FALSE]
-  if (!nrow(eligible_starters)) {
-    stop(
-      "No starter questions are currently eligible. Mark at least one scored exercise ",
-      "with starter_question=TRUE in an unlocked topic."
-    )
-  }
-  if (nrow(eligible_starters) > settings$queue_size) {
-    stop(
-      "There are ", nrow(eligible_starters),
-      " eligible starter questions but the active queue size is only ",
-      settings$queue_size, ". Increase the queue or reduce the starter set."
-    )
-  }
-
-  locked_starters <- scored_exercises[
-    scored_exercises$starter_question %in% TRUE &
-      !scored_exercises$topic %in% settings$unlocked_topics,
+  first_topic_starters <- first_topic_questions[
+    first_topic_questions$starter_question %in% TRUE,
     ,
     drop = FALSE
   ]
-  if (nrow(locked_starters)) {
-    warning(
-      "Starter question(s) in locked topics will not be assigned: ",
-      paste(locked_starters$item_label, collapse = ", "),
-      call. = FALSE
+  if (!nrow(first_topic_starters)) {
+    stop(
+      "The first curriculum topic has no starter questions. Mark at least one scored ",
+      "exercise in ", first_topic, " with starter_question=TRUE."
+    )
+  }
+  if (nrow(first_topic_starters) > settings$queue_size) {
+    stop(
+      "There are ", nrow(first_topic_starters),
+      " starter questions in the first curriculum topic but the active queue size is only ",
+      settings$queue_size, ". Increase the queue or reduce that starter set."
     )
   }
 
@@ -197,7 +203,10 @@ assignment_service_payload <- function(
   if (identical(request_type, "get_or_create_active_assignments")) {
     settings <- assignment_config(config)
     payload$queue_size <- settings$queue_size
-    payload$unlocked_topics <- unname(settings$unlocked_topics)
+    payload$topic_priority <- unname(settings$topic_priority)
+    # Sent temporarily so an older deployed Apps Script remains understandable
+    # during a staged deployment. The PR14 server prefers topic_priority.
+    payload$unlocked_topics <- unname(settings$topic_priority)
   }
 
   payload
