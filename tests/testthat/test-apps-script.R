@@ -7,7 +7,12 @@ test_that("Apps Script helper suites pass their JavaScript unit tests", {
     root,
     "tests",
     "js",
-    c("test-fsrs.js", "test-performance.js", "test-concurrency.js")
+    c(
+      "test-fsrs.js",
+      "test-performance.js",
+      "test-concurrency.js",
+      "test-bank-handshake.js"
+    )
   )
 
   for (script in scripts) {
