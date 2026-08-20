@@ -153,7 +153,6 @@ make_test_event <- function(assignment, correct, request_id) {
     request_id = request_id,
     client_timestamp_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
     course_id = APP_CONFIG$course_id,
-    week_id = APP_CONFIG$week_id,
     session_token = paste0("SERVICE_TEST_", student_id),
     student_id = student_id,
     student_name = "Instructor assignment-service test",
@@ -168,8 +167,6 @@ make_test_event <- function(assignment, correct, request_id) {
     restore = FALSE,
     queue_size = settings$queue_size,
     topic_priority = unname(curriculum),
-    # Transitional PR14 alias.
-    unlocked_topics = unname(curriculum)
   )
 }
 

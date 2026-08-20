@@ -70,8 +70,7 @@ test_that("persisted dynamic assignments define the gradebook rows", {
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   expect_equal(tables$gradebook$points_earned, 1)
@@ -97,8 +96,7 @@ test_that("multiple attempts at one item remain one persisted exposure", {
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   q1 <- tables$item_detail[tables$item_detail$item_label == "q1", , drop = FALSE]
@@ -122,8 +120,7 @@ test_that("pre-assignment-id attempts still grade against persisted assignments"
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   q1 <- tables$item_detail[tables$item_detail$item_label == "q1", , drop = FALSE]
@@ -144,8 +141,7 @@ test_that("mismatched nonblank assignment IDs are excluded", {
       events = events,
       assignments = assignments,
       manifest = gradebook_test_manifest(),
-      course_id = "R101",
-      week_id = "week-01"
+      course_id = "R101"
     ),
     "were excluded"
   )
@@ -171,8 +167,7 @@ test_that("identity backfill fills missing IDs without overwriting explicit IDs"
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   q1 <- tables$item_detail[
@@ -197,8 +192,7 @@ test_that("dynamic assignment subset sets the denominator", {
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   expect_equal(tables$gradebook$points_possible, 2)
@@ -216,8 +210,7 @@ test_that("assignment-only audit IDs do not become gradebook students", {
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   expect_equal(nrow(tables$gradebook), 0)
@@ -236,8 +229,7 @@ test_that("logging-test events do not become gradebook students", {
     events = events,
     assignments = empty_assignment_table(),
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   expect_equal(nrow(tables$gradebook), 0)
@@ -258,8 +250,7 @@ test_that("roster students without persisted rows have no grading denominator", 
     assignments = assignments,
     manifest = gradebook_test_manifest(),
     roster = roster,
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   expect_equal(tables$gradebook$points_earned, 0)
@@ -286,8 +277,7 @@ test_that("retired rolling assignments remain valid historical gradebook rows", 
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   expect_equal(tables$gradebook$points_possible, 2)
@@ -312,8 +302,7 @@ test_that("repeated literal questions remain distinct rolling exposures", {
     events = events,
     assignments = assignments,
     manifest = gradebook_test_manifest(),
-    course_id = "R101",
-    week_id = "week-01"
+    course_id = "R101"
   )
 
   q1 <- tables$item_detail[tables$item_detail$item_label == "q1", , drop = FALSE]
@@ -322,4 +311,27 @@ test_that("repeated literal questions remain distinct rolling exposures", {
   expect_equal(sum(q1$attempts), 2)
   expect_equal(sum(q1$points_earned), 1)
   expect_equal(tables$gradebook$points_possible, 2)
+})
+
+
+test_that("rolling report is cumulative across historical week provenance", {
+  assignments <- gradebook_test_assignments(c("q1", "q2"))
+  assignments$week_id <- c("week-01", "week-02")
+  events <- gradebook_test_events(
+    item_label = c("q1", "q2"),
+    correct = c("true", "true"),
+    assignment_id = c("abc123-a1", "abc123-a2")
+  )
+  events$week_id <- c("week-01", "week-02")
+
+  tables <- build_gradebook_tables(
+    events = events,
+    assignments = assignments,
+    manifest = gradebook_test_manifest(),
+    course_id = "R101"
+  )
+
+  expect_equal(tables$gradebook$points_possible, 2)
+  expect_equal(tables$gradebook$points_earned, 2)
+  expect_setequal(tables$item_detail$assignment_id, c("abc123-a1", "abc123-a2"))
 })

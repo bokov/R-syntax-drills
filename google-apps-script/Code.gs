@@ -383,14 +383,11 @@ function doPost(e) {
       return handleLogEvent(data, ss);
     }
 
-    if (requestType === 'get_active_assignments' || requestType === 'get_assignments') {
+    if (requestType === 'get_active_assignments') {
       return handleGetActiveAssignments(data, ss);
     }
 
-    if (
-      requestType === 'get_or_create_active_assignments' ||
-      requestType === 'get_or_create_dynamic_assignments'
-    ) {
+    if (requestType === 'get_or_create_active_assignments') {
       return handleGetOrCreateActiveAssignments(data, ss);
     }
 
@@ -435,7 +432,7 @@ function handleLogEvent(data, ss) {
     clean(data.schema_version, 20),
     clean(data.request_id, 200),
     clean(data.course_id, 200),
-    clean(data.week_id, 200),
+    '',
     clean(data.session_token, 300),
     clean(data.student_id, 200),
     clean(data.student_name, 300),
@@ -1273,7 +1270,7 @@ function appendActiveAssignments(
     return [
       Utilities.getUuid(),
       clean(data.course_id, 200),
-      clean(data.week_id, 200),
+      '',
       clean(data.student_id, 200),
       clean(canonical.item_label, 300),
       clean(canonical.topic, 300),
@@ -1334,51 +1331,6 @@ function retireAssignmentIfActive(
     requestId
   ]]);
   return true;
-}
-
-// Retained for compatibility/tests until PR15 removes the old all-topic selector.
-function selectAdaptiveQuestions(
-  eligible,
-  history,
-  topicRetrievabilities,
-  questionCount,
-  randomFn
-) {
-  const exposureCounts = {};
-  history.forEach(function(assignment) {
-    const label = String(assignment.item_label);
-    exposureCounts[label] = (exposureCounts[label] || 0) + 1;
-  });
-
-  const random = randomFn || Math.random;
-
-  return eligible
-    .map(function(item) {
-      const retrievability = Object.prototype.hasOwnProperty.call(
-        topicRetrievabilities,
-        item.topic
-      )
-        ? topicRetrievabilities[item.topic]
-        : 0;
-
-      return {
-        item: item,
-        topic_retrievability: retrievability,
-        exposure_count: exposureCounts[item.item_label] || 0,
-        random_key: random()
-      };
-    })
-    .sort(function(aa, bb) {
-      if (aa.topic_retrievability !== bb.topic_retrievability) {
-        return aa.topic_retrievability - bb.topic_retrievability;
-      }
-      if (aa.exposure_count !== bb.exposure_count) {
-        return aa.exposure_count - bb.exposure_count;
-      }
-      return aa.random_key - bb.random_key;
-    })
-    .slice(0, questionCount)
-    .map(function(row) { return row.item; });
 }
 
 function topicRetrievabilitiesFromReviews(reviews, topics, asOf) {
@@ -1904,24 +1856,16 @@ function validateAssignmentRequest(data) {
 }
 
 function validateQueueSelectionConfig(data) {
-  let rawSize = data.queue_size;
-  if (typeof rawSize === 'undefined' || rawSize === null || rawSize === '') {
-    rawSize = data.questions_per_week;
-  }
-  const queueSize = Number(rawSize);
+  const queueSize = Number(data.queue_size);
   if (!Number.isInteger(queueSize) || queueSize < 1 || queueSize > 500) {
     throw new Error('queue_size must be an integer from 1 through 500.');
   }
 
-  let rawTopics = data.topic_priority;
-  if (!Array.isArray(rawTopics) || !rawTopics.length) {
-    rawTopics = data.unlocked_topics;
-  }
-  if (!Array.isArray(rawTopics) || !rawTopics.length) {
+  if (!Array.isArray(data.topic_priority) || !data.topic_priority.length) {
     throw new Error('topic_priority must be a non-empty ordered array.');
   }
 
-  const topics = rawTopics.map(function(x) {
+  const topics = data.topic_priority.map(function(x) {
     return String(x).trim();
   });
   if (topics.some(function(x) { return !x || x.length > 300; })) {
@@ -1931,29 +1875,15 @@ function validateQueueSelectionConfig(data) {
     throw new Error('topic_priority must not contain duplicates.');
   }
 
-  if (Array.isArray(data.topic_priority) && Array.isArray(data.unlocked_topics)) {
-    const legacy = data.unlocked_topics.map(function(x) { return String(x).trim(); });
-    if (JSON.stringify(legacy) !== JSON.stringify(topics)) {
-      throw new Error('topic_priority and transitional unlocked_topics disagree.');
-    }
-  }
-
   return {
     queue_size: queueSize,
-    topic_priority: topics,
-    unlocked_topics: topics
+    topic_priority: topics
   };
 }
 
 function optionalQueueSelectionConfig(data) {
-  const hasSize = !(
-    typeof data.queue_size === 'undefined' &&
-    typeof data.questions_per_week === 'undefined'
-  );
-  const hasTopics = (
-    typeof data.topic_priority !== 'undefined' ||
-    typeof data.unlocked_topics !== 'undefined'
-  );
+  const hasSize = typeof data.queue_size !== 'undefined';
+  const hasTopics = typeof data.topic_priority !== 'undefined';
   if (!hasSize && !hasTopics) return null;
   if (!hasSize || !hasTopics) {
     throw new Error('queue_size and topic_priority must be supplied together.');
@@ -2137,7 +2067,6 @@ function validateCommonPayload(data) {
   }
   if (!data.request_id) throw new Error('request_id is required.');
   if (!data.course_id) throw new Error('course_id is required.');
-  if (!data.week_id) throw new Error('week_id is required.');
 }
 
 function getAssignmentRows(sheet) {

@@ -51,25 +51,6 @@ test_that("runtime question pool strips solutions but keeps checkers", {
   expect_true(grepl("q1-check", text, fixed = TRUE))
 })
 
-test_that("runtime index receives the configured week as tutorial version", {
-  template <- tempfile(fileext = ".Rmd")
-  output <- tempfile(fileext = ".Rmd")
-  writeLines(c(
-    "tutorial:",
-    "  version: \"__WEEK_ID__\""
-  ), template)
-
-  build_runtime_index(
-    template = template,
-    output = output,
-    config = list(week_id = "week-17")
-  )
-
-  text <- paste(readLines(output, warn = FALSE), collapse = "\n")
-  expect_match(text, 'version: "week-17"', fixed = TRUE)
-  expect_false(grepl("__WEEK_ID__", text, fixed = TRUE))
-})
-
 test_that("assignment-player script is inlined after the generated question pool", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
   lines <- readLines(file.path(root, "index.Rmd"), warn = FALSE)
@@ -113,8 +94,8 @@ test_that("current vector-only configuration has an eligible starter set", {
   bank <- scan_question_bank(question_bank_source_files(root))
 
   config <- list(
-    questions_per_week = 10L,
-    unlocked_topics = c("vector_creation", "vector_indexing")
+    queue_size = 10L,
+    topic_priority = c("vector_creation", "vector_indexing")
   )
 
   expect_silent(validate_assignment_config(config, bank))
@@ -123,7 +104,7 @@ test_that("current vector-only configuration has an eligible starter set", {
     bank$event == "exercise_result" &
       bank$points > 0 &
       bank$starter_question %in% TRUE &
-      bank$topic %in% config$unlocked_topics,
+      bank$topic %in% config$topic_priority,
     ,
     drop = FALSE
   ]

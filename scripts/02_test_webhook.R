@@ -9,7 +9,6 @@ payload <- list(
   request_id = paste0("manual-test-", as.integer(Sys.time())),
   client_timestamp_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   course_id = APP_CONFIG$course_id,
-  week_id = APP_CONFIG$week_id,
   session_token = "manual-test",
   student_id = "INSTRUCTOR_TEST",
   student_name = "",
