@@ -17,7 +17,11 @@ ASSIGNMENT_COLUMNS <- c(
   "points",
   "question_hash",
   "assigned_at_utc",
-  "assignment_reason"
+  "assignment_reason",
+  "assignment_status",
+  "retired_at_utc",
+  "retired_reason",
+  "retired_request_id"
 )
 
 prepare_question_bank_sync <- function(manifest) {
@@ -46,17 +50,19 @@ prepare_question_bank_sync <- function(manifest) {
 }
 
 assignment_config <- function(config = APP_CONFIG) {
+  # The APP_CONFIG field is retained temporarily for compatibility; under the
+  # rolling model it is the active queue size, not a weekly workload.
   if (is.null(config$questions_per_week) || length(config$questions_per_week) != 1) {
     stop("APP_CONFIG$questions_per_week must be one positive integer.")
   }
 
-  questions_per_week <- suppressWarnings(as.numeric(config$questions_per_week))
+  queue_size <- suppressWarnings(as.numeric(config$questions_per_week))
   if (
-    is.na(questions_per_week) ||
-    !is.finite(questions_per_week) ||
-    questions_per_week < 1 ||
-    questions_per_week != floor(questions_per_week) ||
-    questions_per_week > 500
+    is.na(queue_size) ||
+    !is.finite(queue_size) ||
+    queue_size < 1 ||
+    queue_size != floor(queue_size) ||
+    queue_size > 500
   ) {
     stop("APP_CONFIG$questions_per_week must be an integer from 1 through 500.")
   }
@@ -71,7 +77,8 @@ assignment_config <- function(config = APP_CONFIG) {
   }
 
   list(
-    questions_per_week = as.integer(questions_per_week),
+    queue_size = as.integer(queue_size),
+    questions_per_week = as.integer(queue_size),
     unlocked_topics = unlocked_topics
   )
 }
@@ -115,12 +122,11 @@ validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL
     drop = FALSE
   ]
 
-  if (nrow(eligible) < settings$questions_per_week) {
+  if (nrow(eligible) < settings$queue_size) {
     stop(
       "Only ", nrow(eligible),
-      " scored exercise question(s) are available in unlocked topics, but ",
-      settings$questions_per_week,
-      " questions_per_week were requested."
+      " scored exercise question(s) are available in unlocked topics, but active queue size ",
+      settings$queue_size, " was requested."
     )
   }
 
@@ -129,6 +135,13 @@ validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL
     stop(
       "No starter questions are currently eligible. Mark at least one scored exercise ",
       "with starter_question=TRUE in an unlocked topic."
+    )
+  }
+  if (nrow(eligible_starters) > settings$queue_size) {
+    stop(
+      "There are ", nrow(eligible_starters),
+      " eligible starter questions but the active queue size is only ",
+      settings$queue_size, ". Increase the queue or reduce the starter set."
     )
   }
 
@@ -162,7 +175,7 @@ assignment_service_payload <- function(
   student_id,
   config = APP_CONFIG
 ) {
-  if (!request_type %in% c("get_assignments", "get_or_create_dynamic_assignments")) {
+  if (!request_type %in% c("get_active_assignments", "get_or_create_active_assignments")) {
     stop("Unsupported assignment request_type: ", request_type, ".")
   }
 
@@ -176,13 +189,14 @@ assignment_service_payload <- function(
     request_type = request_type,
     request_id = make_service_request_id(),
     course_id = config$course_id,
+    # Retained as provenance until the later weekly-config cleanup PR.
     week_id = config$week_id,
     student_id = student_id
   )
 
-  if (identical(request_type, "get_or_create_dynamic_assignments")) {
+  if (identical(request_type, "get_or_create_active_assignments")) {
     settings <- assignment_config(config)
-    payload$questions_per_week <- settings$questions_per_week
+    payload$queue_size <- settings$queue_size
     payload$unlocked_topics <- unname(settings$unlocked_topics)
   }
 
@@ -233,6 +247,10 @@ empty_assignment_table <- function() {
     question_hash = character(),
     assigned_at_utc = character(),
     assignment_reason = character(),
+    assignment_status = character(),
+    retired_at_utc = character(),
+    retired_reason = character(),
+    retired_request_id = character(),
     stringsAsFactors = FALSE
   )
 }
@@ -253,12 +271,16 @@ assignment_response_table <- function(body) {
       question_hash = as.character(assignment_scalar(row$question_hash)),
       assigned_at_utc = as.character(assignment_scalar(row$assigned_at_utc)),
       assignment_reason = as.character(assignment_scalar(row$assignment_reason)),
+      assignment_status = as.character(assignment_scalar(row$assignment_status)),
+      retired_at_utc = as.character(assignment_scalar(row$retired_at_utc, "")),
+      retired_reason = as.character(assignment_scalar(row$retired_reason, "")),
+      retired_request_id = as.character(assignment_scalar(row$retired_request_id, "")),
       stringsAsFactors = FALSE
     )
   }))
 
   rownames(out) <- NULL
-  out
+  out[order(out$assigned_at_utc), , drop = FALSE]
 }
 
 validate_persisted_assignments <- function(assignments, manifest) {
@@ -282,10 +304,10 @@ validate_persisted_assignments <- function(assignments, manifest) {
   }
 
   if (anyDuplicated(assignments$item_label)) {
-    stop("Persistent assignment rows contain duplicate item_label values.")
+    stop("Active assignment rows contain duplicate item_label values.")
   }
   if (anyDuplicated(assignments$assignment_id)) {
-    stop("Persistent assignment rows contain duplicate assignment_id values.")
+    stop("Active assignment rows contain duplicate assignment_id values.")
   }
   if (
     anyNA(assignments$assignment_id) || any(!nzchar(assignments$assignment_id)) ||
@@ -294,7 +316,10 @@ validate_persisted_assignments <- function(assignments, manifest) {
     anyNA(assignments$question_hash) || any(!nzchar(assignments$question_hash)) ||
     anyNA(assignments$points)
   ) {
-    stop("Persistent assignment rows contain missing required metadata.")
+    stop("Active assignment rows contain missing required metadata.")
+  }
+  if (nrow(assignments) && any(assignments$assignment_status != "active")) {
+    stop("The assignment service returned a non-active row in the active queue.")
   }
 
   missing_from_manifest <- setdiff(assignments$item_label, manifest$item_label)
@@ -336,7 +361,7 @@ initialize_student_assignments <- function(
   config = APP_CONFIG
 ) {
   payload <- assignment_service_payload(
-    "get_or_create_dynamic_assignments",
+    "get_or_create_active_assignments",
     student_id = student_id,
     config = config
   )
