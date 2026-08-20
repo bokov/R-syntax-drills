@@ -8,7 +8,6 @@ output:
 runtime: shiny_prerendered
 tutorial:
   id: "r-syntax-drills"
-  version: "__WEEK_ID__"
 ---
 
 ```{r setup, include=FALSE}

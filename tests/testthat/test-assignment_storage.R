@@ -63,30 +63,28 @@ assignment_test_bank <- function() {
   )
 }
 
-test_that("assignment config treats legacy topic field as ordered curriculum", {
+test_that("assignment config uses rolling queue and curriculum names", {
   config <- list(
-    questions_per_week = 2L,
-    unlocked_topics = c("vectors", "lists")
+    queue_size = 2L,
+    topic_priority = c("vectors", "lists")
   )
 
   settings <- validate_assignment_config(config, assignment_test_bank())
   expect_equal(settings$queue_size, 2L)
-  expect_equal(settings$questions_per_week, 2L)
   expect_equal(settings$topic_priority, c("vectors", "lists"))
-  expect_equal(settings$unlocked_topics, settings$topic_priority)
 })
 
 test_that("assignment config rejects unknown or empty curriculum topics", {
   expect_error(
     validate_assignment_config(
-      list(questions_per_week = 2L, unlocked_topics = "unknown"),
+      list(queue_size = 2L, topic_priority = "unknown"),
       assignment_test_bank()
     ),
     "unknown curriculum topic"
   )
 
   expect_error(
-    assignment_config(list(questions_per_week = 2L, unlocked_topics = character())),
+    assignment_config(list(queue_size = 2L, topic_priority = character())),
     "ordered topic curriculum"
   )
 })
@@ -94,7 +92,7 @@ test_that("assignment config rejects unknown or empty curriculum topics", {
 test_that("assignment config requires enough first-topic questions and a starter", {
   expect_error(
     validate_assignment_config(
-      list(questions_per_week = 3L, unlocked_topics = c("vectors", "lists")),
+      list(queue_size = 3L, topic_priority = c("vectors", "lists")),
       assignment_test_bank()
     ),
     "first curriculum topic"
@@ -104,7 +102,7 @@ test_that("assignment config requires enough first-topic questions and a starter
   bank$starter_question <- FALSE
   expect_error(
     validate_assignment_config(
-      list(questions_per_week = 2L, unlocked_topics = c("vectors", "lists")),
+      list(queue_size = 2L, topic_priority = c("vectors", "lists")),
       bank
     ),
     "no starter questions"
@@ -117,7 +115,7 @@ test_that("assignment config requires first-topic starter set to fit queue", {
 
   expect_error(
     validate_assignment_config(
-      list(questions_per_week = 1L, unlocked_topics = c("vectors", "lists")),
+      list(queue_size = 1L, topic_priority = c("vectors", "lists")),
       bank
     ),
     "starter questions in the first curriculum topic"
@@ -127,7 +125,6 @@ test_that("assignment config requires first-topic starter set to fit queue", {
 test_that("active assignment lookup payload contains only lookup fields", {
   config <- list(
     course_id = "R101",
-    week_id = "week-01",
     webhook_url = "unused"
   )
 
@@ -139,19 +136,17 @@ test_that("active assignment lookup payload contains only lookup fields", {
 
   expect_equal(payload$request_type, "get_active_assignments")
   expect_equal(payload$course_id, "R101")
-  expect_equal(payload$week_id, "week-01")
   expect_equal(payload$student_id, "abc123")
   expect_null(payload$queue_size)
   expect_null(payload$topic_priority)
-  expect_null(payload$unlocked_topics)
+  expect_null(payload$week_id)
 })
 
 test_that("rolling assignment payload carries ordered curriculum configuration", {
   config <- list(
     course_id = "R101",
-    week_id = "week-02",
-    questions_per_week = 10L,
-    unlocked_topics = c("vector_creation", "vector_indexing"),
+    queue_size = 10L,
+    topic_priority = c("vector_creation", "vector_indexing"),
     webhook_url = "unused"
   )
 
@@ -166,8 +161,7 @@ test_that("rolling assignment payload carries ordered curriculum configuration",
     payload$topic_priority,
     c("vector_creation", "vector_indexing")
   )
-  expect_equal(payload$unlocked_topics, payload$topic_priority)
-  expect_null(payload$questions_per_week)
+  expect_null(payload$week_id)
 })
 
 test_that("assignment service response converts active rows in oldest-first order", {
@@ -177,7 +171,7 @@ test_that("assignment service response converts active rows in oldest-first orde
       list(
         assignment_id = "a2",
         course_id = "R101",
-        week_id = "week-01",
+        week_id = "",
         student_id = "abc123",
         item_label = "q2",
         topic = "vectors",
@@ -193,7 +187,7 @@ test_that("assignment service response converts active rows in oldest-first orde
       list(
         assignment_id = "a1",
         course_id = "R101",
-        week_id = "week-01",
+        week_id = "",
         student_id = "abc123",
         item_label = "q1",
         topic = "vectors",
@@ -215,6 +209,7 @@ test_that("assignment service response converts active rows in oldest-first orde
   expect_equal(assignments$item_label, c("q1", "q2"))
   expect_equal(assignments$points, c(1, 1))
   expect_true(all(assignments$assignment_status == "active"))
+  expect_true(all(assignments$week_id == ""))
 })
 
 test_that("rolling active assignment may be a canonical manifest subset", {
@@ -263,7 +258,7 @@ test_that("active assignment validation rejects retired rows", {
   assignments <- data.frame(
     assignment_id = "a1",
     course_id = "R101",
-    week_id = "week-01",
+    week_id = "",
     student_id = "abc123",
     item_label = "q1",
     topic = "vectors",
@@ -296,7 +291,7 @@ test_that("rolling active assignment rejects stale metadata", {
   assignments <- data.frame(
     assignment_id = "a1",
     course_id = "R101",
-    week_id = "week-01",
+    week_id = "",
     student_id = "abc123",
     item_label = "q1",
     topic = "vectors",

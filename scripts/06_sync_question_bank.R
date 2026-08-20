@@ -30,6 +30,6 @@ message(
   "."
 )
 message(
-  "Unlocked topics: ", paste(APP_CONFIG$unlocked_topics, collapse = ", "),
-  "; questions per returning-student week: ", APP_CONFIG$questions_per_week, "."
+  "Curriculum priority: ", paste(APP_CONFIG$topic_priority, collapse = ", "),
+  "; active queue size: ", APP_CONFIG$queue_size, "."
 )

@@ -43,7 +43,6 @@ tables <- build_gradebook_tables(
   manifest = manifest,
   roster = roster,
   course_id = APP_CONFIG$course_id,
-  week_id = APP_CONFIG$week_id,
   deadline_utc = APP_CONFIG$deadline_utc
 )
 
@@ -51,20 +50,19 @@ gradebook <- tables$gradebook
 item_detail <- tables$item_detail
 
 dir.create("output", showWarnings = FALSE)
-week_safe <- gsub("[^A-Za-z0-9_-]", "_", APP_CONFIG$week_id)
-write_csv(gradebook, file.path("output", paste0("grades_", week_safe, ".csv")))
-write_csv(item_detail, file.path("output", paste0("item_detail_", week_safe, ".csv")))
+write_csv(gradebook, file.path("output", "grades.csv"))
+write_csv(item_detail, file.path("output", "item_detail.csv"))
 
 sheet_write(
   gradebook,
   ss = APP_CONFIG$google_sheet_id,
-  sheet = paste0("grades_", week_safe)
+  sheet = "grades"
 )
 sheet_write(
   item_detail,
   ss = APP_CONFIG$google_sheet_id,
-  sheet = paste0("detail_", week_safe)
+  sheet = "detail"
 )
 
 print(gradebook)
-message("Gradebook CSVs written to output/ and grade tabs updated in Google Sheets.")
+message("Cumulative drill-report CSVs written to output/ and grades/detail tabs updated in Google Sheets.")

@@ -7,7 +7,6 @@ source("R/player_builder.R")
 # deliberately NOT deployed; the runtime player contains only scored exercise
 # blocks and omits their *-solution chunks.
 build_player_assets(config = APP_CONFIG)
-build_runtime_index(config = APP_CONFIG)
 
 if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
   stop("Set APP_CONFIG$webhook_url before deploying.")
@@ -25,7 +24,7 @@ runtime_r_files <- setdiff(
   grep("\\.bak$", x = _, invert = TRUE, value = TRUE)
 
 app_files <- c(
-  "runtime_index.Rmd",
+  "index.Rmd",
   "runtime_question_pool.Rmd",
   "question_manifest.csv",
   runtime_r_files,
@@ -35,7 +34,7 @@ app_files <- c(
 rsconnect::deployApp(
   appDir = ".",
   appFiles = app_files,
-  appPrimaryDoc = "runtime_index.Rmd",
+  appPrimaryDoc = "index.Rmd",
   appName = APP_CONFIG$app_name,
   appMode = "rmd-shiny",
   launch.browser = TRUE

@@ -78,8 +78,6 @@ post_log_event <- function(
     request_id = make_request_id(),
     client_timestamp_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
     course_id = config$course_id,
-    # Retained as provenance until the later weekly-config cleanup PR.
-    week_id = config$week_id,
     session_token = session$token,
     student_id = log_scalar(identity$student_id, NA_character_),
     student_name = log_scalar(identity$student_name, NA_character_),
@@ -106,8 +104,6 @@ post_log_event <- function(
     settings <- assignment_config(config)
     payload$queue_size <- settings$queue_size
     payload$topic_priority <- unname(settings$topic_priority)
-    # Transitional protocol alias; PR15 removes the old terminology.
-    payload$unlocked_topics <- unname(settings$topic_priority)
   }
 
   if (!nzchar(config$webhook_url) || grepl("PASTE_", config$webhook_url, fixed = TRUE)) {

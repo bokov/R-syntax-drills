@@ -13,7 +13,6 @@ require_columns <- function(data, required, object_name) {
 GRADEBOOK_ASSIGNMENT_COLUMNS <- c(
   "assignment_id",
   "course_id",
-  "week_id",
   "student_id",
   "item_label",
   "topic",
@@ -81,7 +80,6 @@ build_gradebook_tables <- function(
   manifest,
   roster = NULL,
   course_id,
-  week_id,
   deadline_utc = NA_character_
 ) {
   require_columns(
@@ -101,7 +99,7 @@ build_gradebook_tables <- function(
   require_columns(
     events,
     c(
-      "server_timestamp_utc", "course_id", "week_id", "session_token",
+      "server_timestamp_utc", "course_id", "session_token",
       "student_id", "student_name", "event", "item_label", "correct"
     ),
     "Events"
@@ -115,17 +113,13 @@ build_gradebook_tables <- function(
     dplyr::mutate(
       server_timestamp_utc = readr::parse_datetime(.data$server_timestamp_utc),
       course_id = trimws(as.character(.data$course_id)),
-      week_id = trimws(as.character(.data$week_id)),
       student_id = dplyr::na_if(trimws(as.character(.data$student_id)), ""),
       student_name = dplyr::na_if(trimws(as.character(.data$student_name)), ""),
       assignment_id = dplyr::na_if(trimws(as.character(.data$assignment_id)), ""),
       item_label = dplyr::na_if(trimws(as.character(.data$item_label)), ""),
       correct_bool = tolower(as.character(.data$correct)) == "true"
     ) |>
-    dplyr::filter(
-      .data$course_id == course_id,
-      .data$week_id == week_id
-    )
+    dplyr::filter(.data$course_id == course_id)
 
   if (!is.na(deadline_utc)) {
     deadline <- as.POSIXct(deadline_utc, tz = "UTC")
@@ -182,7 +176,6 @@ build_gradebook_tables <- function(
     dplyr::mutate(
       assignment_id = dplyr::na_if(trimws(as.character(.data$assignment_id)), ""),
       course_id = trimws(as.character(.data$course_id)),
-      week_id = trimws(as.character(.data$week_id)),
       student_id = dplyr::na_if(trimws(as.character(.data$student_id)), ""),
       item_label = dplyr::na_if(trimws(as.character(.data$item_label)), ""),
       topic = dplyr::na_if(trimws(as.character(.data$topic)), ""),
@@ -191,10 +184,7 @@ build_gradebook_tables <- function(
       assigned_at_utc = dplyr::na_if(trimws(as.character(.data$assigned_at_utc)), ""),
       assignment_reason = dplyr::na_if(trimws(as.character(.data$assignment_reason)), "")
     ) |>
-    dplyr::filter(
-      .data$course_id == course_id,
-      .data$week_id == week_id
-    )
+    dplyr::filter(.data$course_id == course_id)
 
   if (any(is.na(assignments$student_id) | is.na(assignments$item_label))) {
     stop("Assignments contain missing student_id or item_label values.")

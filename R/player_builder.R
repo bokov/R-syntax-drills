@@ -103,26 +103,6 @@ build_runtime_question_pool <- function(
   invisible(output)
 }
 
-build_runtime_index <- function(
-  template = "index.Rmd",
-  output = "runtime_index.Rmd",
-  config = APP_CONFIG
-) {
-  lines <- readLines(template, warn = FALSE)
-  token <- "__WEEK_ID__"
-
-  if (!any(grepl(token, lines, fixed = TRUE))) {
-    stop("The player template does not contain the __WEEK_ID__ token.")
-  }
-
-  week_id <- as.character(config$week_id)[[1]]
-  if (!nzchar(trimws(week_id))) stop("APP_CONFIG$week_id must not be blank.")
-
-  lines <- gsub(token, week_id, lines, fixed = TRUE)
-  writeLines(lines, output)
-  invisible(output)
-}
-
 build_player_assets <- function(
   root = ".",
   config = APP_CONFIG,

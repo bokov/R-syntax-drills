@@ -31,7 +31,6 @@ vm.runInContext(
       reviewRowToObject,
       topicRetrievabilitiesFromReviews,
       topicMasterySummary,
-      selectAdaptiveQuestions,
       selectLeastUsedQuestion,
       curriculumStateFromHistory,
       chooseCurriculumReplacementTopic,
@@ -303,30 +302,6 @@ assert(
   'An already-correct question in the latest legacy batch should retire during migration.'
 );
 
-const eligible = [
-  { item_label: 'weak_used', topic: 'weak' },
-  { item_label: 'weak_new', topic: 'weak' },
-  { item_label: 'strong_new', topic: 'strong' }
-];
-const exposureHistory = [
-  { item_label: 'weak_used' }
-];
-const selected = api.selectAdaptiveQuestions(
-  eligible,
-  exposureHistory,
-  { weak: 0.4, strong: 0.8 },
-  2,
-  function() { return 0.5; }
-);
-assert(
-  selected[0].item_label === 'weak_new',
-  'Within the legacy selector, the least-exposed literal probe should come first.'
-);
-assert(
-  selected[1].item_label === 'weak_used',
-  'Lower topic retrievability should outrank literal exposure count in another topic.'
-);
-
 const leastUsed = api.selectLeastUsedQuestion(
   [
     { item_label: 'used_twice', topic: 'frontier' },
@@ -422,8 +397,7 @@ assert(
 
 const priorityConfig = api.validateQueueSelectionConfig({
   queue_size: 10,
-  topic_priority: curriculum,
-  unlocked_topics: curriculum
+  topic_priority: curriculum
 });
 assert(
   priorityConfig.topic_priority.join(',') === curriculum.join(','),

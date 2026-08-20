@@ -50,15 +50,11 @@ prepare_question_bank_sync <- function(manifest) {
 }
 
 assignment_config <- function(config = APP_CONFIG) {
-  # These APP_CONFIG names are retained through PR14 for compatibility. Under
-  # the rolling model questions_per_week is queue size, and unlocked_topics is
-  # an ordered curriculum from earliest to most advanced topic. PR15 will rename
-  # the fields once the behavioral transition is complete.
-  if (is.null(config$questions_per_week) || length(config$questions_per_week) != 1) {
-    stop("APP_CONFIG$questions_per_week must be one positive integer.")
+  if (is.null(config$queue_size) || length(config$queue_size) != 1) {
+    stop("APP_CONFIG$queue_size must be one positive integer.")
   }
 
-  queue_size <- suppressWarnings(as.numeric(config$questions_per_week))
+  queue_size <- suppressWarnings(as.numeric(config$queue_size))
   if (
     is.na(queue_size) ||
     !is.finite(queue_size) ||
@@ -66,24 +62,21 @@ assignment_config <- function(config = APP_CONFIG) {
     queue_size != floor(queue_size) ||
     queue_size > 500
   ) {
-    stop("APP_CONFIG$questions_per_week must be an integer from 1 through 500.")
+    stop("APP_CONFIG$queue_size must be an integer from 1 through 500.")
   }
 
-  topic_priority <- trimws(as.character(config$unlocked_topics))
+  topic_priority <- trimws(as.character(config$topic_priority))
   topic_priority <- topic_priority[nzchar(topic_priority)]
   if (!length(topic_priority)) {
-    stop("APP_CONFIG$unlocked_topics must contain the ordered topic curriculum.")
+    stop("APP_CONFIG$topic_priority must contain the ordered topic curriculum.")
   }
   if (anyDuplicated(topic_priority)) {
-    stop("APP_CONFIG$unlocked_topics must not contain duplicates.")
+    stop("APP_CONFIG$topic_priority must not contain duplicates.")
   }
 
   list(
     queue_size = as.integer(queue_size),
-    questions_per_week = as.integer(queue_size),
-    topic_priority = topic_priority,
-    # Compatibility alias until PR15 removes the old terminology.
-    unlocked_topics = topic_priority
+    topic_priority = topic_priority
   )
 }
 
@@ -108,7 +101,7 @@ validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL
   unknown_topics <- setdiff(settings$topic_priority, known_topics)
   if (length(unknown_topics)) {
     stop(
-      "APP_CONFIG$unlocked_topics contains unknown curriculum topic(s): ",
+      "APP_CONFIG$topic_priority contains unknown curriculum topic(s): ",
       paste(unknown_topics, collapse = ", "),
       "."
     )
@@ -195,8 +188,6 @@ assignment_service_payload <- function(
     request_type = request_type,
     request_id = make_service_request_id(),
     course_id = config$course_id,
-    # Retained as provenance until the later weekly-config cleanup PR.
-    week_id = config$week_id,
     student_id = student_id
   )
 
@@ -204,9 +195,6 @@ assignment_service_payload <- function(
     settings <- assignment_config(config)
     payload$queue_size <- settings$queue_size
     payload$topic_priority <- unname(settings$topic_priority)
-    # Sent temporarily so an older deployed Apps Script remains understandable
-    # during a staged deployment. The PR14 server prefers topic_priority.
-    payload$unlocked_topics <- unname(settings$topic_priority)
   }
 
   payload
