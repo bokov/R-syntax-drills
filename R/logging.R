@@ -121,7 +121,7 @@ post_log_event <- function(
       # Do not add req_method("POST"): req_body_json() already selects POST,
       # and the Apps Script redirect path has previously rejected an explicit method.
       httr2::req_body_json(payload, auto_unbox = TRUE, null = "null") |>
-      httr2::req_timeout(8) |>
+      httr2::req_timeout(30) |>
       httr2::req_perform()
 
     body <- httr2::resp_body_json(response, simplifyVector = FALSE)
