@@ -166,7 +166,7 @@ make_test_event <- function(assignment, correct, request_id) {
     checked = TRUE,
     restore = FALSE,
     queue_size = settings$queue_size,
-    topic_priority = unname(curriculum),
+    topic_priority = unname(curriculum)
   )
 }
 
