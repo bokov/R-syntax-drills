@@ -1,6 +1,5 @@
 # Server-side logging helpers. Event logging remains append-only. The same Apps
-# Script also exposes assignment lookup/create operations, but no grade/event
-# read endpoint.
+# Script also exposes active-assignment operations, but no grade/event read endpoint.
 
 log_scalar <- function(x, default = NA) {
   if (is.null(x) || length(x) == 0) return(default)
@@ -50,6 +49,15 @@ set_logging_status <- function(session, ok, message) {
   invisible(NULL)
 }
 
+set_active_assignment_player <- function(session, assignments) {
+  session$userData$assignment_ids(assignment_id_map(assignments))
+  session$sendCustomMessage(
+    "assignment:set",
+    list(item_labels = unname(as.character(assignments$item_label)))
+  )
+  invisible(assignments)
+}
+
 post_log_event <- function(
   session,
   event,
@@ -63,27 +71,29 @@ post_log_event <- function(
     data$assignment_id,
     current_assignment_id(session, item_label)
   )
+  graded_event <- event %in% c("exercise_result", "question_submission")
 
   payload <- list(
     schema_version = "1",
     request_id = make_request_id(),
     client_timestamp_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
     course_id = config$course_id,
+    # Retained as provenance until the later weekly-config cleanup PR.
     week_id = config$week_id,
     session_token = session$token,
     student_id = log_scalar(identity$student_id, NA_character_),
     student_name = log_scalar(identity$student_name, NA_character_),
     event = event,
     item_label = item_label,
-    topic = if (event %in% c("exercise_result", "question_submission")) {
-      question_topic(item_label, manifest)
-    } else {
-      NA_character_
-    },
+    topic = if (graded_event) question_topic(item_label, manifest) else NA_character_,
     assignment_id = assignment_id,
     attempt_id = log_scalar(data$id, NA_character_),
     submitted_code = log_scalar(data$code, NA_character_),
-    correct = if (!is.null(data$feedback$correct)) isTRUE(data$feedback$correct) else log_scalar(data$correct, NA),
+    correct = if (!is.null(data$feedback$correct)) {
+      isTRUE(data$feedback$correct)
+    } else {
+      log_scalar(data$correct, NA)
+    },
     answer = if (!is.null(data$answer)) paste(data$answer, collapse = " | ") else NA_character_,
     checked = log_scalar(data$checked, NA),
     restore = log_scalar(data$restore, NA),
@@ -91,6 +101,12 @@ post_log_event <- function(
     timeout_exceeded = log_scalar(data$timeout_exceeded, NA),
     error_message = log_scalar(data$error_message, NA_character_)
   )
+
+  if (graded_event) {
+    settings <- assignment_config(config)
+    payload$queue_size <- settings$queue_size
+    payload$unlocked_topics <- unname(settings$unlocked_topics)
+  }
 
   if (!nzchar(config$webhook_url) || grepl("PASTE_", config$webhook_url, fixed = TRUE)) {
     msg <- "Logging is not configured: set APP_CONFIG$webhook_url."
@@ -100,16 +116,28 @@ post_log_event <- function(
 
   result <- tryCatch({
     response <- httr2::request(config$webhook_url) |>
-      #httr2::req_method("POST") |>
+      # Do not add req_method("POST"): req_body_json() already selects POST,
+      # and the Apps Script redirect path has previously rejected an explicit method.
       httr2::req_body_json(payload, auto_unbox = TRUE, null = "null") |>
       httr2::req_timeout(8) |>
       httr2::req_perform()
 
-    body <- httr2::resp_body_json(response, simplifyVector = TRUE)
+    body <- httr2::resp_body_json(response, simplifyVector = FALSE)
     if (!isTRUE(body$ok)) {
       stop(body$error %||% "The logging endpoint returned ok=false.")
     }
-    list(ok = TRUE, message = "Responses are being recorded.")
+
+    if (graded_event && !is.null(body$assignments)) {
+      assignments <- assignment_response_table(body)
+      assignments <- validate_persisted_assignments(assignments, manifest)
+      set_active_assignment_player(session, assignments)
+    }
+
+    list(
+      ok = TRUE,
+      message = "Responses are being recorded.",
+      duplicate = isTRUE(body$duplicate)
+    )
   }, error = function(e) {
     list(ok = FALSE, message = paste("Logging failed:", conditionMessage(e)))
   })
