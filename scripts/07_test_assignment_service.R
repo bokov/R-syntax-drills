@@ -54,6 +54,14 @@ print_service_timing <- function(label, body, round_trip_ms) {
       ))
     }
   }
+  lock_wait_ms <- service_timing_number(timing$lock_wait_ms)
+  lock_hold_ms <- service_timing_number(timing$lock_hold_ms)
+  if (!is.na(lock_wait_ms)) {
+    message(sprintf("  %-30s %8.3f s", "lock_wait_total", lock_wait_ms / 1000))
+  }
+  if (!is.na(lock_hold_ms)) {
+    message(sprintf("  %-30s %8.3f s", "lock_hold_total", lock_hold_ms / 1000))
+  }
   message(sprintf(
     "  %-30s %8.3f s",
     "outside_handler_or_network",
@@ -173,9 +181,8 @@ wrong_payload <- make_test_event(
   make_service_request_id("rolling-wrong")
 )
 wrong <- post_test_assignment_service(wrong_payload, "wrong first attempt")
-wrong_table <- assignment_response_table(wrong)
-if (!identical(created_ids, wrong_table$assignment_id)) {
-  stop("Incorrect first attempt changed the active queue.")
+if (!is.null(wrong$assignments)) {
+  stop("Incorrect first attempt unnecessarily returned the unchanged active queue.")
 }
 
 correct_payload <- make_test_event(
