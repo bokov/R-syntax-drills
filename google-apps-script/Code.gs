@@ -1,6 +1,7 @@
 const EVENT_SHEET = 'events';
 const ASSIGNMENT_SHEET = 'assignments';
 const QUESTION_BANK_SHEET = 'question_bank';
+const REVIEW_SHEET = 'reviews';
 
 const EVENT_HEADERS = [
   'server_timestamp_utc',
@@ -47,6 +48,21 @@ const QUESTION_BANK_HEADERS = [
   'points',
   'starter_question',
   'question_hash'
+];
+
+// One compact row per persisted assignment exposure after its first graded
+// attempt. This is the scheduler/mastery index; events remains the full audit log.
+const REVIEW_HEADERS = [
+  'assignment_id',
+  'course_id',
+  'week_id',
+  'student_id',
+  'item_label',
+  'topic',
+  'first_attempt_at_utc',
+  'first_attempt_correct',
+  'attempt_count',
+  'last_attempt_at_utc'
 ];
 
 const ALLOWED_EVENTS = [
@@ -102,11 +118,77 @@ function setupGradeSheet() {
 
   PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
 
-  ensureManagedSheet(ss, EVENT_SHEET, EVENT_HEADERS);
-  ensureManagedSheet(ss, ASSIGNMENT_SHEET, ASSIGNMENT_HEADERS);
+  const eventSheet = ensureManagedSheet(ss, EVENT_SHEET, EVENT_HEADERS);
+  const assignmentSheet = ensureManagedSheet(ss, ASSIGNMENT_SHEET, ASSIGNMENT_HEADERS);
   ensureManagedSheet(ss, QUESTION_BANK_SHEET, QUESTION_BANK_HEADERS);
+  const reviewSheet = ensureManagedSheet(ss, REVIEW_SHEET, REVIEW_HEADERS);
+
+  // Upgrade existing workbooks without losing the history already collected.
+  if (
+    reviewSheet.getLastRow() <= 1 &&
+    eventSheet.getLastRow() > 1 &&
+    assignmentSheet.getLastRow() > 1
+  ) {
+    const rebuilt = rebuildReviewHistoryForSpreadsheet(ss);
+    Logger.log('Backfilled ' + rebuilt + ' compact review row(s) from existing events.');
+  }
 
   Logger.log('Grade sheet is ready: ' + ss.getId());
+}
+
+function rebuildReviewHistory() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Run this from a script bound to the grading spreadsheet.');
+
+  ensureManagedSheet(ss, EVENT_SHEET, EVENT_HEADERS);
+  ensureManagedSheet(ss, ASSIGNMENT_SHEET, ASSIGNMENT_HEADERS);
+  ensureManagedSheet(ss, REVIEW_SHEET, REVIEW_HEADERS);
+
+  const rebuilt = rebuildReviewHistoryForSpreadsheet(ss);
+  Logger.log('Rebuilt ' + rebuilt + ' compact review row(s).');
+  return rebuilt;
+}
+
+function rebuildReviewHistoryForSpreadsheet(ss) {
+  const started = Date.now();
+  const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
+  const eventsSheet = ss.getSheetByName(EVENT_SHEET);
+  const reviewsSheet = ss.getSheetByName(REVIEW_SHEET);
+
+  if (!assignmentsSheet || !eventsSheet || !reviewsSheet) {
+    throw new Error('assignments, events, and reviews sheets must exist before rebuilding reviews.');
+  }
+
+  ensureSheetHeaders(assignmentsSheet, ASSIGNMENT_HEADERS, ASSIGNMENT_SHEET);
+  ensureSheetHeaders(eventsSheet, EVENT_HEADERS, EVENT_SHEET);
+  ensureSheetHeaders(reviewsSheet, REVIEW_HEADERS, REVIEW_SHEET);
+
+  const assignmentRows = getAssignmentRows(assignmentsSheet);
+  const eventRows = getEventRows(eventsSheet);
+  const reviewRows = compactReviewRowsFromEvents(assignmentRows, eventRows);
+
+  if (reviewsSheet.getLastRow() > 1) {
+    reviewsSheet
+      .getRange(2, 1, reviewsSheet.getLastRow() - 1, REVIEW_HEADERS.length)
+      .clearContent();
+  }
+  if (reviewRows.length) {
+    reviewsSheet
+      .getRange(2, 1, reviewRows.length, REVIEW_HEADERS.length)
+      .setValues(reviewRows);
+  }
+
+  console.log(
+    'service_timing ' + JSON.stringify({
+      operation: 'rebuild_review_history',
+      assignment_rows: assignmentRows.length,
+      event_rows: eventRows.length,
+      review_rows: reviewRows.length,
+      total_ms: Date.now() - started
+    })
+  );
+
+  return reviewRows.length;
 }
 
 function ensureManagedSheet(ss, sheetName, headers) {
@@ -204,12 +286,24 @@ function doPost(e) {
 function handleLogEvent(data, ss) {
   validateEventPayload(data);
 
+  const timer = startServiceTimer('log_event', data.request_id);
   const sheet = ss.getSheetByName(EVENT_SHEET);
   if (!sheet) throw new Error('The events sheet does not exist.');
   ensureSheetHeaders(sheet, EVENT_HEADERS, EVENT_SHEET);
 
+  const isGraded = GRADED_EVENTS.includes(String(data.event));
+  let reviewsSheet = null;
+  if (isGraded) {
+    reviewsSheet = ss.getSheetByName(REVIEW_SHEET);
+    if (!reviewsSheet) {
+      throw new Error('The reviews sheet does not exist. Run setupGradeSheet() once after updating Code.gs.');
+    }
+    ensureSheetHeaders(reviewsSheet, REVIEW_HEADERS, REVIEW_SHEET);
+  }
+
+  const serverTimestamp = new Date().toISOString();
   const row = [
-    new Date().toISOString(),
+    serverTimestamp,
     clean(data.client_timestamp_utc, 100),
     clean(data.schema_version, 20),
     clean(data.request_id, 200),
@@ -235,16 +329,45 @@ function handleLogEvent(data, ss) {
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
+  markServiceTimer(timer, 'lock_acquired');
+
   try {
-    sheet.appendRow(row);
+    const existingRequestRow = findSheetRowByValue(
+      sheet,
+      4,
+      clean(data.request_id, 200)
+    );
+    markServiceTimer(timer, 'idempotency_checked');
+
+    if (existingRequestRow) {
+      timer.result = 'duplicate';
+      return jsonResponse({
+        ok: true,
+        request_id: data.request_id,
+        duplicate: true
+      });
+    }
+
+    sheet
+      .getRange(sheet.getLastRow() + 1, 1, 1, EVENT_HEADERS.length)
+      .setValues([row]);
+    markServiceTimer(timer, 'event_written');
+
+    if (isGraded) {
+      upsertReviewFromEvent(reviewsSheet, data, serverTimestamp);
+      markServiceTimer(timer, 'review_updated');
+    }
+
+    timer.result = 'written';
+    return jsonResponse({
+      ok: true,
+      request_id: data.request_id,
+      duplicate: false
+    });
   } finally {
     lock.releaseLock();
+    logServiceTimer(timer);
   }
-
-  return jsonResponse({
-    ok: true,
-    request_id: data.request_id
-  });
 }
 
 function handleGetAssignments(data, ss) {
@@ -271,6 +394,11 @@ function handleGetAssignments(data, ss) {
 function handleGetOrCreateDynamicAssignments(data, ss) {
   validateDynamicAssignmentRequest(data);
 
+  const timer = startServiceTimer(
+    'get_or_create_dynamic_assignments',
+    data.request_id
+  );
+
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   if (!assignmentsSheet) throw new Error('The assignments sheet does not exist.');
   ensureSheetHeaders(assignmentsSheet, ASSIGNMENT_HEADERS, ASSIGNMENT_SHEET);
@@ -279,12 +407,15 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
   if (!questionBankSheet) throw new Error('The question_bank sheet does not exist.');
   ensureSheetHeaders(questionBankSheet, QUESTION_BANK_HEADERS, QUESTION_BANK_SHEET);
 
-  const eventsSheet = ss.getSheetByName(EVENT_SHEET);
-  if (!eventsSheet) throw new Error('The events sheet does not exist.');
-  ensureSheetHeaders(eventsSheet, EVENT_HEADERS, EVENT_SHEET);
+  const reviewsSheet = ss.getSheetByName(REVIEW_SHEET);
+  if (!reviewsSheet) {
+    throw new Error('The reviews sheet does not exist. Run setupGradeSheet() once after updating Code.gs.');
+  }
+  ensureSheetHeaders(reviewsSheet, REVIEW_HEADERS, REVIEW_SHEET);
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
+  markServiceTimer(timer, 'lock_acquired');
 
   try {
     const existing = getAssignmentsForStudent(
@@ -293,8 +424,11 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
       data.week_id,
       data.student_id
     );
+    markServiceTimer(timer, 'current_assignments_loaded');
 
     if (existing.length) {
+      timer.result = 'existing';
+      timer.assignment_count = existing.length;
       return jsonResponse({
         ok: true,
         request_id: data.request_id,
@@ -304,6 +438,8 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
     }
 
     const bank = getQuestionBank(questionBankSheet);
+    markServiceTimer(timer, 'question_bank_loaded');
+
     const unlockedTopics = data.unlocked_topics.map(function(x) { return String(x); });
     const unlocked = new Set(unlockedTopics);
     const knownTopics = new Set(bank.map(function(item) { return item.topic; }));
@@ -338,6 +474,7 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
       data.course_id,
       data.student_id
     );
+    markServiceTimer(timer, 'assignment_history_loaded');
 
     let selected;
     let assignmentReason;
@@ -355,12 +492,15 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
         );
       }
     } else {
-      const eventRows = getEventRows(eventsSheet);
-      const topicRetrievabilities = topicRetrievabilitiesFromHistory(
-        history,
-        eventRows,
+      const reviews = getReviewsForStudent(
+        reviewsSheet,
         data.course_id,
-        data.student_id,
+        data.student_id
+      );
+      markServiceTimer(timer, 'review_history_loaded');
+
+      const topicRetrievabilities = topicRetrievabilitiesFromReviews(
+        reviews,
         unlockedTopics,
         new Date()
       );
@@ -372,7 +512,9 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
         data.questions_per_week
       );
       assignmentReason = 'fsrs_retrievability';
+      timer.review_count = reviews.length;
     }
+    markServiceTimer(timer, 'questions_selected');
 
     const now = new Date().toISOString();
     const rows = selected.map(function(canonical) {
@@ -398,7 +540,10 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
         ASSIGNMENT_HEADERS.length
       )
       .setValues(rows);
+    markServiceTimer(timer, 'assignments_written');
 
+    timer.result = 'created';
+    timer.assignment_count = rows.length;
     return jsonResponse({
       ok: true,
       request_id: data.request_id,
@@ -408,6 +553,7 @@ function handleGetOrCreateDynamicAssignments(data, ss) {
     });
   } finally {
     lock.releaseLock();
+    logServiceTimer(timer);
   }
 }
 
@@ -455,15 +601,7 @@ function selectAdaptiveQuestions(
     .map(function(row) { return row.item; });
 }
 
-function topicRetrievabilitiesFromHistory(
-  history,
-  eventRows,
-  courseId,
-  studentId,
-  unlockedTopics,
-  asOf
-) {
-  const reviews = firstAttemptReviews(history, eventRows, courseId, studentId);
+function topicRetrievabilitiesFromReviews(reviews, topics, asOf) {
   const reviewsByTopic = {};
 
   reviews.forEach(function(review) {
@@ -472,16 +610,21 @@ function topicRetrievabilitiesFromHistory(
   });
 
   const output = {};
-  unlockedTopics.forEach(function(topic) {
+  topics.forEach(function(topic) {
     let state = null;
     const topicReviews = reviewsByTopic[topic] || [];
 
     topicReviews
+      .slice()
       .sort(function(aa, bb) {
-        return aa.review_time.getTime() - bb.review_time.getTime();
+        return aa.first_attempt_at.getTime() - bb.first_attempt_at.getTime();
       })
       .forEach(function(review) {
-        state = fsrsReviewMemoryState(state, review.rating, review.review_time);
+        state = fsrsReviewMemoryState(
+          state,
+          review.first_attempt_correct ? FSRS_RATING_GOOD : FSRS_RATING_AGAIN,
+          review.first_attempt_at
+        );
       });
 
     output[topic] = fsrsCurrentRetrievability(state, asOf);
@@ -490,45 +633,168 @@ function topicRetrievabilitiesFromHistory(
   return output;
 }
 
-function firstAttemptReviews(history, eventRows, courseId, studentId) {
-  const courseKey = clean(courseId, 200);
-  const studentKey = clean(studentId, 200);
-  const assignmentsById = {};
+function topicMasterySummary(
+  reviews,
+  topic,
+  windowSize,
+  masteryThreshold
+) {
+  const size = typeof windowSize === 'undefined' ? 10 : Number(windowSize);
+  const threshold = typeof masteryThreshold === 'undefined'
+    ? 0.9
+    : Number(masteryThreshold);
 
-  history.forEach(function(assignment) {
+  if (!Number.isInteger(size) || size < 1) {
+    throw new Error('Mastery window size must be a positive integer.');
+  }
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+    throw new Error('Mastery threshold must be between 0 and 1.');
+  }
+
+  const topicReviews = reviews
+    .filter(function(review) { return review.topic === topic; })
+    .slice()
+    .sort(function(aa, bb) {
+      return aa.first_attempt_at.getTime() - bb.first_attempt_at.getTime();
+    });
+  const recent = topicReviews.slice(Math.max(0, topicReviews.length - size));
+  const correct = recent.filter(function(review) {
+    return review.first_attempt_correct;
+  }).length;
+  const accuracy = recent.length ? correct / recent.length : null;
+
+  return {
+    topic: topic,
+    observations: topicReviews.length,
+    recent_count: recent.length,
+    recent_correct: correct,
+    recent_accuracy: accuracy,
+    mastered: (
+      topicReviews.length >= size &&
+      recent.length === size &&
+      accuracy >= threshold
+    )
+  };
+}
+
+function compactReviewRowsFromEvents(assignmentRows, eventRows) {
+  const assignmentsById = {};
+  assignmentRows.forEach(function(row) {
+    const assignment = assignmentRowToObject(row);
     const assignmentId = String(assignment.assignment_id || '');
-    if (!assignmentId) return;
-    assignmentsById[assignmentId] = assignment;
+    if (assignmentId) assignmentsById[assignmentId] = assignment;
   });
 
-  const firstByAssignment = {};
+  const byAssignment = {};
 
   eventRows.forEach(function(row) {
-    if (row[4] !== courseKey || row[7] !== studentKey) return;
     if (!GRADED_EVENTS.includes(String(row[9] || ''))) return;
 
     const assignmentId = String(row[21] || '');
     const assignment = assignmentsById[assignmentId];
     if (!assignment) return;
+    if (String(row[4] || '') !== String(assignment.course_id || '')) return;
+    if (String(row[7] || '') !== String(assignment.student_id || '')) return;
 
-    const reviewTime = new Date(row[0]);
-    if (isNaN(reviewTime.getTime())) return;
+    const attemptTime = new Date(row[0]);
+    if (isNaN(attemptTime.getTime())) return;
 
-    const existing = firstByAssignment[assignmentId];
-    if (existing && existing.review_time.getTime() <= reviewTime.getTime()) return;
+    const correct = eventCorrectBoolean(row[13]);
+    let review = byAssignment[assignmentId];
+    if (!review) {
+      review = {
+        assignment: assignment,
+        first_attempt_at: attemptTime,
+        first_attempt_correct: correct,
+        attempt_count: 0,
+        last_attempt_at: attemptTime
+      };
+      byAssignment[assignmentId] = review;
+    }
 
-    firstByAssignment[assignmentId] = {
-      topic: String(assignment.topic),
-      review_time: reviewTime,
-      rating: eventCorrectBoolean(row[13])
-        ? FSRS_RATING_GOOD
-        : FSRS_RATING_AGAIN
-    };
+    review.attempt_count += 1;
+    if (attemptTime.getTime() < review.first_attempt_at.getTime()) {
+      review.first_attempt_at = attemptTime;
+      review.first_attempt_correct = correct;
+    }
+    if (attemptTime.getTime() > review.last_attempt_at.getTime()) {
+      review.last_attempt_at = attemptTime;
+    }
   });
 
-  return Object.keys(firstByAssignment).map(function(assignmentId) {
-    return firstByAssignment[assignmentId];
+  return Object.keys(byAssignment)
+    .map(function(assignmentId) {
+      const review = byAssignment[assignmentId];
+      const assignment = review.assignment;
+      return [
+        assignmentId,
+        assignment.course_id,
+        assignment.week_id,
+        assignment.student_id,
+        assignment.item_label,
+        assignment.topic,
+        review.first_attempt_at.toISOString(),
+        review.first_attempt_correct,
+        review.attempt_count,
+        review.last_attempt_at.toISOString()
+      ];
+    })
+    .sort(function(aa, bb) {
+      return new Date(aa[6]).getTime() - new Date(bb[6]).getTime();
+    });
+}
+
+function upsertReviewFromEvent(sheet, data, serverTimestamp) {
+  const assignmentId = clean(data.assignment_id, 300);
+  const rowIndex = findSheetRowByValue(sheet, 1, assignmentId);
+
+  if (!rowIndex) {
+    const row = [
+      assignmentId,
+      clean(data.course_id, 200),
+      clean(data.week_id, 200),
+      clean(data.student_id, 200),
+      clean(data.item_label, 300),
+      clean(data.topic, 300),
+      serverTimestamp,
+      eventCorrectBoolean(data.correct),
+      1,
+      serverTimestamp
+    ];
+    sheet
+      .getRange(sheet.getLastRow() + 1, 1, 1, REVIEW_HEADERS.length)
+      .setValues([row]);
+    return;
+  }
+
+  const existing = sheet
+    .getRange(rowIndex, 1, 1, REVIEW_HEADERS.length)
+    .getValues()[0];
+
+  const identityChecks = [
+    [existing[1], clean(data.course_id, 200), 'course_id'],
+    [existing[2], clean(data.week_id, 200), 'week_id'],
+    [existing[3], clean(data.student_id, 200), 'student_id'],
+    [existing[4], clean(data.item_label, 300), 'item_label'],
+    [existing[5], clean(data.topic, 300), 'topic']
+  ];
+  identityChecks.forEach(function(check) {
+    if (String(check[0]) !== String(check[1])) {
+      throw new Error(
+        'Review history mismatch for assignment ' + assignmentId + ': ' + check[2] + '.'
+      );
+    }
   });
+
+  const attempts = Number(existing[8]);
+  if (!Number.isFinite(attempts) || attempts < 1) {
+    throw new Error('Invalid attempt_count in reviews sheet for assignment ' + assignmentId + '.');
+  }
+
+  sheet.getRange(rowIndex, 9, 1, 2).setValues([[
+    attempts + 1,
+    serverTimestamp
+  ]]);
 }
 
 function fsrsReviewMemoryState(state, rating, reviewTime) {
@@ -691,6 +957,13 @@ function validateEventPayload(data) {
   if (!ALLOWED_EVENTS.includes(String(data.event))) {
     throw new Error('Unsupported event type.');
   }
+
+  if (GRADED_EVENTS.includes(String(data.event))) {
+    if (!data.student_id) throw new Error('student_id is required for graded events.');
+    if (!data.assignment_id) throw new Error('assignment_id is required for graded events.');
+    if (!data.item_label) throw new Error('item_label is required for graded events.');
+    if (!data.topic) throw new Error('topic is required for graded events.');
+  }
 }
 
 function validateAssignmentRequest(data) {
@@ -764,6 +1037,18 @@ function getEventRows(sheet) {
     .getValues();
 }
 
+function getReviewRows(sheet) {
+  if (sheet.getLastRow() <= 1) return [];
+  return sheet
+    .getRange(
+      2,
+      1,
+      sheet.getLastRow() - 1,
+      REVIEW_HEADERS.length
+    )
+    .getValues();
+}
+
 function getAssignmentsForStudent(sheet, courseId, weekId, studentId) {
   const courseKey = clean(courseId, 200);
   const weekKey = clean(weekId, 200);
@@ -791,6 +1076,17 @@ function getAssignmentsForStudentAcrossWeeks(sheet, courseId, studentId) {
     .map(assignmentRowToObject);
 }
 
+function getReviewsForStudent(sheet, courseId, studentId) {
+  const courseKey = clean(courseId, 200);
+  const studentKey = clean(studentId, 200);
+
+  return getReviewRows(sheet)
+    .filter(function(row) {
+      return row[1] === courseKey && row[3] === studentKey;
+    })
+    .map(reviewRowToObject);
+}
+
 function assignmentRowToObject(row) {
   return {
     assignment_id: row[0],
@@ -803,6 +1099,35 @@ function assignmentRowToObject(row) {
     question_hash: row[7],
     assigned_at_utc: row[8],
     assignment_reason: row[9]
+  };
+}
+
+function reviewRowToObject(row) {
+  const firstAttemptAt = new Date(row[6]);
+  const lastAttemptAt = new Date(row[9]);
+  const attemptCount = Number(row[8]);
+
+  if (isNaN(firstAttemptAt.getTime())) {
+    throw new Error('Invalid first_attempt_at_utc in reviews sheet.');
+  }
+  if (isNaN(lastAttemptAt.getTime())) {
+    throw new Error('Invalid last_attempt_at_utc in reviews sheet.');
+  }
+  if (!Number.isFinite(attemptCount) || attemptCount < 1) {
+    throw new Error('Invalid attempt_count in reviews sheet.');
+  }
+
+  return {
+    assignment_id: row[0],
+    course_id: row[1],
+    week_id: row[2],
+    student_id: row[3],
+    item_label: row[4],
+    topic: row[5],
+    first_attempt_at: firstAttemptAt,
+    first_attempt_correct: eventCorrectBoolean(row[7]),
+    attempt_count: attemptCount,
+    last_attempt_at: lastAttemptAt
   };
 }
 
@@ -852,6 +1177,46 @@ function getQuestionBank(sheet) {
   return bank;
 }
 
+function findSheetRowByValue(sheet, columnIndex, value) {
+  if (sheet.getLastRow() <= 1) return 0;
+  const match = sheet
+    .getRange(2, columnIndex, sheet.getLastRow() - 1, 1)
+    .createTextFinder(String(value))
+    .matchEntireCell(true)
+    .findNext();
+  return match ? match.getRow() : 0;
+}
+
+function startServiceTimer(operation, requestId) {
+  return {
+    operation: operation,
+    request_id: String(requestId || ''),
+    started_at_ms: Date.now(),
+    marks: {}
+  };
+}
+
+function markServiceTimer(timer, label) {
+  timer.marks[label] = Date.now() - timer.started_at_ms;
+}
+
+function logServiceTimer(timer) {
+  const output = {
+    operation: timer.operation,
+    request_id: timer.request_id,
+    result: timer.result || '',
+    total_ms: Date.now() - timer.started_at_ms,
+    marks_ms: timer.marks
+  };
+  if (typeof timer.assignment_count !== 'undefined') {
+    output.assignment_count = timer.assignment_count;
+  }
+  if (typeof timer.review_count !== 'undefined') {
+    output.review_count = timer.review_count;
+  }
+  console.log('service_timing ' + JSON.stringify(output));
+}
+
 function sheetBoolean(value) {
   if (value === true || value === 1) return true;
   if (value === false || value === 0 || value === '' || value === null) return false;
@@ -869,7 +1234,7 @@ function eventCorrectBoolean(value) {
   const text = String(value).trim().toLowerCase();
   if (text === 'true' || text === '1' || text === 'yes') return true;
   if (text === 'false' || text === '0' || text === 'no') return false;
-  throw new Error('Invalid correct value in events sheet: ' + String(value));
+  throw new Error('Invalid correct value: ' + String(value));
 }
 
 function clean(value, maxLength) {
