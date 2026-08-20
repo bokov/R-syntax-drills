@@ -1,10 +1,15 @@
-QUESTION_BANK_SYNC_COLUMNS <- c(
+QUESTION_BANK_VERSION_COLUMNS <- c(
   "item_label",
   "event",
   "topic",
   "points",
   "starter_question",
   "question_hash"
+)
+
+QUESTION_BANK_SYNC_COLUMNS <- c(
+  QUESTION_BANK_VERSION_COLUMNS,
+  "bank_version"
 )
 
 ASSIGNMENT_COLUMNS <- c(
@@ -24,8 +29,58 @@ ASSIGNMENT_COLUMNS <- c(
   "retired_request_id"
 )
 
+runtime_question_bank_version <- function(manifest) {
+  missing <- setdiff(QUESTION_BANK_VERSION_COLUMNS, names(manifest))
+  if (length(missing)) {
+    stop(
+      "Question-bank manifest is missing required version column(s): ",
+      paste(missing, collapse = ", "),
+      "."
+    )
+  }
+
+  runtime <- manifest[
+    manifest$event == "exercise_result" & manifest$points > 0,
+    QUESTION_BANK_VERSION_COLUMNS,
+    drop = FALSE
+  ]
+  if (!nrow(runtime)) {
+    stop("Question-bank manifest contains no scored runtime exercises.")
+  }
+  if (anyDuplicated(runtime$item_label)) {
+    stop("Question-bank version data contain duplicate item_label values.")
+  }
+
+  runtime <- runtime[order(runtime$item_label), , drop = FALSE]
+  canonical <- data.frame(
+    item_label = enc2utf8(as.character(runtime$item_label)),
+    event = enc2utf8(as.character(runtime$event)),
+    topic = enc2utf8(as.character(runtime$topic)),
+    points = sprintf("%.15g", as.numeric(runtime$points)),
+    starter_question = ifelse(runtime$starter_question %in% TRUE, "1", "0"),
+    question_hash = enc2utf8(as.character(runtime$question_hash)),
+    stringsAsFactors = FALSE
+  )
+
+  path <- tempfile("drillr-bank-version-")
+  on.exit(unlink(path), add = TRUE)
+  write.table(
+    canonical,
+    file = path,
+    sep = "\t",
+    quote = TRUE,
+    row.names = FALSE,
+    col.names = TRUE,
+    na = "",
+    eol = "\n",
+    fileEncoding = "UTF-8"
+  )
+
+  paste0("md5-", unname(tools::md5sum(path)))
+}
+
 prepare_question_bank_sync <- function(manifest) {
-  missing <- setdiff(QUESTION_BANK_SYNC_COLUMNS, names(manifest))
+  missing <- setdiff(QUESTION_BANK_VERSION_COLUMNS, names(manifest))
   if (length(missing)) {
     stop(
       "Question-bank manifest is missing required column(s): ",
@@ -34,7 +89,7 @@ prepare_question_bank_sync <- function(manifest) {
     )
   }
 
-  out <- manifest[, QUESTION_BANK_SYNC_COLUMNS, drop = FALSE]
+  out <- manifest[, QUESTION_BANK_VERSION_COLUMNS, drop = FALSE]
 
   if (anyDuplicated(out$item_label)) {
     stop("Question-bank sync data contain duplicate item_label values.")
@@ -46,7 +101,8 @@ prepare_question_bank_sync <- function(manifest) {
     stop("Question-bank sync data contain missing or unassigned topics.")
   }
 
-  out
+  out$bank_version <- runtime_question_bank_version(out)
+  out[, QUESTION_BANK_SYNC_COLUMNS, drop = FALSE]
 }
 
 assignment_config <- function(config = APP_CONFIG) {

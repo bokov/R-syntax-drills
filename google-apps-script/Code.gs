@@ -51,7 +51,8 @@ const QUESTION_BANK_HEADERS = [
   'topic',
   'points',
   'starter_question',
-  'question_hash'
+  'question_hash',
+  'bank_version'
 ];
 
 // One compact row per persisted assignment exposure after its first graded
@@ -85,7 +86,7 @@ const ASSIGNMENT_STATUS_ACTIVE = 'active';
 const ASSIGNMENT_STATUS_RETIRED = 'retired';
 const FSRS_DUE_RETRIEVABILITY = 0.9;
 const RUNTIME_SCHEMA_PROPERTY = 'RUNTIME_SCHEMA_VERSION';
-const RUNTIME_SCHEMA_VERSION = 'rolling-queue-v1';
+const RUNTIME_SCHEMA_VERSION = 'bank-handshake-v1';
 
 // FSRS-6 default parameters from the Open Spaced Repetition reference
 // implementations. Each canonical topic is one FSRS memory item; literal
@@ -425,6 +426,14 @@ function handleLogEvent(data, ss) {
     }
   }
 
+  let bankHandshake = null;
+  if (isGraded && requestUsesBankHandshake(data)) {
+    bankHandshake = bankHandshakeForRequest(data, questionBankSheet);
+    if (!bankHandshake.compatible) {
+      return jsonResponse(bankHandshake.response);
+    }
+  }
+
   const serverTimestamp = new Date().toISOString();
   const row = [
     serverTimestamp,
@@ -663,6 +672,7 @@ function handleLogEvent(data, ss) {
       duplicate: duplicate
     };
     if (activeAssignments !== null) response.assignments = activeAssignments;
+    attachBankVersion(response, bankHandshake);
     markServiceTimer(timer, 'critical_section_done');
     timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
     markServiceTimer(timer, 'response_ready');
@@ -703,6 +713,20 @@ function handleGetActiveAssignments(data, ss) {
 
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   if (!assignmentsSheet) throw new Error('The assignments sheet does not exist.');
+
+  let bankHandshake = null;
+  if (requestUsesBankHandshake(data)) {
+    const questionBankSheet = ss.getSheetByName(QUESTION_BANK_SHEET);
+    if (!questionBankSheet) {
+      throw new Error(
+        'The question_bank sheet does not exist. Run setupGradeSheet() after updating Code.gs.'
+      );
+    }
+    bankHandshake = bankHandshakeForRequest(data, questionBankSheet);
+    if (!bankHandshake.compatible) {
+      return jsonResponse(bankHandshake.response);
+    }
+  }
   markServiceTimer(timer, 'sheets_ready');
 
   const assignments = getActiveAssignmentsForStudent(
@@ -719,6 +743,7 @@ function handleGetActiveAssignments(data, ss) {
     request_id: data.request_id,
     assignments: assignments
   };
+  attachBankVersion(response, bankHandshake);
   markServiceTimer(timer, 'response_ready');
   if (includeServiceTiming(data)) {
     response.service_timing = serviceTimerSnapshot(timer);
@@ -745,6 +770,16 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       'assignments, question_bank, reviews, and events must exist. Run setupGradeSheet() after updating Code.gs.'
     );
   }
+
+  let bankHandshake = null;
+  let bank = null;
+  if (requestUsesBankHandshake(data)) {
+    bankHandshake = bankHandshakeForRequest(data, questionBankSheet);
+    if (!bankHandshake.compatible) {
+      return jsonResponse(bankHandshake.response);
+    }
+    bank = getQuestionBank(questionBankSheet);
+  }
   markServiceTimer(timer, 'sheets_ready');
 
   const assignmentSnapshot = readSheetSnapshot(
@@ -756,16 +791,25 @@ function handleGetOrCreateActiveAssignments(data, ss) {
     data.course_id,
     data.student_id
   );
-  if (existing.length > queueConfig.queue_size) {
+  const preflightDiscontinued = bankHandshake
+    ? discontinuedActiveAssignments(existing, bank, queueConfig.topic_priority)
+    : [];
+  const currentExistingCount = existing.length - preflightDiscontinued.length;
+
+  if (currentExistingCount > queueConfig.queue_size) {
     throw new Error(
-      'Student has ' + existing.length + ' active questions, exceeding queue_size ' +
+      'Student has ' + currentExistingCount +
+      ' current active questions, exceeding queue_size ' +
       queueConfig.queue_size + '. No assignments were changed.'
     );
   }
 
-  // The common reload path is read-only and needs neither the event history nor
-  // the global lock.
-  if (existing.length === queueConfig.queue_size) {
+  // Legacy clients retain the original fast path. Version-aware clients use
+  // the same path when their full queue contains no discontinued assignments.
+  if (
+    currentExistingCount === queueConfig.queue_size &&
+    preflightDiscontinued.length === 0
+  ) {
     timer.result = 'existing';
     timer.assignment_count = existing.length;
     timer.created_count = 0;
@@ -776,6 +820,7 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       created_count: 0,
       assignments: existing
     };
+    attachBankVersion(response, bankHandshake);
     markServiceTimer(timer, 'response_ready');
     if (includeServiceTiming(data)) {
       response.service_timing = serviceTimerSnapshot(timer);
@@ -785,7 +830,7 @@ function handleGetOrCreateActiveAssignments(data, ss) {
   }
 
   const eventSnapshot = readSheetSnapshot(eventsSheet, EVENT_HEADERS.length);
-  const bank = getQuestionBank(questionBankSheet);
+  if (!bank) bank = getQuestionBank(questionBankSheet);
   markServiceTimer(timer, 'snapshots_ready');
 
   const lock = LockService.getScriptLock();
@@ -808,6 +853,20 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       assignmentSnapshot.rows,
       eventSnapshot.rows
     );
+    const discontinued = bankHandshake
+      ? retireDiscontinuedAssignmentsFromSnapshot(
+          assignmentsSheet,
+          effectiveAssignmentRows,
+          bank,
+          data,
+          queueConfig,
+          new Date().toISOString()
+        )
+      : [];
+    if (discontinued.length) {
+      markServiceTimer(timer, 'discontinued_retired');
+    }
+
     const reviews = reviewsForStudentFromEvents(
       effectiveAssignmentRows,
       eventSnapshot.rows,
@@ -838,7 +897,9 @@ function handleGetOrCreateActiveAssignments(data, ss) {
     }
     markServiceTimer(timer, 'queue_ensured');
 
-    timer.result = createdAssignments.length ? 'filled' : 'existing';
+    timer.result = discontinued.length
+      ? 'reconciled'
+      : (createdAssignments.length ? 'filled' : 'existing');
     timer.assignment_count = assignments.length;
     timer.created_count = createdAssignments.length;
     const response = {
@@ -848,6 +909,8 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       created_count: createdAssignments.length,
       assignments: assignments
     };
+    if (discontinued.length) response.retired_assignments = discontinued;
+    attachBankVersion(response, bankHandshake);
     markServiceTimer(timer, 'critical_section_done');
     timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
     markServiceTimer(timer, 'response_ready');
@@ -1086,18 +1149,10 @@ function validateCurriculumAgainstBank(bank, topicPriority) {
 }
 
 function validateHistoryAgainstCurriculum(history, topicPriority) {
-  const known = new Set(topicPriority);
-  const unknown = Array.from(new Set(
-    history
-      .map(function(assignment) { return String(assignment.topic || ''); })
-      .filter(function(topic) { return topic && !known.has(topic); })
-  ));
-  if (unknown.length) {
-    throw new Error(
-      'Historical assignment topic(s) are absent from the configured curriculum: ' +
-      unknown.join(', ') + '. Keep previously introduced topics in the curriculum order.'
-    );
-  }
+  // Historical assignments remain valid evidence even after a topic is removed
+  // from the current curriculum. Current routing simply ignores topics that are
+  // no longer present in topicPriority.
+  return true;
 }
 
 function curriculumStateFromHistory(history, topicPriority) {

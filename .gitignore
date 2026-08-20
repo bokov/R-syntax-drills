@@ -12,3 +12,8 @@ R/app_config.R
 question_manifest.csv
 question_bank_manifest.csv
 runtime_question_pool.Rmd
+
+# Generated root/build artifacts stay ignored, but the published student-safe
+# runtime bundle is intentionally versioned for local Drillr clients.
+!student-assets/question_manifest.csv
+!student-assets/runtime_question_pool.Rmd

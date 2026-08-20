@@ -110,17 +110,19 @@ build_player_assets <- function(
   manifest_output = file.path(root, "question_manifest.csv")
 ) {
   bank <- build_question_bank_manifest(root = root)
-  validate_assignment_config(config, bank)
+  if (!is.null(config)) validate_assignment_config(config, bank)
 
   manifest <- player_manifest(bank)
   runtime_manifest <- manifest[, PLAYER_MANIFEST_COLUMNS, drop = FALSE]
+  runtime_manifest$bank_version <- runtime_question_bank_version(runtime_manifest)
 
   write.csv(runtime_manifest, manifest_output, row.names = FALSE, na = "")
   build_runtime_question_pool(manifest, pool_output)
 
   message(
     "Built runtime player pool with ", nrow(runtime_manifest),
-    " scored canonical exercise(s)."
+    " scored canonical exercise(s); bank version ",
+    unique(runtime_manifest$bank_version), "."
   )
 
   invisible(runtime_manifest)
