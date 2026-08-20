@@ -1,4 +1,4 @@
-test_that("Apps Script FSRS helpers pass their JavaScript unit tests", {
+test_that("Apps Script FSRS and review-history helpers pass their JavaScript unit tests", {
   node <- Sys.which("node")
   skip_if(!nzchar(node), "Node.js is not installed")
 
