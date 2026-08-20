@@ -215,7 +215,7 @@ assignment_service_payload <- function(
 post_assignment_service <- function(
   payload,
   config = APP_CONFIG,
-  timeout_sec = 8
+  timeout_sec = 30
 ) {
   if (!nzchar(config$webhook_url) || grepl("PASTE_", config$webhook_url, fixed = TRUE)) {
     stop("Set APP_CONFIG$webhook_url before calling the assignment service.")
