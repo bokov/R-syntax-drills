@@ -25,7 +25,7 @@ test_that("runtime bank version is deterministic and runtime-scoped", {
   expect_false(identical(runtime_question_bank_version(changed_runtime), version))
 })
 
-test_that("runtime support participates in the bank version without changing question hashes", {
+test_that("question-bank sync stamps every row with one runtime bank version", {
   manifest <- data.frame(
     item_label = c("q1", "q2"),
     event = c("exercise_result", "exercise_result"),
@@ -36,85 +36,12 @@ test_that("runtime support participates in the bank version without changing que
     stringsAsFactors = FALSE
   )
 
-  legacy <- runtime_question_bank_version(manifest)
-  expect_identical(
-    runtime_question_bank_version_with_support(manifest, ""),
-    legacy
-  )
-
-  first <- runtime_question_bank_version_with_support(
-    manifest,
-    "md5-11111111111111111111111111111111"
-  )
-  second <- runtime_question_bank_version_with_support(
-    manifest,
-    "md5-22222222222222222222222222222222"
-  )
-
-  expect_match(first, "^md5-[0-9a-f]{32}$")
-  expect_false(identical(first, legacy))
-  expect_false(identical(first, second))
-  expect_identical(manifest$question_hash, c("aaa", "bbb"))
-})
-
-test_that("question-bank sync stamps every row with one support-aware bank version", {
-  manifest <- data.frame(
-    item_label = c("q1", "q2"),
-    event = c("exercise_result", "exercise_result"),
-    topic = c("vectors", "lists"),
-    points = c(1, 1),
-    starter_question = c(TRUE, FALSE),
-    question_hash = c("aaa", "bbb"),
-    stringsAsFactors = FALSE
-  )
-  support_hash <- "md5-11111111111111111111111111111111"
-
-  synced <- prepare_question_bank_sync_with_support(manifest, support_hash)
+  synced <- prepare_question_bank_sync(manifest)
 
   expect_named(synced, QUESTION_BANK_SYNC_COLUMNS)
   expect_length(unique(synced$bank_version), 1)
   expect_identical(
     unique(synced$bank_version),
-    runtime_question_bank_version_with_support(manifest, support_hash)
+    runtime_question_bank_version(manifest)
   )
-})
-
-test_that("canonical runtime support hash changes when checker behavior changes", {
-  root <- tempfile("runtime-support-root-")
-  dir.create(file.path(root, "R"), recursive = TRUE)
-  checker <- file.path(root, "R", "syntax_checkers.R")
-  writeLines("helper <- function() TRUE", checker)
-
-  first <- runtime_support_hash(root)
-  writeLines("helper <- function() FALSE", checker)
-  second <- runtime_support_hash(root)
-
-  expect_match(first, "^md5-[0-9a-f]{32}$")
-  expect_false(identical(first, second))
-})
-
-test_that("runtime support fingerprint records exercise setup semantics compatibly", {
-  root <- tempfile("runtime-support-root-")
-  dir.create(file.path(root, "R"), recursive = TRUE)
-  writeLines("helper <- function() TRUE", file.path(root, "R", "syntax_checkers.R"))
-
-  support <- runtime_support_code_lines(root)
-  chunks <- runtime_support_chunk_lines(root)
-
-  expect_identical(RUNTIME_SUPPORT_CHUNK_LABEL, "drillr-runtime-support")
-  expect_identical(RUNTIME_GLOBAL_EXERCISE_CHUNK_LABEL, "setup-global-exercise")
-  expect_match(
-    support[[1]],
-    "# drillr-runtime-support-mode: setup-global-exercise-v1",
-    fixed = TRUE
-  )
-  expect_identical(
-    runtime_support_hash(root),
-    md5_text_lines(support, "runtime-support-test-")
-  )
-  expect_true(any(grepl(
-    "```{r setup-global-exercise, include=FALSE}",
-    chunks,
-    fixed = TRUE
-  )))
 })

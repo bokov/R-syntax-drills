@@ -16,8 +16,7 @@ test_that("player manifest contains only scored learnr exercises", {
   expect_equal(out$item_label, "q1")
 })
 
-test_that("runtime question pool embeds exercise-scoped checker support, strips solutions, and keeps question checkers", {
-  root <- normalizePath(file.path(test_path(), "..", ".."))
+test_that("runtime question pool strips solutions but keeps checkers", {
   bank_file <- tempfile(fileext = ".Rmd")
   output <- tempfile(fileext = ".Rmd")
 
@@ -42,47 +41,9 @@ test_that("runtime question pool embeds exercise-scoped checker support, strips 
   ), bank_file)
 
   manifest <- scan_question_bank(bank_file)
-  build_runtime_question_pool(manifest, output, root = root)
-  lines <- readLines(output, warn = FALSE)
-  text <- paste(lines, collapse = "\n")
+  build_runtime_question_pool(manifest, output)
+  text <- paste(readLines(output, warn = FALSE), collapse = "\n")
 
-  # Keep the original compatibility chunk so already-installed Drillr clients
-  # can compute the runtime-support hash for downloaded banks.
-  expect_match(text, "```{r drillr-runtime-support, include=FALSE}", fixed = TRUE)
-  expect_match(
-    text,
-    "# drillr-runtime-support-mode: setup-global-exercise-v1",
-    fixed = TRUE
-  )
-  expect_match(
-    text,
-    "learnr::tutorial_options(exercise.checker = drillr_exercise_checker)",
-    fixed = TRUE
-  )
-
-  # Question-specific gradethis checks run in exercise environments. learnr's
-  # setup-global-exercise chunk is the contract that makes these helpers
-  # available there, rather than merely during tutorial prerendering.
-  expect_match(text, "```{r setup-global-exercise, include=FALSE}", fixed = TRUE)
-  global_start <- grep("```{r setup-global-exercise, include=FALSE}", lines, fixed = TRUE)
-  global_close <- which(
-    seq_along(lines) > global_start[[1]] & grepl("^```[[:space:]]*$", lines)
-  )[[1]]
-  global_text <- paste(lines[(global_start[[1]] + 1L):(global_close - 1L)], collapse = "\n")
-  for (helper in c(
-    "parse_student_code <- function(code)",
-    "call_head <- function(x)",
-    "walk_calls <- function(x)",
-    "uses_call <- function(code, name)",
-    "call_has_named_arg <- function(code, function_name, argument_name)"
-  )) {
-    expect_match(global_text, helper, fixed = TRUE)
-  }
-
-  expect_lt(
-    global_start[[1]],
-    grep("q1, exercise=TRUE", lines, fixed = TRUE)[[1]]
-  )
   expect_match(text, "#### Example question", fixed = TRUE)
   expect_false(grepl("assignment-question-q1", text, fixed = TRUE))
   expect_false(grepl("q1-solution", text, fixed = TRUE))
@@ -102,13 +63,6 @@ test_that("assignment-player script is inlined after the generated question pool
   expect_length(script_line, 1)
   expect_length(external_script, 0)
   expect_gt(script_line, pool_line)
-})
-
-test_that("runtime shells do not source a second checker copy", {
-  root <- normalizePath(file.path(test_path(), "..", ".."))
-  text <- paste(readLines(file.path(root, "index.Rmd"), warn = FALSE), collapse = "\n")
-
-  expect_false(grepl('source("R/syntax_checkers.R")', text, fixed = TRUE))
 })
 
 test_that("learnr answer state is not persisted between sessions", {

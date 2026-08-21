@@ -1,6 +1,5 @@
 source("R/question_manifest.R")
 source("R/assignment_storage.R")
-source("R/runtime_support.R")
 source("R/player_builder.R")
 
 output_dir <- "student-assets"
