@@ -54,7 +54,10 @@ test_that("checker installs syntax helpers in gradethis preparation environment"
 
   expect_true(all(vapply(helper_names, exists, logical(1), envir = prep, inherits = FALSE)))
   expect_true(prep$uses_call("vals <- c(1, 2)", "c"))
-  expect_true(isTRUE(feedback$correct))
+  expect_true(
+    isTRUE(feedback$correct),
+    info = paste(capture.output(str(feedback)), collapse = "\n")
+  )
 })
 
 test_that("global checker replaces only the grading code for equals assignment", {
