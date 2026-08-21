@@ -1,0 +1,61 @@
+name: Validate runtime checkers and progress
+
+on:
+  push:
+    branches:
+      - agent/runtime-checkers-progress
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install R test dependencies
+        shell: Rscript {0}
+        run: |
+          install.packages(c(
+            "testthat",
+            "httr2",
+            "googlesheets4",
+            "dplyr",
+            "tidyr",
+            "purrr",
+            "stringr",
+            "lubridate",
+            "tibble",
+            "remotes"
+          ))
+          remotes::install_github("rstudio/gradethis")
+
+      - name: Run R tests
+        run: Rscript tests/testthat.R
+
+      - name: Run JavaScript tests
+        run: |
+          node tests/js/test-fsrs.js
+          node tests/js/test-performance.js
+          node tests/js/test-concurrency.js
+          node tests/js/test-bank-handshake.js
+          node tests/js/test-progress.js
+
+      - name: Regenerate student assets
+        run: Rscript scripts/09_build_student_assets.R
+
+      - name: Upload regenerated student assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-assets
+          path: |
+            student-assets/runtime_question_pool.Rmd
+            student-assets/question_manifest.csv
