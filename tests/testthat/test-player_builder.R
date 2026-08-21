@@ -17,6 +17,7 @@ test_that("player manifest contains only scored learnr exercises", {
 })
 
 test_that("runtime question pool embeds checker support, strips solutions, and keeps question checkers", {
+  root <- normalizePath(file.path(test_path(), "..", ".."))
   bank_file <- tempfile(fileext = ".Rmd")
   output <- tempfile(fileext = ".Rmd")
 
@@ -41,7 +42,7 @@ test_that("runtime question pool embeds checker support, strips solutions, and k
   ), bank_file)
 
   manifest <- scan_question_bank(bank_file)
-  build_runtime_question_pool(manifest, output)
+  build_runtime_question_pool(manifest, output, root = root)
   lines <- readLines(output, warn = FALSE)
   text <- paste(lines, collapse = "\n")
 
