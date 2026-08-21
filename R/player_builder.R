@@ -89,14 +89,18 @@ question_player_lines <- function(record) {
 
 build_runtime_question_pool <- function(
   manifest,
-  output = "runtime_question_pool.Rmd"
+  output = "runtime_question_pool.Rmd",
+  root = "."
 ) {
   blocks <- lapply(seq_len(nrow(manifest)), function(ii) {
     question_player_lines(manifest[ii, , drop = FALSE])
   })
 
   writeLines(
-    unlist(blocks, use.names = FALSE),
+    c(
+      runtime_support_chunk_lines(root),
+      unlist(blocks, use.names = FALSE)
+    ),
     output
   )
 
@@ -114,15 +118,19 @@ build_player_assets <- function(
 
   manifest <- player_manifest(bank)
   runtime_manifest <- manifest[, PLAYER_MANIFEST_COLUMNS, drop = FALSE]
-  runtime_manifest$bank_version <- runtime_question_bank_version(runtime_manifest)
+  support_hash <- runtime_support_hash(root)
+  runtime_manifest$bank_version <- runtime_question_bank_version_with_support(
+    runtime_manifest,
+    support_hash
+  )
 
   write.csv(runtime_manifest, manifest_output, row.names = FALSE, na = "")
-  build_runtime_question_pool(manifest, pool_output)
+  build_runtime_question_pool(manifest, pool_output, root = root)
 
   message(
     "Built runtime player pool with ", nrow(runtime_manifest),
-    " scored canonical exercise(s); bank version ",
-    unique(runtime_manifest$bank_version), "."
+    " scored canonical exercise(s); runtime support ", support_hash,
+    "; bank version ", unique(runtime_manifest$bank_version), "."
   )
 
   invisible(runtime_manifest)

@@ -11,7 +11,8 @@ test_that("Apps Script helper suites pass their JavaScript unit tests", {
       "test-fsrs.js",
       "test-performance.js",
       "test-concurrency.js",
-      "test-bank-handshake.js"
+      "test-bank-handshake.js",
+      "test-progress.js"
     )
   )
 

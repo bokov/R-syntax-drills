@@ -16,7 +16,8 @@ test_that("player manifest contains only scored learnr exercises", {
   expect_equal(out$item_label, "q1")
 })
 
-test_that("runtime question pool strips solutions but keeps checkers", {
+test_that("runtime question pool embeds checker support, strips solutions, and keeps question checkers", {
+  root <- normalizePath(file.path(test_path(), "..", ".."))
   bank_file <- tempfile(fileext = ".Rmd")
   output <- tempfile(fileext = ".Rmd")
 
@@ -41,9 +42,21 @@ test_that("runtime question pool strips solutions but keeps checkers", {
   ), bank_file)
 
   manifest <- scan_question_bank(bank_file)
-  build_runtime_question_pool(manifest, output)
-  text <- paste(readLines(output, warn = FALSE), collapse = "\n")
+  build_runtime_question_pool(manifest, output, root = root)
+  lines <- readLines(output, warn = FALSE)
+  text <- paste(lines, collapse = "\n")
 
+  expect_match(text, "```{r drillr-runtime-support, include=FALSE}", fixed = TRUE)
+  expect_match(text, "uses_assignment_equals <- function(code)", fixed = TRUE)
+  expect_match(
+    text,
+    "learnr::tutorial_options(exercise.checker = drillr_exercise_checker)",
+    fixed = TRUE
+  )
+  expect_lt(
+    grep("drillr-runtime-support", lines, fixed = TRUE)[[1]],
+    grep("q1, exercise=TRUE", lines, fixed = TRUE)[[1]]
+  )
   expect_match(text, "#### Example question", fixed = TRUE)
   expect_false(grepl("assignment-question-q1", text, fixed = TRUE))
   expect_false(grepl("q1-solution", text, fixed = TRUE))
@@ -63,6 +76,13 @@ test_that("assignment-player script is inlined after the generated question pool
   expect_length(script_line, 1)
   expect_length(external_script, 0)
   expect_gt(script_line, pool_line)
+})
+
+test_that("runtime shells do not source a second checker copy", {
+  root <- normalizePath(file.path(test_path(), "..", ".."))
+  text <- paste(readLines(file.path(root, "index.Rmd"), warn = FALSE), collapse = "\n")
+
+  expect_false(grepl('source("R/syntax_checkers.R")', text, fixed = TRUE))
 })
 
 test_that("learnr answer state is not persisted between sessions", {
