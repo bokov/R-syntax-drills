@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/runtime-checkers-progress
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
