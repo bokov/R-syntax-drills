@@ -19,9 +19,10 @@ test_that("global checker replaces only the grading code for equals assignment",
     collapse = "\n"
   )
 
+  expect_match(source_text, "Use <- or -> for assignment.", fixed = TRUE)
   expect_match(
     source_text,
-    "Use <- or -> for assignment. Use = only for function arguments or defaults.",
+    "Use = only for function arguments or defaults.",
     fixed = TRUE
   )
   expect_match(
