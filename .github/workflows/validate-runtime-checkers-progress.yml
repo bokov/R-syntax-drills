@@ -39,6 +39,13 @@ jobs:
             "tibble",
             "readr"
           ))
+          install.packages(
+            "gradethis",
+            repos = c(
+              "https://rstudio.r-universe.dev",
+              "https://cloud.r-project.org"
+            )
+          )
 
       - name: Run R tests
         run: Rscript tests/testthat.R
