@@ -90,13 +90,18 @@ function bankHandshakeForRequest(data, questionBankSheet) {
   return {
     compatible: true,
     current_bank_version: currentBankVersion,
-    client_package_version: clientPackageVersion
+    client_package_version: clientPackageVersion,
+    progress: progressPayloadForRequest(data, questionBankSheet)
   };
 }
 
 function attachBankVersion(response, handshake) {
   if (handshake && handshake.compatible) {
     response.bank_version = handshake.current_bank_version;
+    if (handshake.progress) {
+      response.progress_as_of_utc = handshake.progress.as_of_utc;
+      response.progress = handshake.progress.rows;
+    }
   }
   return response;
 }
