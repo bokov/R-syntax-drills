@@ -17,7 +17,6 @@ library(shiny)
 source("R/app_config.R")
 source("R/question_manifest.R")
 source("R/assignment_storage.R")
-source("R/syntax_checkers.R")
 
 options(tutorial.storage = "none")
 
