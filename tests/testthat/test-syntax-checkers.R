@@ -38,7 +38,8 @@ test_that("checker installs syntax helpers in gradethis preparation environment"
       "pass(\"ok\") })"
     ),
     envir_prep = prep,
-    stage = "code_check"
+    stage = "code_check",
+    engine = "r"
   )
 
   helper_names <- c(
