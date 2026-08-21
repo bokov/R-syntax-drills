@@ -92,3 +92,29 @@ test_that("canonical runtime support hash changes when checker behavior changes"
   expect_match(first, "^md5-[0-9a-f]{32}$")
   expect_false(identical(first, second))
 })
+
+test_that("runtime support fingerprint records exercise setup semantics compatibly", {
+  root <- tempfile("runtime-support-root-")
+  dir.create(file.path(root, "R"), recursive = TRUE)
+  writeLines("helper <- function() TRUE", file.path(root, "R", "syntax_checkers.R"))
+
+  support <- runtime_support_code_lines(root)
+  chunks <- runtime_support_chunk_lines(root)
+
+  expect_identical(RUNTIME_SUPPORT_CHUNK_LABEL, "drillr-runtime-support")
+  expect_identical(RUNTIME_GLOBAL_EXERCISE_CHUNK_LABEL, "setup-global-exercise")
+  expect_match(
+    support[[1]],
+    "# drillr-runtime-support-mode: setup-global-exercise-v1",
+    fixed = TRUE
+  )
+  expect_identical(
+    runtime_support_hash(root),
+    md5_text_lines(support, "runtime-support-test-")
+  )
+  expect_true(any(grepl(
+    "```{r setup-global-exercise, include=FALSE}",
+    chunks,
+    fixed = TRUE
+  )))
+})
