@@ -91,7 +91,9 @@ function bankHandshakeForRequest(data, questionBankSheet) {
     compatible: true,
     current_bank_version: currentBankVersion,
     client_package_version: clientPackageVersion,
-    progress: progressPayloadForRequest(data, questionBankSheet)
+    progress: data.include_progress === true
+      ? progressPayloadForRequest(data, questionBankSheet)
+      : null
   };
 }
 
