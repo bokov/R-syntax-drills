@@ -1,0 +1,32 @@
+test_that("equals is rejected only when parsed as assignment", {
+  expect_true(uses_assignment_equals("x = 1"))
+  expect_true(uses_assignment_equals("x <- (y = 1)"))
+
+  expect_false(uses_assignment_equals("x <- 1"))
+  expect_false(uses_assignment_equals("1 -> x"))
+  expect_false(uses_assignment_equals("x <<- 1"))
+  expect_false(uses_assignment_equals("1 ->> x"))
+  expect_false(uses_assignment_equals("mean(x, na.rm = TRUE)"))
+  expect_false(uses_assignment_equals("function(x = 1) x"))
+})
+
+test_that("global checker replaces only the grading code for equals assignment", {
+  source_text <- paste(
+    readLines(
+      normalizePath(file.path(test_path(), "..", "..", "R", "syntax_checkers.R")),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+
+  expect_match(
+    source_text,
+    "Use <- or -> for assignment. Use = only for function arguments or defaults.",
+    fixed = TRUE
+  )
+  expect_match(
+    source_text,
+    "gradethis::gradethis_exercise_checker",
+    fixed = TRUE
+  )
+})
