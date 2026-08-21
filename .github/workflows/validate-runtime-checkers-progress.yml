@@ -36,10 +36,8 @@ jobs:
             "purrr",
             "stringr",
             "lubridate",
-            "tibble",
-            "remotes"
+            "tibble"
           ))
-          remotes::install_github("rstudio/gradethis")
 
       - name: Run R tests
         run: Rscript tests/testthat.R
