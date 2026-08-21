@@ -1,7 +1,6 @@
 source("R/app_config.R")
 source("R/question_manifest.R")
 source("R/assignment_storage.R")
-source("R/runtime_support.R")
 
 library(googlesheets4)
 
@@ -11,11 +10,7 @@ if (grepl("PASTE_", APP_CONFIG$google_sheet_id, fixed = TRUE)) {
 
 bank_manifest <- build_question_bank_manifest()
 validate_assignment_config(APP_CONFIG, bank_manifest)
-support_hash <- runtime_support_hash()
-question_bank <- prepare_question_bank_sync_with_support(
-  bank_manifest,
-  support_hash
-)
+question_bank <- prepare_question_bank_sync(bank_manifest)
 bank_version <- unique(question_bank$bank_version)
 
 if (length(bank_version) != 1 || !nzchar(bank_version)) {
@@ -32,8 +27,8 @@ sheet_write(
 
 message(
   "Synced ", nrow(question_bank),
-  " canonical question(s) to the private question_bank tab; runtime support ",
-  support_hash, "; bank version ", bank_version, "."
+  " canonical question(s) to the private question_bank tab; bank version ",
+  bank_version, "."
 )
 message(
   "Available topics: ",

@@ -15,6 +15,7 @@ library(learnr)
 library(gradethis)
 library(shiny)
 source("R/app_config.R")
+source("R/syntax_checkers.R")
 source("R/question_manifest.R")
 source("R/assignment_storage.R")
 
@@ -28,7 +29,8 @@ gradethis::gradethis_setup(
 
 learnr::tutorial_options(
   exercise.timelimit = 10,
-  exercise.reveal_solution = FALSE
+  exercise.reveal_solution = FALSE,
+  exercise.checker = drillr_exercise_checker
 )
 ```
 
