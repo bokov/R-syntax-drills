@@ -36,7 +36,8 @@ jobs:
             "purrr",
             "stringr",
             "lubridate",
-            "tibble"
+            "tibble",
+            "readr"
           ))
 
       - name: Run R tests
