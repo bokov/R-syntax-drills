@@ -59,53 +59,47 @@ uses_assignment_equals <- function(code) {
   uses_call(code, "=")
 }
 
-drillr_exercise_checker <- local({
-  checker_uses_assignment_equals <- function(code) {
-    parsed <- tryCatch(parse(text = code), error = function(e) expression())
+drillr_exercise_checker <- function(
+  label = NULL,
+  solution_code = NULL,
+  user_code = NULL,
+  check_code = NULL,
+  ...
+) {
+  parsed <- tryCatch(parse(text = user_code), error = function(e) expression())
 
-    contains_assignment_equals <- function(node) {
-      if (is.expression(node)) {
-        children <- as.list(node)
-        if (!length(children)) return(FALSE)
-        return(any(vapply(children, contains_assignment_equals, logical(1))))
-      }
-
-      if (!is.call(node)) return(FALSE)
-
-      head <- node[[1]]
-      if (is.symbol(head) && identical(as.character(head), "=")) return(TRUE)
-
-      children <- as.list(node)[-1]
+  contains_assignment_equals <- function(node) {
+    if (is.expression(node)) {
+      children <- as.list(node)
       if (!length(children)) return(FALSE)
-      any(vapply(children, contains_assignment_equals, logical(1)))
+      return(any(vapply(children, contains_assignment_equals, logical(1))))
     }
 
-    contains_assignment_equals(parsed)
+    if (!is.call(node)) return(FALSE)
+
+    head <- node[[1]]
+    if (is.symbol(head) && identical(as.character(head), "=")) return(TRUE)
+
+    children <- as.list(node)[-1]
+    if (!length(children)) return(FALSE)
+    any(vapply(children, contains_assignment_equals, logical(1)))
   }
 
-  function(
-    label = NULL,
-    solution_code = NULL,
-    user_code = NULL,
-    check_code = NULL,
-    ...
-  ) {
-    if (checker_uses_assignment_equals(user_code)) {
-      check_code <- paste0(
-        "grade_this({ fail(\"Use <- or -> for assignment. ",
-        "Use = only for function arguments or defaults.\") })"
-      )
-    }
-
-    gradethis::gradethis_exercise_checker(
-      label = label,
-      solution_code = solution_code,
-      user_code = user_code,
-      check_code = check_code,
-      ...
+  if (contains_assignment_equals(parsed)) {
+    check_code <- paste0(
+      "grade_this({ fail(\"Use <- or -> for assignment. ",
+      "Use = only for function arguments or defaults.\") })"
     )
   }
-})
+
+  gradethis::gradethis_exercise_checker(
+    label = label,
+    solution_code = solution_code,
+    user_code = user_code,
+    check_code = check_code,
+    ...
+  )
+}
 
 learnr::tutorial_options(exercise.checker = drillr_exercise_checker)
 ```
