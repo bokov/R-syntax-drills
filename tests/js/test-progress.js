@@ -50,7 +50,9 @@ function review(topic, correct, when) {
   };
 }
 
-const topics = api.validateProgressTopics(['vectors', 'indexing']);
+const topics = api.validateProgressTopics({
+  topic_priority: ['vectors', 'indexing']
+});
 assert(
   JSON.stringify(topics) === JSON.stringify(['vectors', 'indexing']),
   'Progress topics should preserve curriculum order.'
