@@ -16,7 +16,7 @@ test_that("player manifest contains only scored learnr exercises", {
   expect_equal(out$item_label, "q1")
 })
 
-test_that("runtime question pool embeds checker support, strips solutions, and keeps question checkers", {
+test_that("runtime question pool embeds exercise-scoped checker support, strips solutions, and keeps question checkers", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
   bank_file <- tempfile(fileext = ".Rmd")
   output <- tempfile(fileext = ".Rmd")
@@ -46,15 +46,41 @@ test_that("runtime question pool embeds checker support, strips solutions, and k
   lines <- readLines(output, warn = FALSE)
   text <- paste(lines, collapse = "\n")
 
+  # Keep the original compatibility chunk so already-installed Drillr clients
+  # can compute the runtime-support hash for downloaded banks.
   expect_match(text, "```{r drillr-runtime-support, include=FALSE}", fixed = TRUE)
-  expect_match(text, "uses_assignment_equals <- function(code)", fixed = TRUE)
+  expect_match(
+    text,
+    "# drillr-runtime-support-mode: setup-global-exercise-v1",
+    fixed = TRUE
+  )
   expect_match(
     text,
     "learnr::tutorial_options(exercise.checker = drillr_exercise_checker)",
     fixed = TRUE
   )
+
+  # Question-specific gradethis checks run in exercise environments. learnr's
+  # setup-global-exercise chunk is the contract that makes these helpers
+  # available there, rather than merely during tutorial prerendering.
+  expect_match(text, "```{r setup-global-exercise, include=FALSE}", fixed = TRUE)
+  global_start <- grep("```{r setup-global-exercise, include=FALSE}", lines, fixed = TRUE)
+  global_close <- which(
+    seq_along(lines) > global_start[[1]] & grepl("^```[[:space:]]*$", lines)
+  )[[1]]
+  global_text <- paste(lines[(global_start[[1]] + 1L):(global_close - 1L)], collapse = "\n")
+  for (helper in c(
+    "parse_student_code <- function(code)",
+    "call_head <- function(x)",
+    "walk_calls <- function(x)",
+    "uses_call <- function(code, name)",
+    "call_has_named_arg <- function(code, function_name, argument_name)"
+  )) {
+    expect_match(global_text, helper, fixed = TRUE)
+  }
+
   expect_lt(
-    grep("drillr-runtime-support", lines, fixed = TRUE)[[1]],
+    global_start[[1]],
     grep("q1, exercise=TRUE", lines, fixed = TRUE)[[1]]
   )
   expect_match(text, "#### Example question", fixed = TRUE)
