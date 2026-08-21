@@ -42,27 +42,17 @@ function studentProgressSummary(reviews, topicPriority, asOf) {
   });
 }
 
-function handleGetProgress(data, ss) {
-  validateAssignmentRequest(data);
-  const topicPriority = validateProgressTopics(data);
-  const timer = startServiceTimer('get_progress', data.request_id);
+function progressPayloadForRequest(data, questionBankSheet) {
+  if (!data || data.include_progress !== true) return null;
 
-  const reviewsSheet = ss.getSheetByName(REVIEW_SHEET);
-  const questionBankSheet = ss.getSheetByName(QUESTION_BANK_SHEET);
-  if (!reviewsSheet || !questionBankSheet) {
+  const topicPriority = validateProgressTopics(data);
+  const spreadsheet = questionBankSheet.getParent();
+  const reviewsSheet = spreadsheet.getSheetByName(REVIEW_SHEET);
+  if (!reviewsSheet) {
     throw new Error(
-      'reviews and question_bank must exist. Run setupGradeSheet() after updating Code.gs.'
+      'The reviews sheet does not exist. Run setupGradeSheet() after updating Code.gs.'
     );
   }
-
-  let bankHandshake = null;
-  if (requestUsesBankHandshake(data)) {
-    bankHandshake = bankHandshakeForRequest(data, questionBankSheet);
-    if (!bankHandshake.compatible) {
-      return jsonResponse(bankHandshake.response);
-    }
-  }
-  markServiceTimer(timer, 'sheets_ready');
 
   const asOf = new Date();
   const reviews = getReviewsForStudent(
@@ -70,22 +60,9 @@ function handleGetProgress(data, ss) {
     data.course_id,
     data.student_id
   );
-  const progress = studentProgressSummary(reviews, topicPriority, asOf);
-  markServiceTimer(timer, 'progress_computed');
 
-  timer.result = 'reported';
-  timer.review_count = reviews.length;
-  const response = {
-    ok: true,
-    request_id: data.request_id,
+  return {
     as_of_utc: asOf.toISOString(),
-    progress: progress
+    rows: studentProgressSummary(reviews, topicPriority, asOf)
   };
-  attachBankVersion(response, bankHandshake);
-  markServiceTimer(timer, 'response_ready');
-  if (includeServiceTiming(data)) {
-    response.service_timing = serviceTimerSnapshot(timer);
-  }
-  logServiceTimer(timer);
-  return jsonResponse(response);
 }
