@@ -113,7 +113,15 @@ output$identity_status <- shiny::renderUI({
 })
 ```
 
-## Before you begin
+## Start here
+
+New! Now the recommended way to run these drills on your own computer in RStudio (thanks for the suggestion, Eva). And the desktop version also lets you track your topic progress. Don't worry, your progress history follows around the ID you picked whether you do drills on this web app, on RStudio, or both.
+
+* In RStudio, go to the Console and run this command `pak::pak("bokov/R-syntax-drills-student-package")` 
+* Wait for the installation to finish.
+* Restart R: Go to the `Session` menu and choose `Restart R`.
+* On the upper right window-pane of RStdio select the `Tutorial` tab.
+* Start the `R Syntax Drills` tutorial. Do a few minutes of it each day.
 
 Your responses are graded immediately and recorded for your instructor. Enter the same student ID each time. A question stays in your active drill list until you answer it correctly; it is then replaced by another question selected from your learning history.
 
