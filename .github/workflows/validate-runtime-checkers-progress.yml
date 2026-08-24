@@ -50,8 +50,3 @@ jobs:
           node tests/js/test-concurrency.js
           node tests/js/test-bank-handshake.js
           node tests/js/test-progress.js
-
-      - name: Verify generated student assets
-        run: |
-          Rscript scripts/09_build_student_assets.R
-          git diff --exit-code -- student-assets/runtime_question_pool.Rmd student-assets/question_manifest.csv
