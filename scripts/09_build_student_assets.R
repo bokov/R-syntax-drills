@@ -15,3 +15,9 @@ message(
   "Published student-safe runtime assets in ", output_dir,
   "; bank version ", unique(manifest$bank_version), "."
 )
+
+message(
+  "Reminder: include changes to student-assets/runtime_question_pool.Rmd and ",
+  "student-assets/question_manifest.csv in the same commit as the authoring ",
+  "changes they publish."
+)
