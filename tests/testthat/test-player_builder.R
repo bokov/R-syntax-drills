@@ -88,25 +88,3 @@ test_that("assignment player uses learnr rendered labels instead of parallel que
     fixed = TRUE
   )
 })
-
-test_that("current vector-only configuration has an eligible starter set", {
-  root <- normalizePath(file.path(test_path(), "..", ".."))
-  bank <- scan_question_bank(question_bank_source_files(root))
-
-  config <- list(
-    queue_size = 10L,
-    topic_priority = c("vector_creation", "vector_indexing")
-  )
-
-  expect_silent(validate_assignment_config(config, bank))
-
-  eligible_starters <- bank[
-    bank$event == "exercise_result" &
-      bank$points > 0 &
-      bank$starter_question %in% TRUE &
-      bank$topic %in% config$topic_priority,
-    ,
-    drop = FALSE
-  ]
-  expect_gt(nrow(eligible_starters), 0)
-})

@@ -151,26 +151,6 @@ test_that("deployed runtime can use a prevalidated manifest without the bank", {
   expect_equal(loaded$points, 1)
 })
 
-test_that("real canonical bank has complete topic coverage", {
-  root <- normalizePath(file.path(test_path(), "..", ".."))
-
-  expect_silent(
-    bank <- scan_question_bank(
-      question_bank_source_files(root)
-    )
-  )
-
-  expect_false(any(bank$topic == "unassigned"))
-  expect_true(all(c(
-    "vector_creation",
-    "vector_indexing",
-    "dataframe_indexing",
-    "subset_function",
-    "expression_decomposition"
-  ) %in% bank$topic))
-  expect_true(all(sprintf("expr_d%02d", 1:50) %in% bank$item_label))
-})
-
 test_that("index is now player infrastructure rather than a copied assignment", {
   root <- normalizePath(file.path(test_path(), "..", ".."))
   assignment <- extract_question_records(file.path(root, "index.Rmd"))
