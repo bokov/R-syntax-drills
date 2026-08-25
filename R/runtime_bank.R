@@ -10,7 +10,7 @@
 
 read_runtime_manifest <- function(path) {
   if (!file.exists(path)) stop("Question manifest does not exist: ", path)
-  read.csv(path, stringsAsFactors = FALSE, na.strings = "")
+  utils::read.csv(path, stringsAsFactors = FALSE, na.strings = "")
 }
 
 runtime_manifests_equal <- function(old, new) {
@@ -198,7 +198,28 @@ refresh_runtime_bank <- function(
   }
 
   remote_pool_path <- file.path(incoming, "runtime_question_pool.Rmd")
-  downloader(pool_url, remote_pool_path, timeout_sec = 30)
+  pool_fetch <- tryCatch({
+    downloader(pool_url, remote_pool_path, timeout_sec = 30)
+    TRUE
+  }, error = function(e) e)
+
+  if (inherits(pool_fetch, "error")) {
+    if (!current_exists) {
+      stop(
+        "Drillr found a question manifest but could not download its drill file and no local drill content is available: ",
+        conditionMessage(pool_fetch)
+      )
+    }
+    return(runtime_bank_from_pair(
+      current_manifest,
+      current_pool,
+      updated = FALSE,
+      notice = paste(
+        "Drillr found an updated question manifest but could not download the matching drill file; it is using its current local copy:",
+        conditionMessage(pool_fetch)
+      )
+    ))
+  }
 
   # Parse and reconcile the pair before replacing the working copy. Mismatched
   # IDs are not fatal; the returned manifest is restricted to their intersection.
