@@ -48,5 +48,5 @@ jobs:
           node tests/js/test-fsrs.js
           node tests/js/test-performance.js
           node tests/js/test-concurrency.js
-          node tests/js/test-bank-handshake.js
+          node tests/js/test-bank-reconciliation.js
           node tests/js/test-progress.js
