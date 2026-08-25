@@ -4,12 +4,38 @@
 # item_label; changing wording under an existing item_label does not create a
 # different question.
 
+# Utility helpers -------------------------------------------------------------
+
+#' Substitute a fallback for a null or empty value
+#'
+#' Provides the small null-coalescing operation used while parsing optional
+#' question metadata.
+#'
+#' @param x Value to return unless it is `NULL` or length zero.
+#' @param y Fallback value.
+#' @return `y` when `x` is `NULL` or empty; otherwise `x`.
+#' @details Called by `parse_question_chunk()`. No other within-repository caller
+#'   was found.
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+
+# Metadata parsing ------------------------------------------------------------
 
 # Older bank files predate explicit topic metadata. Keep their stable item-label
 # families as a compatibility registry so every canonical question has a topic
 # without creating a very large mechanical edit to those source banks.
 # Explicit topic= metadata on a question always takes precedence.
+
+#' Infer a topic for a legacy permanent item label
+#'
+#' Maps known pre-metadata item-label families to their curriculum topics so old
+#' canonical banks can be scanned without mechanically adding `topic=` to every
+#' existing chunk.
+#'
+#' @param item_label Permanent canonical question label.
+#' @return The matched topic as a length-one character value, or `NULL` when no
+#'   compatibility rule matches.
+#' @details Called only by `parse_question_chunk()`. It has no within-repo
+#'   function dependencies.
 legacy_question_topic <- function(item_label) {
   rules <- c(
     "^vector_c[0-9]+$" = "vector_creation",
@@ -32,6 +58,16 @@ legacy_question_topic <- function(item_label) {
   unname(rules[[matched]])
 }
 
+#' Extract one option value from an R Markdown chunk header
+#'
+#' Finds a named chunk option, trims it, and removes matching surrounding quotes
+#' so later metadata parsers receive a simple character value.
+#'
+#' @param header Chunk-header text after the opening `{r` portion.
+#' @param option Option name to extract.
+#' @return The option value as character, or `NULL` when the option is absent.
+#' @details Called only by `parse_question_chunk()`. It has no within-repo
+#'   function dependencies.
 chunk_option_value <- function(header, option) {
   pattern <- paste0(
     "(?:^|,)\\s*",
@@ -60,6 +96,16 @@ chunk_option_value <- function(header, option) {
   value
 }
 
+#' Parse logical question metadata
+#'
+#' Accepts common textual boolean spellings used in chunk metadata and provides
+#' a caller-supplied default when the option is absent or blank.
+#'
+#' @param value Metadata value to interpret, or `NULL`.
+#' @param default Logical value used for missing/blank metadata.
+#' @return A single logical value.
+#' @details Called only by `parse_question_chunk()` for `starter_question`.
+#'   It has no within-repo function dependencies.
 parse_bool_metadata <- function(value, default = FALSE) {
   if (is.null(value) || !nzchar(trimws(value))) return(default)
   value <- tolower(trimws(value))
@@ -68,6 +114,22 @@ parse_bool_metadata <- function(value, default = FALSE) {
   stop("Invalid logical metadata value: ", value, ".")
 }
 
+# Question-chunk parsing ------------------------------------------------------
+
+#' Parse one R Markdown line as canonical question metadata
+#'
+#' Recognizes labeled R chunks that represent an exercise or carry explicit or
+#' legacy question metadata, validates points/starter metadata, and converts the
+#' chunk header to one canonical manifest record.
+#'
+#' @param line Candidate R Markdown line.
+#' @param source_file Source file used for diagnostics and manifest provenance.
+#' @param source_line One-based source line number.
+#' @return A one-row question metadata data frame, or `NULL` when the line is not
+#'   a canonical question chunk.
+#' @details Called only by `record_question_block()`. Depends on
+#'   `chunk_option_value()`, `%||%`, `legacy_question_topic()`, and
+#'   `parse_bool_metadata()`.
 parse_question_chunk <- function(line, source_file, source_line) {
   if (!grepl("^```\\{r(?:\\s|,)", line)) return(NULL)
 
@@ -123,6 +185,21 @@ parse_question_chunk <- function(line, source_file, source_line) {
   )
 }
 
+#' Record the single canonical question inside a source block
+#'
+#' Scans a bounded set of lines for question chunks, requires exactly one when a
+#' question is present, validates an optional explicit marker ID, and records the
+#' full source block boundaries for later player extraction.
+#'
+#' @param lines Character vector containing one candidate question block.
+#' @param source_file Source file path.
+#' @param start_line One-based first source line represented by `lines`.
+#' @param end_line One-based last source line represented by `lines`.
+#' @param marker_id Optional ID declared by an explicit question marker.
+#' @return A one-row manifest record with `source_line` and `source_end_line`, or
+#'   `NULL` when the block contains no question chunk.
+#' @details Called by `extract_explicit_question_blocks()` and
+#'   `extract_legacy_question_blocks()`. Depends on `parse_question_chunk()`.
 record_question_block <- function(lines, source_file, start_line, end_line, marker_id = NULL) {
   found <- lapply(seq_along(lines), function(i) {
     parse_question_chunk(lines[[i]], source_file, start_line + i - 1L)
@@ -150,6 +227,20 @@ record_question_block <- function(lines, source_file, start_line, end_line, mark
   record
 }
 
+# Question-block extraction ---------------------------------------------------
+
+#' Extract explicitly marked canonical question blocks
+#'
+#' Finds `<!-- question: ID --> ... <!-- /question -->` regions, rejects
+#' unclosed/nested markers, and records exactly one canonical question from each
+#' marked block.
+#'
+#' @param lines Complete source file as a character vector.
+#' @param source_file Source file path used in diagnostics/provenance.
+#' @return A data frame of question records, or `NULL` when the file contains no
+#'   explicit question markers.
+#' @details Called only by `extract_question_records()`. Depends on
+#'   `record_question_block()`.
 extract_explicit_question_blocks <- function(lines, source_file) {
   begin_pattern <- "^<!--\\s*question:\\s*([A-Za-z0-9._-]+)\\s*-->\\s*$"
   end_pattern <- "^<!--\\s*/question\\s*-->\\s*$"
@@ -184,6 +275,18 @@ extract_explicit_question_blocks <- function(lines, source_file) {
 # Compatibility for existing bank/assignment files created before explicit
 # markers. A level-2 section containing exactly one question chunk is treated
 # as one question block. New or modified bank questions should use markers.
+
+#' Extract legacy heading-delimited question blocks
+#'
+#' Treats each level-2 Markdown section as a candidate question block for older
+#' bank files that predate explicit question markers.
+#'
+#' @param lines Complete source file as a character vector.
+#' @param source_file Source file path used in diagnostics/provenance.
+#' @return A data frame of question records, or `NULL` when no section contains a
+#'   canonical question.
+#' @details Called only by `extract_question_records()` when explicit markers are
+#'   absent. Depends on `record_question_block()`.
 extract_legacy_question_blocks <- function(lines, source_file) {
   headings <- grep("^##\\s+", lines, perl = TRUE)
   records <- list()
@@ -199,6 +302,16 @@ extract_legacy_question_blocks <- function(lines, source_file) {
   do.call(rbind, records)
 }
 
+#' Extract canonical question records from one R Markdown file
+#'
+#' Reads a bank or assignment file, prefers explicit marked blocks when present,
+#' and otherwise falls back to the legacy level-2-section parser.
+#'
+#' @param path Path to the Rmd file to scan.
+#' @return A data frame of question records, or `NULL` when none are found.
+#' @details Called by `scan_question_bank()` and `validate_assignment_file()`.
+#'   Depends on `extract_explicit_question_blocks()` and
+#'   `extract_legacy_question_blocks()`.
 extract_question_records <- function(path) {
   lines <- readLines(path, warn = FALSE)
   explicit <- extract_explicit_question_blocks(lines, path)
@@ -206,6 +319,17 @@ extract_question_records <- function(path) {
   extract_legacy_question_blocks(lines, path)
 }
 
+# Manifest construction -------------------------------------------------------
+
+#' Create an empty canonical question manifest
+#'
+#' Supplies the stable zero-row schema used when scanning no files or files with
+#' no recognized questions.
+#'
+#' @return A zero-row data frame with canonical metadata and source-location
+#'   columns.
+#' @details Called only by `scan_question_bank()`. It has no within-repo function
+#'   dependencies.
 empty_manifest <- function() {
   data.frame(
     item_label = character(),
@@ -220,6 +344,16 @@ empty_manifest <- function() {
   )
 }
 
+#' Scan canonical bank files into one validated manifest
+#'
+#' Extracts records from every source file, combines them, rejects duplicate
+#' permanent IDs, and warns about questions whose topic remains unassigned.
+#'
+#' @param files Character vector of question-bank Rmd paths.
+#' @return A canonical question manifest data frame.
+#' @details Called by `build_question_bank_manifest()` and
+#'   `review_question_bank()`, and directly by question-manifest/player-builder
+#'   tests. Depends on `extract_question_records()` and `empty_manifest()`.
 scan_question_bank <- function(files) {
   if (!length(files)) return(empty_manifest())
   items <- lapply(files, extract_question_records)
@@ -250,6 +384,16 @@ scan_question_bank <- function(files) {
   manifest
 }
 
+#' List canonical question-bank R Markdown sources
+#'
+#' Recursively finds and sorts Rmd files beneath the canonical bank directory.
+#'
+#' @param root Repository root.
+#' @param bank_dir Canonical bank directory relative to `root`.
+#' @return A sorted character vector of full source paths, or `character()` when
+#'   the bank directory does not exist.
+#' @details Called by `build_question_bank_manifest()` and
+#'   `review_question_bank()`. It has no within-repo function dependencies.
 question_bank_source_files <- function(root = ".", bank_dir = "question-bank") {
   bank_path <- file.path(root, bank_dir)
   if (!dir.exists(bank_path)) return(character())
@@ -261,6 +405,19 @@ question_bank_source_files <- function(root = ".", bank_dir = "question-bank") {
   ))
 }
 
+#' Build and write the complete canonical question-bank manifest
+#'
+#' Discovers canonical source files, scans and validates their question records,
+#' writes the authoring manifest CSV, and returns the in-memory manifest for
+#' downstream build/synchronization steps.
+#'
+#' @param root Repository root.
+#' @param bank_dir Canonical bank directory relative to `root`.
+#' @param output Destination canonical-bank manifest CSV.
+#' @return Invisibly, the canonical question-bank manifest data frame.
+#' @details Called by `build_player_assets()`, `build_question_manifest()`,
+#'   `scripts/06_sync_question_bank.R`, and associated tests. Depends on
+#'   `question_bank_source_files()` and `scan_question_bank()`.
 build_question_bank_manifest <- function(
   root = ".",
   bank_dir = "question-bank",
@@ -277,6 +434,18 @@ build_question_bank_manifest <- function(
   invisible(manifest)
 }
 
+# Assignment-manifest validation ---------------------------------------------
+
+#' Validate an assignment Rmd against the canonical question bank
+#'
+#' Extracts question blocks from an assignment file, rejects duplicate labels,
+#' and verifies that every assigned label exists in the supplied canonical bank.
+#'
+#' @param assignment_file Assignment/tutorial Rmd to validate.
+#' @param bank_manifest Canonical question-bank manifest.
+#' @return The extracted assignment question records.
+#' @details Called only by `build_question_manifest()`. Depends on
+#'   `extract_question_records()`.
 validate_assignment_file <- function(assignment_file = "index.Rmd", bank_manifest) {
   assignment <- extract_question_records(assignment_file)
   if (is.null(assignment) || !nrow(assignment)) {
@@ -300,6 +469,24 @@ validate_assignment_file <- function(assignment_file = "index.Rmd", bank_manifes
   assignment
 }
 
+#' Build a validated manifest for questions embedded in an assignment Rmd
+#'
+#' For authoring checkouts, rebuilds the canonical bank, verifies assignment
+#' question IDs against it, and writes canonical metadata plus assignment source
+#' lines. In deployed copies that intentionally omit the canonical bank, reuses
+#' an already validated manifest instead of exposing source solutions/checkers.
+#'
+#' @param root Repository root.
+#' @param assignment_file Assignment/tutorial Rmd relative to `root`.
+#' @param bank_dir Canonical question-bank directory relative to `root`.
+#' @param bank_output Destination canonical-bank manifest CSV.
+#' @param output Destination validated assignment manifest CSV.
+#' @return Invisibly, the validated assignment manifest data frame.
+#' @details No current hosted-player build path calls this helper; the current
+#'   runtime uses `build_player_assets()` and the generated runtime pool. It is
+#'   retained for assignment-manifest compatibility and is exercised by
+#'   question-manifest tests. Depends on `read_question_manifest()` for deployed
+#'   fallback, `build_question_bank_manifest()`, and `validate_assignment_file()`.
 build_question_manifest <- function(
   root = ".",
   assignment_file = "index.Rmd",
@@ -329,6 +516,19 @@ build_question_manifest <- function(
   invisible(canonical)
 }
 
+# Runtime manifest access -----------------------------------------------------
+
+#' Read the runtime question manifest
+#'
+#' Loads the reduced manifest consumed by the hosted tutorial's assignment and
+#' logging helpers, returning an empty expected schema when no file exists.
+#'
+#' @param path Path to the runtime question-manifest CSV.
+#' @return A data frame containing runtime question metadata.
+#' @details Used by default arguments in `initialize_student_assignments()`,
+#'   `post_log_event()`, and `register_logging_handlers()`, by
+#'   `scripts/04_build_gradebook.R`, and by `build_question_manifest()` fallback.
+#'   It has no within-repo function dependencies.
 read_question_manifest <- function(path = "question_manifest.csv") {
   if (!file.exists(path)) {
     return(data.frame(
@@ -343,6 +543,17 @@ read_question_manifest <- function(path = "question_manifest.csv") {
   read.csv(path, stringsAsFactors = FALSE, na.strings = "")
 }
 
+#' Resolve the curriculum topic for a logged item label
+#'
+#' Finds an exact manifest label or the unique parent of a generated child label
+#' separated by `-`, `_`, or `.`, supplying a default for missing/ambiguous IDs.
+#'
+#' @param item_label Question or generated child label to resolve.
+#' @param manifest Runtime/canonical question manifest.
+#' @param default Value returned when no unique topic can be resolved.
+#' @return The matching topic value, or `default`.
+#' @details Called by `post_log_event()` in `R/logging.R`. It has no within-repo
+#'   function dependencies.
 question_topic <- function(item_label, manifest, default = "unassigned") {
   if (is.null(item_label) || is.na(item_label) || !nzchar(item_label)) return(default)
   if (!nrow(manifest)) return(default)
