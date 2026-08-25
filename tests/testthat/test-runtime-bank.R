@@ -102,6 +102,39 @@ test_that("changed manifest downloads and installs the matching runtime pool", {
   expect_equal(bank$manifest$item_label, c("q1", "q2"))
 })
 
+test_that("hosted refresh replaces the root runtime pair", {
+  root <- tempfile()
+  dir.create(root)
+  local_manifest <- file.path(root, "question_manifest.csv")
+  local_pool <- file.path(root, "runtime_question_pool.Rmd")
+  remote_manifest <- file.path(root, "remote-manifest.csv")
+  remote_pool <- file.path(root, "remote-pool.Rmd")
+
+  write_runtime_test_manifest(local_manifest, "q1", release = 1L)
+  write_runtime_test_pool(local_pool, "q1")
+  write_runtime_test_manifest(remote_manifest, c("q1", "q2"), release = 2L)
+  write_runtime_test_pool(remote_pool, c("q1", "q2"))
+
+  downloader <- function(url, path, timeout_sec) {
+    source <- if (url == "manifest") remote_manifest else remote_pool
+    if (!file.copy(source, path, overwrite = TRUE)) stop("copy failed")
+    invisible(path)
+  }
+
+  bank <- refresh_runtime_bank(
+    bundled_manifest_path = local_manifest,
+    bundled_pool_path = local_pool,
+    cache_dir = root,
+    manifest_url = "manifest",
+    pool_url = "pool",
+    downloader = downloader
+  )
+
+  expect_true(bank$updated)
+  expect_equal(read_runtime_manifest(local_manifest)$item_label, c("q1", "q2"))
+  expect_equal(runtime_pool_item_labels(local_pool), c("q1", "q2"))
+})
+
 test_that("failed runtime pool update keeps the existing local pair", {
   root <- tempfile()
   dir.create(root)
