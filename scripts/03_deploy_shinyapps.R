@@ -1,16 +1,27 @@
 source("R/app_config.R")
-source("R/question_manifest.R")
-source("R/assignment_storage.R")
-source("R/player_builder.R")
 source("R/runtime_bank.R")
 
-# Build and validate locally before deployment. The canonical question bank is
-# deliberately NOT deployed; the runtime player contains only scored exercise
-# blocks and omits their *-solution chunks. Keep the same explicit release as
-# the published student manifest unless it is intentionally bumped first.
+# The published student-safe pair is the hosted app's local copy too. Do not
+# rebuild it implicitly here: rewording an existing question should reach
+# clients only when the published manifest changes (for example by bumping its
+# release before running scripts/09_build_student_assets.R).
 published_manifest <- file.path("student-assets", "question_manifest.csv")
-release <- current_manifest_release(published_manifest)
-build_player_assets(config = APP_CONFIG, release = release)
+published_pool <- file.path("student-assets", "runtime_question_pool.Rmd")
+if (!all(file.exists(c(published_manifest, published_pool)))) {
+  stop(
+    "Published student assets are missing. Run scripts/09_build_student_assets.R first."
+  )
+}
+
+published_bank <- runtime_bank_from_pair(published_manifest, published_pool)
+if (nzchar(published_bank$warning)) warning(published_bank$warning, call. = FALSE)
+
+if (!file.copy(published_manifest, "question_manifest.csv", overwrite = TRUE)) {
+  stop("Could not stage the published question manifest for deployment.")
+}
+if (!file.copy(published_pool, "runtime_question_pool.Rmd", overwrite = TRUE)) {
+  stop("Could not stage the published runtime question pool for deployment.")
+}
 
 # Ship a compiled copy with the deployment. app.R checks the main-branch
 # manifest before starting each hosted Shiny worker and re-renders only when it
