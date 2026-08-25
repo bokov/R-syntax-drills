@@ -130,6 +130,8 @@ function setupGradeSheet() {
   const scriptProperties = PropertiesService.getScriptProperties();
   scriptProperties.setProperty('SPREADSHEET_ID', ss.getId());
 
+  migrateLegacyPlaceholderHeaders(ss);
+
   const eventSheet = ensureManagedSheet(ss, EVENT_SHEET, EVENT_HEADERS);
   const assignmentSheet = ensureManagedSheet(ss, ASSIGNMENT_SHEET, ASSIGNMENT_HEADERS);
   ensureManagedSheet(ss, QUESTION_BANK_SHEET, QUESTION_BANK_HEADERS);
