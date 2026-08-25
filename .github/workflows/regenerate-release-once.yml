@@ -1,0 +1,62 @@
+name: Regenerate hashless student assets once
+
+on:
+  push:
+    branches:
+      - agent/manifest-release-versioning
+    paths:
+      - .github/workflows/regenerate-release-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/manifest-release-versioning
+          fetch-depth: 0
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+
+      - name: Build published assets
+        run: Rscript scripts/09_build_student_assets.R 1
+
+      - name: Verify manifest schema
+        shell: python
+        run: |
+          import csv
+          from pathlib import Path
+          path = Path("student-assets/question_manifest.csv")
+          with path.open(newline="", encoding="utf-8") as fh:
+              reader = csv.reader(fh)
+              header = next(reader)
+              rows = list(reader)
+          expected = ["item_label", "event", "topic", "points", "starter_question", "release"]
+          if header != expected:
+              raise SystemExit(f"Unexpected manifest header: {header!r}")
+          if not rows:
+              raise SystemExit("Published manifest is empty")
+          if any(row[-1] != "1" for row in rows):
+              raise SystemExit("Published manifest contains a release other than 1")
+          text = path.read_text(encoding="utf-8")
+          for token in ("question_hash", "bank_version", "md5-"):
+              if token in text:
+                  raise SystemExit(f"Legacy fingerprint token remains: {token}")
+
+      - name: Commit generated pair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin agent/manifest-release-versioning
+          git add student-assets/question_manifest.csv student-assets/runtime_question_pool.Rmd
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Regenerate hashless student assets"
+          git push origin HEAD:agent/manifest-release-versioning
