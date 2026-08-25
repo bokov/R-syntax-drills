@@ -83,7 +83,7 @@ runtime_bank_warning <- function(mismatch) {
   }
 
   paste0(
-    "Drillr content warning — please copy and paste this entire message into a Teams message ",
+    "Drillr content warning - please copy and paste this entire message into a Teams message ",
     "to your course instructor. The question manifest and drill file disagree. ",
     "Manifest-only item_label(s): ", manifest_only, ". ",
     "Rmd-only item_label(s): ", pool_only, ". ",
