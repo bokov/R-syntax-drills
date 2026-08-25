@@ -68,12 +68,10 @@
    * @returns {HTMLElement|null} The corresponding question section.
    */
   function questionSectionForLabel(label) {
-    var exercise = exerciseElements().find(
-      // Select the rendered exercise whose learnr data label matches the item.
-      function(element) {
-        return element.getAttribute('data-label') === label;
-      }
-    );
+    // The callback selects the rendered exercise whose data label matches.
+    var exercise = exerciseElements().find(function(element) {
+      return element.getAttribute('data-label') === label;
+    });
     return questionSection(exercise);
   }
 
@@ -85,13 +83,11 @@
    */
   function allQuestionBlocks() {
     var seen = [];
-    exerciseElements().forEach(
-      // Resolve each exercise and retain each surrounding section once.
-      function(exercise) {
-        var section = questionSection(exercise);
-        if (section && seen.indexOf(section) < 0) seen.push(section);
-      }
-    );
+    // The callback resolves each exercise and retains each containing section once.
+    exerciseElements().forEach(function(exercise) {
+      var section = questionSection(exercise);
+      if (section && seen.indexOf(section) < 0) seen.push(section);
+    });
     return seen;
   }
 
@@ -103,12 +99,10 @@
    * @returns {void}
    */
   function hideAll() {
-    allQuestionBlocks().forEach(
-      // Hide one native learnr question section.
-      function(block) {
-        block.style.display = 'none';
-      }
-    );
+    // Hide each native learnr question section.
+    allQuestionBlocks().forEach(function(block) {
+      block.style.display = 'none';
+    });
 
     var waiting = waitingElement();
     if (waiting) {
@@ -137,27 +131,25 @@
     var shown = 0;
     var destination = null;
 
-    labels.forEach(
-      // Reveal and position one assigned question in server-provided order.
-      function(label, index) {
-        var block = questionSectionForLabel(label);
-        if (!block) {
-          console.error('Assigned question is missing from the player:', label);
-          return;
-        }
-
-        if (!destination) destination = block.parentNode;
-        if (destination && block.parentNode === destination) {
-          // Re-appending native section divs preserves persisted assignment order
-          // while all non-assigned question sections remain hidden.
-          destination.appendChild(block);
-        }
-
-        block.style.display = 'block';
-        block.dataset.assignmentOrder = String(index);
-        shown += 1;
+    // Reveal and position each assigned question in server-provided order.
+    labels.forEach(function(label, index) {
+      var block = questionSectionForLabel(label);
+      if (!block) {
+        console.error('Assigned question is missing from the player:', label);
+        return;
       }
-    );
+
+      if (!destination) destination = block.parentNode;
+      if (destination && block.parentNode === destination) {
+        // Re-appending native section divs preserves persisted assignment order
+        // while all non-assigned question sections remain hidden.
+        destination.appendChild(block);
+      }
+
+      block.style.display = 'block';
+      block.dataset.assignmentOrder = String(index);
+      shown += 1;
+    });
 
     var waiting = waitingElement();
     if (waiting) {
@@ -189,12 +181,10 @@
     if (!window.Shiny || !window.Shiny.addCustomMessageHandler) return false;
 
     window.Shiny.addCustomMessageHandler('assignment:set', showAssignments);
-    window.Shiny.addCustomMessageHandler('assignment:clear',
-      // Clear the player when the R session discards active assignments.
-      function(message) {
-        hideAll();
-      }
-    );
+    // The clear-message callback hides every currently displayed assignment.
+    window.Shiny.addCustomMessageHandler('assignment:clear', function(message) {
+      hideAll();
+    });
     handlersRegistered = true;
     return true;
   }
@@ -210,16 +200,13 @@
     if (registerShinyHandlers()) return;
 
     var attempts = 0;
-    var timer = window.setInterval(
-      // Retry handler registration until Shiny is ready or the retry cap is hit.
-      function() {
-        attempts += 1;
-        if (registerShinyHandlers() || attempts >= 200) {
-          window.clearInterval(timer);
-        }
-      },
-      50
-    );
+    // Retry registration until Shiny is ready or the fixed retry cap is reached.
+    var timer = window.setInterval(function() {
+      attempts += 1;
+      if (registerShinyHandlers() || attempts >= 200) {
+        window.clearInterval(timer);
+      }
+    }, 50);
   }
 
   // This script is inlined after runtime_question_pool.Rmd, so the rendered
