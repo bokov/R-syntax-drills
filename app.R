@@ -5,6 +5,7 @@ DRILLR_BOOT_BANK <- refresh_runtime_bank(
   bundled_pool_path = "runtime_question_pool.Rmd",
   cache_dir = "."
 )
+options(drillr.runtime_bank = DRILLR_BOOT_BANK)
 
 build_drillr_app <- function() {
   needs_render <- isTRUE(DRILLR_BOOT_BANK$updated) || !file.exists("index.html")
