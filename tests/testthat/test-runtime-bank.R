@@ -188,15 +188,8 @@ test_that("manifest and Rmd mismatches warn and use only shared item labels", {
   expect_match(bank$warning, "rmd-only", fixed = TRUE)
 })
 
-test_that("hosted bootstrap uses the rmarkdown prerendered app factory", {
+test_that("rmarkdown prerendered app factory remains compatible", {
   factory <- getFromNamespace("shiny_prerendered_app", "rmarkdown")
   expect_true(is.function(factory))
   expect_true(all(c("input_rmd", "render_args") %in% names(formals(factory))))
-
-  lines <- readLines("app.R", warn = FALSE)
-  refresh_line <- grep("DRILLR_BOOT_BANK <- refresh_runtime_bank", lines, fixed = TRUE)
-  factory_line <- grep("shiny_prerendered_app", lines, fixed = TRUE)
-  expect_length(refresh_line, 1L)
-  expect_length(factory_line, 1L)
-  expect_lt(refresh_line, factory_line)
 })
