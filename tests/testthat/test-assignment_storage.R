@@ -48,6 +48,16 @@ test_that("question-bank sync rejects unassigned topics", {
   )
 })
 
+# Assignment-storage test fixtures -------------------------------------------
+
+#' Build the canonical assignment test bank
+#'
+#' Creates the small in-memory manifest used by assignment-configuration tests
+#' to exercise known, unknown, locked, and starter curriculum topics.
+#'
+#' @return A four-row question-bank data frame suitable for assignment tests.
+#' @details Test-only helper called by four tests in this file. It has no
+#'   within-repo function dependencies and is not used by production code.
 assignment_test_bank <- function() {
   data.frame(
     item_label = c("q1", "q2", "q3", "q4"),
