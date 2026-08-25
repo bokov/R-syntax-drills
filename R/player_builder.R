@@ -3,9 +3,36 @@ PLAYER_MANIFEST_COLUMNS <- c(
   "event",
   "topic",
   "points",
-  "starter_question",
-  "question_hash"
+  "starter_question"
 )
+
+validate_manifest_release <- function(release) {
+  release <- suppressWarnings(as.numeric(release))
+  if (
+    length(release) != 1L ||
+    is.na(release) ||
+    !is.finite(release) ||
+    release < 1 ||
+    release != floor(release)
+  ) {
+    stop("Manifest release must be one positive whole number.")
+  }
+  as.integer(release)
+}
+
+current_manifest_release <- function(path, default = 1L) {
+  default <- validate_manifest_release(default)
+  if (!file.exists(path)) return(default)
+
+  existing <- read.csv(path, stringsAsFactors = FALSE, na.strings = "")
+  if (!"release" %in% names(existing)) return(default)
+
+  values <- unique(existing$release[!is.na(existing$release)])
+  if (length(values) != 1L) {
+    stop("Existing player manifest must contain exactly one release value.")
+  }
+  validate_manifest_release(values[[1]])
+}
 
 player_manifest <- function(bank_manifest) {
   required <- c(
@@ -107,22 +134,26 @@ build_player_assets <- function(
   root = ".",
   config = APP_CONFIG,
   pool_output = file.path(root, "runtime_question_pool.Rmd"),
-  manifest_output = file.path(root, "question_manifest.csv")
+  manifest_output = file.path(root, "question_manifest.csv"),
+  release = NULL
 ) {
   bank <- build_question_bank_manifest(root = root)
   if (!is.null(config)) validate_assignment_config(config, bank)
 
   manifest <- player_manifest(bank)
   runtime_manifest <- manifest[, PLAYER_MANIFEST_COLUMNS, drop = FALSE]
-  runtime_manifest$bank_version <- runtime_question_bank_version(runtime_manifest)
+  if (is.null(release)) {
+    release <- current_manifest_release(manifest_output)
+  }
+  runtime_manifest$release <- validate_manifest_release(release)
 
   write.csv(runtime_manifest, manifest_output, row.names = FALSE, na = "")
   build_runtime_question_pool(manifest, pool_output)
 
   message(
     "Built runtime player pool with ", nrow(runtime_manifest),
-    " scored canonical exercise(s); bank version ",
-    unique(runtime_manifest$bank_version), "."
+    " scored canonical exercise(s); manifest release ",
+    unique(runtime_manifest$release), "."
   )
 
   invisible(runtime_manifest)
