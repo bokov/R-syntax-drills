@@ -12,6 +12,23 @@ published_manifest <- file.path("student-assets", "question_manifest.csv")
 release <- current_manifest_release(published_manifest)
 build_player_assets(config = APP_CONFIG, release = release)
 
+# Ship a compiled copy with the deployment. app.R checks the main-branch
+# manifest before starting each hosted Shiny worker and re-renders only when it
+# actually downloads a changed runtime pool (or when the compiled copy is
+# missing).
+rmarkdown::shiny_prerendered_clean("index.Rmd")
+local({
+  old_bank <- getOption("drillr.runtime_bank")
+  on.exit(options(drillr.runtime_bank = old_bank), add = TRUE)
+  options(drillr.runtime_bank = NULL)
+  rmarkdown::render(
+    "index.Rmd",
+    output_file = "index.html",
+    envir = new.env(parent = globalenv()),
+    quiet = TRUE
+  )
+})
+
 if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
   stop("Set APP_CONFIG$webhook_url before deploying.")
 }
@@ -28,18 +45,20 @@ runtime_r_files <- setdiff(
   grep("\\.bak$", x = _, invert = TRUE, value = TRUE)
 
 app_files <- c(
+  "app.R",
   "index.Rmd",
+  "index.html",
   "runtime_question_pool.Rmd",
   "question_manifest.csv",
   runtime_r_files,
+  list.files("index_files", recursive = TRUE, full.names = TRUE),
   list.files("www", recursive = TRUE, full.names = TRUE)
 )
 
 rsconnect::deployApp(
   appDir = ".",
   appFiles = app_files,
-  appPrimaryDoc = "index.Rmd",
   appName = APP_CONFIG$app_name,
-  appMode = "rmd-shiny",
+  appMode = "shiny",
   launch.browser = TRUE
 )
