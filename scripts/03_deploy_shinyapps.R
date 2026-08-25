@@ -2,11 +2,15 @@ source("R/app_config.R")
 source("R/question_manifest.R")
 source("R/assignment_storage.R")
 source("R/player_builder.R")
+source("R/runtime_bank.R")
 
 # Build and validate locally before deployment. The canonical question bank is
 # deliberately NOT deployed; the runtime player contains only scored exercise
-# blocks and omits their *-solution chunks.
-build_player_assets(config = APP_CONFIG)
+# blocks and omits their *-solution chunks. Keep the same explicit release as
+# the published student manifest unless it is intentionally bumped first.
+published_manifest <- file.path("student-assets", "question_manifest.csv")
+release <- current_manifest_release(published_manifest)
+build_player_assets(config = APP_CONFIG, release = release)
 
 if (grepl("PASTE_", APP_CONFIG$webhook_url, fixed = TRUE)) {
   stop("Set APP_CONFIG$webhook_url before deploying.")
