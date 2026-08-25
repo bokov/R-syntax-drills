@@ -23,6 +23,57 @@ jobs:
         with:
           r-version: release
 
+      - name: Add safe legacy Sheet-header migration
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("google-apps-script/Code.gs")
+          text = path.read_text()
+          anchor = "const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;\n\nfunction setupGradeSheet() {"
+          helper = '''const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function migrateLegacyPlaceholderHeaders(ss) {
+  const specs = [
+    { sheetName: ASSIGNMENT_SHEET, headers: ASSIGNMENT_HEADERS, ignored: [7] },
+    { sheetName: QUESTION_BANK_SHEET, headers: QUESTION_BANK_HEADERS, ignored: [5, 6] }
+  ];
+
+  specs.forEach(function(spec) {
+    const sheet = ss.getSheetByName(spec.sheetName);
+    if (!sheet || sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) return;
+
+    const current = sheet
+      .getRange(1, 1, 1, sheet.getLastColumn())
+      .getValues()[0];
+    if (current.length !== spec.headers.length) return;
+
+    for (let ii = 0; ii < current.length; ii++) {
+      if (spec.ignored.includes(ii)) continue;
+      if (current[ii] !== spec.headers[ii]) return;
+    }
+
+    spec.ignored.forEach(function(ii) {
+      sheet.getRange(1, ii + 1).setValue(spec.headers[ii]);
+    });
+  });
+}
+
+function setupGradeSheet() {'''
+          if "function migrateLegacyPlaceholderHeaders(ss)" not in text:
+              if anchor not in text:
+                  raise SystemExit("Could not locate setupGradeSheet insertion point")
+              text = text.replace(anchor, helper, 1)
+          call_anchor = "  scriptProperties.setProperty('SPREADSHEET_ID', ss.getId());\n\n"
+          if "  migrateLegacyPlaceholderHeaders(ss);\n" not in text:
+              if call_anchor not in text:
+                  raise SystemExit("Could not locate setupGradeSheet migration call point")
+              text = text.replace(
+                  call_anchor,
+                  call_anchor + "  migrateLegacyPlaceholderHeaders(ss);\n\n",
+                  1
+              )
+          path.write_text(text)
+
       - name: Build published assets
         run: Rscript scripts/09_build_student_assets.R 1
 
@@ -39,8 +90,8 @@ jobs:
           expected = ["item_label", "event", "topic", "points", "starter_question", "release"]
           if header != expected:
               raise SystemExit(f"Unexpected manifest header: {header!r}")
-          if not rows:
-              raise SystemExit("Published manifest is empty")
+          if len(rows) != 236:
+              raise SystemExit(f"Expected 236 published questions, found {len(rows)}")
           if any(row[-1] != "1" for row in rows):
               raise SystemExit("Published manifest contains a release other than 1")
           text = path.read_text(encoding="utf-8")
@@ -48,12 +99,11 @@ jobs:
               if token in text:
                   raise SystemExit(f"Legacy fingerprint token remains: {token}")
 
-      - name: Commit generated pair
+      - name: Commit generated pair and migration
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin agent/manifest-release-versioning
-          git add student-assets/question_manifest.csv student-assets/runtime_question_pool.Rmd
+          git add google-apps-script/Code.gs student-assets/question_manifest.csv student-assets/runtime_question_pool.Rmd
           git diff --cached --check
           if git diff --cached --quiet; then
             exit 0
