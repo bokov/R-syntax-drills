@@ -6,13 +6,7 @@ QUESTION_BANK_COLUMNS <- c(
   "starter_question"
 )
 
-# The two trailing columns remain blank only because the existing private Google
-# Sheet schema already contains them. They are not computed, compared, or used.
-QUESTION_BANK_SYNC_COLUMNS <- c(
-  QUESTION_BANK_COLUMNS,
-  "question_hash",
-  "bank_version"
-)
+QUESTION_BANK_SYNC_COLUMNS <- QUESTION_BANK_COLUMNS
 
 ASSIGNMENT_COLUMNS <- c(
   "assignment_id",
@@ -52,10 +46,7 @@ prepare_question_bank_sync <- function(manifest) {
     stop("Question-bank sync data contain missing or unassigned topics.")
   }
 
-  # Preserve the deployed Sheet's column positions without carrying hash state.
-  out$question_hash <- ""
-  out$bank_version <- ""
-  out[, QUESTION_BANK_SYNC_COLUMNS, drop = FALSE]
+  out
 }
 
 assignment_config <- function(config = APP_CONFIG) {
@@ -334,8 +325,6 @@ validate_persisted_assignments <- function(assignments, manifest) {
     stop("The assignment service returned a non-active row in the active queue.")
   }
 
-  # A client with a temporarily mismatched manifest/pool should keep the usable
-  # assignments rather than fail the whole tutorial.
   assignments <- assignments[
     assignments$item_label %in% manifest$item_label,
     ,
