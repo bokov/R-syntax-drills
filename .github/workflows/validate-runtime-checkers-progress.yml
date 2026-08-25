@@ -38,13 +38,17 @@ jobs:
             "stringr",
             "lubridate",
             "tibble",
-            "readr"
+            "readr",
+            "rmarkdown"
           ))
 
       - name: Reject non-ASCII R source
         shell: Rscript {0}
         run: |
-          paths <- list.files("R", pattern = "\\.[Rr]$", full.names = TRUE)
+          paths <- c(
+            list.files("R", pattern = "\\.[Rr]$", full.names = TRUE),
+            "app.R"
+          )
           has_non_ascii <- vapply(paths, function(path) {
             bytes <- readBin(
               path,
