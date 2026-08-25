@@ -42,10 +42,35 @@ vm.runInContext(
 
 const api = context.__performanceTestApi;
 
+// Test-only helpers -----------------------------------------------------------
+
+/**
+ * Throws when a performance-helper test assertion is false.
+ *
+ * Test-only helper used throughout this file; it has no production dependencies.
+ *
+ * @param {*} condition Value expected to be truthy.
+ * @param {string} message Failure message.
+ * @returns {void}
+ */
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/**
+ * Creates one assignment-sheet row fixture for snapshot and ordering tests.
+ *
+ * Test-only helper used by the assignment-history and active-queue assertions;
+ * it has no production dependencies.
+ *
+ * @param {string} assignmentId Persisted assignment ID.
+ * @param {string} itemLabel Question item label.
+ * @param {string} topic Assignment topic.
+ * @param {string} weekId Legacy week provenance.
+ * @param {string} assignedAt Assignment timestamp.
+ * @param {string} status Rolling assignment status.
+ * @returns {Array<*>} Assignment row in ASSIGNMENT_HEADERS order.
+ */
 function assignmentRow(
   assignmentId,
   itemLabel,
