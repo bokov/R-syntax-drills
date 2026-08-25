@@ -1,7 +1,8 @@
 # Canonical question-bank and assignment-manifest helpers.
 #
-# Only question-bank/ defines canonical questions. index.Rmd is a derived
-# assignment whose copied question sections are validated against that bank.
+# Only question-bank/ defines canonical questions. Question identity is the
+# item_label; changing wording under an existing item_label does not create a
+# different question.
 
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
@@ -122,21 +123,6 @@ parse_question_chunk <- function(line, source_file, source_line) {
   )
 }
 
-normalize_question_text <- function(lines) {
-  if (!length(lines)) return("")
-  lines <- sub("[[:space:]]+$", "", lines)
-  while (length(lines) && !nzchar(lines[[1]])) lines <- lines[-1]
-  while (length(lines) && !nzchar(lines[[length(lines)]])) lines <- lines[-length(lines)]
-  paste(lines, collapse = "\n")
-}
-
-question_hash <- function(lines) {
-  path <- tempfile("question-hash-")
-  on.exit(unlink(path), add = TRUE)
-  writeChar(normalize_question_text(lines), path, eos = NULL, useBytes = TRUE)
-  unname(tools::md5sum(path))
-}
-
 record_question_block <- function(lines, source_file, start_line, end_line, marker_id = NULL) {
   found <- lapply(seq_along(lines), function(i) {
     parse_question_chunk(lines[[i]], source_file, start_line + i - 1L)
@@ -161,7 +147,6 @@ record_question_block <- function(lines, source_file, start_line, end_line, mark
 
   record$source_line <- start_line
   record$source_end_line <- end_line
-  record$question_hash <- question_hash(lines)
   record
 }
 
@@ -231,7 +216,6 @@ empty_manifest <- function() {
     source_file = character(),
     source_line = integer(),
     source_end_line = integer(),
-    question_hash = character(),
     stringsAsFactors = FALSE
   )
 }
@@ -313,16 +297,6 @@ validate_assignment_file <- function(assignment_file = "index.Rmd", bank_manifes
     )
   }
 
-  expected <- bank_manifest[match(assignment$item_label, bank_manifest$item_label), , drop = FALSE]
-  mismatch <- assignment$item_label[assignment$question_hash != expected$question_hash]
-  if (length(mismatch)) {
-    stop(
-      "Assignment question(s) differ from their canonical bank copies: ",
-      paste(mismatch, collapse = ", "),
-      ". Re-copy the canonical question block(s)."
-    )
-  }
-
   assignment
 }
 
@@ -344,7 +318,7 @@ build_question_manifest <- function(
   assignment <- validate_assignment_file(file.path(root, assignment_file), bank)
   canonical <- bank[
     match(assignment$item_label, bank$item_label),
-    c("item_label", "event", "topic", "points", "starter_question", "question_hash"),
+    c("item_label", "event", "topic", "points", "starter_question"),
     drop = FALSE
   ]
   canonical$assignment_source_file <- assignment_file
@@ -363,7 +337,6 @@ read_question_manifest <- function(path = "question_manifest.csv") {
       topic = character(),
       points = numeric(),
       starter_question = logical(),
-      question_hash = character(),
       stringsAsFactors = FALSE
     ))
   }
