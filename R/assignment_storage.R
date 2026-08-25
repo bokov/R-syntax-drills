@@ -1,14 +1,16 @@
-QUESTION_BANK_VERSION_COLUMNS <- c(
+QUESTION_BANK_COLUMNS <- c(
   "item_label",
   "event",
   "topic",
   "points",
-  "starter_question",
-  "question_hash"
+  "starter_question"
 )
 
+# The two trailing columns remain blank only because the existing private Google
+# Sheet schema already contains them. They are not computed, compared, or used.
 QUESTION_BANK_SYNC_COLUMNS <- c(
-  QUESTION_BANK_VERSION_COLUMNS,
+  QUESTION_BANK_COLUMNS,
+  "question_hash",
   "bank_version"
 )
 
@@ -20,7 +22,6 @@ ASSIGNMENT_COLUMNS <- c(
   "item_label",
   "topic",
   "points",
-  "question_hash",
   "assigned_at_utc",
   "assignment_reason",
   "assignment_status",
@@ -29,58 +30,8 @@ ASSIGNMENT_COLUMNS <- c(
   "retired_request_id"
 )
 
-runtime_question_bank_version <- function(manifest) {
-  missing <- setdiff(QUESTION_BANK_VERSION_COLUMNS, names(manifest))
-  if (length(missing)) {
-    stop(
-      "Question-bank manifest is missing required version column(s): ",
-      paste(missing, collapse = ", "),
-      "."
-    )
-  }
-
-  runtime <- manifest[
-    manifest$event == "exercise_result" & manifest$points > 0,
-    QUESTION_BANK_VERSION_COLUMNS,
-    drop = FALSE
-  ]
-  if (!nrow(runtime)) {
-    stop("Question-bank manifest contains no scored runtime exercises.")
-  }
-  if (anyDuplicated(runtime$item_label)) {
-    stop("Question-bank version data contain duplicate item_label values.")
-  }
-
-  runtime <- runtime[order(runtime$item_label), , drop = FALSE]
-  canonical <- data.frame(
-    item_label = enc2utf8(as.character(runtime$item_label)),
-    event = enc2utf8(as.character(runtime$event)),
-    topic = enc2utf8(as.character(runtime$topic)),
-    points = sprintf("%.15g", as.numeric(runtime$points)),
-    starter_question = ifelse(runtime$starter_question %in% TRUE, "1", "0"),
-    question_hash = enc2utf8(as.character(runtime$question_hash)),
-    stringsAsFactors = FALSE
-  )
-
-  path <- tempfile("drillr-bank-version-")
-  on.exit(unlink(path), add = TRUE)
-  write.table(
-    canonical,
-    file = path,
-    sep = "\t",
-    quote = TRUE,
-    row.names = FALSE,
-    col.names = TRUE,
-    na = "",
-    eol = "\n",
-    fileEncoding = "UTF-8"
-  )
-
-  paste0("md5-", unname(tools::md5sum(path)))
-}
-
 prepare_question_bank_sync <- function(manifest) {
-  missing <- setdiff(QUESTION_BANK_VERSION_COLUMNS, names(manifest))
+  missing <- setdiff(QUESTION_BANK_COLUMNS, names(manifest))
   if (length(missing)) {
     stop(
       "Question-bank manifest is missing required column(s): ",
@@ -89,7 +40,7 @@ prepare_question_bank_sync <- function(manifest) {
     )
   }
 
-  out <- manifest[, QUESTION_BANK_VERSION_COLUMNS, drop = FALSE]
+  out <- manifest[, QUESTION_BANK_COLUMNS, drop = FALSE]
 
   if (anyDuplicated(out$item_label)) {
     stop("Question-bank sync data contain duplicate item_label values.")
@@ -101,7 +52,9 @@ prepare_question_bank_sync <- function(manifest) {
     stop("Question-bank sync data contain missing or unassigned topics.")
   }
 
-  out$bank_version <- runtime_question_bank_version(out)
+  # Preserve the deployed Sheet's column positions without carrying hash state.
+  out$question_hash <- ""
+  out$bank_version <- ""
   out[, QUESTION_BANK_SYNC_COLUMNS, drop = FALSE]
 }
 
@@ -141,10 +94,7 @@ validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL
 
   if (is.null(bank_manifest)) return(invisible(settings))
 
-  required <- c(
-    "item_label", "event", "topic", "points", "starter_question", "question_hash"
-  )
-  missing <- setdiff(required, names(bank_manifest))
+  missing <- setdiff(QUESTION_BANK_COLUMNS, names(bank_manifest))
   if (length(missing)) {
     stop(
       "Canonical question bank is missing required column(s): ",
@@ -225,10 +175,18 @@ make_service_request_id <- function(prefix = "assignment") {
   )
 }
 
+scored_manifest_labels <- function(manifest) {
+  if (is.null(manifest) || !nrow(manifest)) return(character())
+  unique(as.character(manifest$item_label[
+    manifest$event == "exercise_result" & manifest$points > 0
+  ]))
+}
+
 assignment_service_payload <- function(
   request_type,
   student_id,
-  config = APP_CONFIG
+  config = APP_CONFIG,
+  manifest = NULL
 ) {
   if (!request_type %in% c("get_active_assignments", "get_or_create_active_assignments")) {
     stop("Unsupported assignment request_type: ", request_type, ".")
@@ -244,8 +202,12 @@ assignment_service_payload <- function(
     request_type = request_type,
     request_id = make_service_request_id(),
     course_id = config$course_id,
-    student_id = student_id
+    student_id = student_id,
+    reconcile_bank = TRUE
   )
+
+  available <- scored_manifest_labels(manifest)
+  if (length(available)) payload$available_item_labels <- unname(available)
 
   if (identical(request_type, "get_or_create_active_assignments")) {
     settings <- assignment_config(config)
@@ -297,7 +259,6 @@ empty_assignment_table <- function() {
     item_label = character(),
     topic = character(),
     points = numeric(),
-    question_hash = character(),
     assigned_at_utc = character(),
     assignment_reason = character(),
     assignment_status = character(),
@@ -321,7 +282,6 @@ assignment_response_table <- function(body) {
       item_label = as.character(assignment_scalar(row$item_label)),
       topic = as.character(assignment_scalar(row$topic)),
       points = suppressWarnings(as.numeric(assignment_scalar(row$points, NA_real_))),
-      question_hash = as.character(assignment_scalar(row$question_hash)),
       assigned_at_utc = as.character(assignment_scalar(row$assigned_at_utc)),
       assignment_reason = as.character(assignment_scalar(row$assignment_reason)),
       assignment_status = as.character(assignment_scalar(row$assignment_status)),
@@ -346,7 +306,7 @@ validate_persisted_assignments <- function(assignments, manifest) {
     )
   }
 
-  manifest_required <- c("item_label", "topic", "points", "question_hash")
+  manifest_required <- c("item_label", "topic", "points")
   missing_manifest <- setdiff(manifest_required, names(manifest))
   if (length(missing_manifest)) {
     stop(
@@ -366,7 +326,6 @@ validate_persisted_assignments <- function(assignments, manifest) {
     anyNA(assignments$assignment_id) || any(!nzchar(assignments$assignment_id)) ||
     anyNA(assignments$item_label) || any(!nzchar(assignments$item_label)) ||
     anyNA(assignments$topic) || any(!nzchar(assignments$topic)) ||
-    anyNA(assignments$question_hash) || any(!nzchar(assignments$question_hash)) ||
     anyNA(assignments$points)
   ) {
     stop("Active assignment rows contain missing required metadata.")
@@ -375,14 +334,14 @@ validate_persisted_assignments <- function(assignments, manifest) {
     stop("The assignment service returned a non-active row in the active queue.")
   }
 
-  missing_from_manifest <- setdiff(assignments$item_label, manifest$item_label)
-  if (length(missing_from_manifest)) {
-    stop(
-      "Persisted assignment question(s) are absent from the deployed question manifest: ",
-      paste(missing_from_manifest, collapse = ", "),
-      ". Rebuild/deploy the player from the canonical bank."
-    )
-  }
+  # A client with a temporarily mismatched manifest/pool should keep the usable
+  # assignments rather than fail the whole tutorial.
+  assignments <- assignments[
+    assignments$item_label %in% manifest$item_label,
+    ,
+    drop = FALSE
+  ]
+  if (!nrow(assignments)) return(assignments)
 
   expected <- manifest[
     match(assignments$item_label, manifest$item_label),
@@ -396,13 +355,9 @@ validate_persisted_assignments <- function(assignments, manifest) {
       as.numeric(assignments$points),
       as.numeric(expected$points),
       check.attributes = FALSE
-    )) ||
-    any(assignments$question_hash != expected$question_hash)
+    ))
   ) {
-    stop(
-      "Persistent assignment metadata do not match the current question manifest. ",
-      "Do not change a canonical question under an item_label after it has been assigned."
-    )
+    stop("Persistent assignment metadata do not match the current question manifest.")
   }
 
   assignments
@@ -416,12 +371,15 @@ initialize_student_assignments <- function(
   payload <- assignment_service_payload(
     "get_or_create_active_assignments",
     student_id = student_id,
-    config = config
+    config = config,
+    manifest = manifest
   )
 
   body <- post_assignment_service(payload, config = config)
   assignments <- assignment_response_table(body)
-  validate_persisted_assignments(assignments, manifest)
+  assignments <- validate_persisted_assignments(assignments, manifest)
+  attr(assignments, "retired_assignments") <- body$retired_assignments
+  assignments
 }
 
 assignment_id_map <- function(assignments) {
