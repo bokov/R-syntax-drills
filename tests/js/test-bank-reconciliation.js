@@ -29,9 +29,9 @@ vm.createContext(context);
 vm.runInContext(
   codeSource + '\n' + reconciliationSource + `
     globalThis.__bankReconciliationTestApi = {
-      requestUsesBankHandshake,
+      requestUsesBankReconciliation,
       requestedAvailableItemLabels,
-      bankHandshakeForRequest,
+      bankReconciliationForRequest,
       discontinuedAssignmentReason,
       discontinuedActiveAssignments,
       validateHistoryAgainstCurriculum
@@ -56,11 +56,11 @@ function assignment(label, topic, points) {
 }
 
 assert(
-  !api.requestUsesBankHandshake({ schema_version: '1' }),
-  'Ordinary legacy requests should not request reconciliation.'
+  !api.requestUsesBankReconciliation({ schema_version: '1' }),
+  'Ordinary requests should not request reconciliation.'
 );
 assert(
-  api.requestUsesBankHandshake({ reconcile_bank: true }),
+  api.requestUsesBankReconciliation({ reconcile_bank: true }),
   'reconcile_bank=true should request reconciliation.'
 );
 
@@ -79,7 +79,7 @@ try {
 assert(duplicateFailed, 'Duplicate available item labels must be rejected.');
 
 const fakeBankSheet = {};
-const reconciliation = api.bankHandshakeForRequest(
+const reconciliation = api.bankReconciliationForRequest(
   {
     reconcile_bank: true,
     available_item_labels: ['q1', 'q3']
