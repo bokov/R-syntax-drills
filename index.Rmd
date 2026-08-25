@@ -20,7 +20,13 @@ source("R/question_manifest.R")
 source("R/assignment_storage.R")
 source("R/runtime_bank.R")
 
-DRILLR_RUNTIME_BANK <- refresh_runtime_bank()
+DRILLR_RUNTIME_BANK <- getOption("drillr.runtime_bank")
+if (is.null(DRILLR_RUNTIME_BANK)) {
+  DRILLR_RUNTIME_BANK <- runtime_bank_from_pair(
+    "question_manifest.csv",
+    "runtime_question_pool.Rmd"
+  )
+}
 
 options(tutorial.storage = "none")
 
@@ -69,7 +75,7 @@ shiny::observeEvent(input$save_identity, {
     clear_assignment_player()
     session$userData$logging_status(list(
       ok = FALSE,
-      message = "Enter a valid student ID (2–100 letters, digits, ., _, @, or -)."
+      message = "Enter a valid student ID (2-100 letters, digits, ., _, @, or -)."
     ))
     return()
   }
