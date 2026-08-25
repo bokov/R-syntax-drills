@@ -104,6 +104,8 @@ post_log_event <- function(
     settings <- assignment_config(config)
     payload$queue_size <- settings$queue_size
     payload$topic_priority <- unname(settings$topic_priority)
+    payload$reconcile_bank <- TRUE
+    payload$available_item_labels <- unname(scored_manifest_labels(manifest))
   }
 
   if (!nzchar(config$webhook_url) || grepl("PASTE_", config$webhook_url, fixed = TRUE)) {
@@ -153,9 +155,10 @@ post_log_event <- function(
 
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
-register_logging_handlers <- function(config = APP_CONFIG) {
-  manifest <- read_question_manifest()
-
+register_logging_handlers <- function(
+  config = APP_CONFIG,
+  manifest = read_question_manifest()
+) {
   learnr::event_register_handler("exercise_result", function(session, event, data) {
     post_log_event(session, event, data, config, manifest)
   })

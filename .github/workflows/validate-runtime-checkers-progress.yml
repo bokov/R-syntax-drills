@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
     branches:
-      - main
+      - dev
 
 permissions:
   contents: read
@@ -37,8 +38,31 @@ jobs:
             "stringr",
             "lubridate",
             "tibble",
-            "readr"
+            "readr",
+            "rmarkdown"
           ))
+
+      - name: Reject non-ASCII R source
+        shell: Rscript {0}
+        run: |
+          paths <- c(
+            list.files("R", pattern = "\\.[Rr]$", full.names = TRUE),
+            "app.R"
+          )
+          has_non_ascii <- vapply(paths, function(path) {
+            bytes <- readBin(
+              path,
+              what = "raw",
+              n = as.integer(file.info(path)$size)
+            )
+            any(as.integer(bytes) > 127L)
+          }, logical(1))
+          if (any(has_non_ascii)) {
+            stop(
+              "Non-ASCII bytes found in R source: ",
+              paste(paths[has_non_ascii], collapse = ", ")
+            )
+          }
 
       - name: Run R tests
         run: Rscript tests/testthat.R
@@ -48,5 +72,5 @@ jobs:
           node tests/js/test-fsrs.js
           node tests/js/test-performance.js
           node tests/js/test-concurrency.js
-          node tests/js/test-bank-handshake.js
+          node tests/js/test-bank-reconciliation.js
           node tests/js/test-progress.js

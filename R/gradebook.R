@@ -17,7 +17,6 @@ GRADEBOOK_ASSIGNMENT_COLUMNS <- c(
   "item_label",
   "topic",
   "points",
-  "question_hash",
   "assigned_at_utc",
   "assignment_reason"
 )
@@ -25,7 +24,7 @@ GRADEBOOK_ASSIGNMENT_COLUMNS <- c(
 validate_gradebook_assignment_metadata <- function(assignments, manifest) {
   require_columns(assignments, GRADEBOOK_ASSIGNMENT_COLUMNS, "Assignments")
 
-  manifest_required <- c("item_label", "topic", "points", "question_hash")
+  manifest_required <- c("item_label", "topic", "points")
   require_columns(manifest, manifest_required, "Question manifest")
 
   if (anyDuplicated(assignments$assignment_id)) {
@@ -35,7 +34,6 @@ validate_gradebook_assignment_metadata <- function(assignments, manifest) {
     anyNA(assignments$assignment_id) || any(!nzchar(assignments$assignment_id)) ||
     anyNA(assignments$item_label) || any(!nzchar(assignments$item_label)) ||
     anyNA(assignments$topic) || any(!nzchar(assignments$topic)) ||
-    anyNA(assignments$question_hash) || any(!nzchar(assignments$question_hash)) ||
     anyNA(assignments$points)
   ) {
     stop("Assignments contain missing required metadata.")
@@ -62,8 +60,7 @@ validate_gradebook_assignment_metadata <- function(assignments, manifest) {
       as.numeric(assignments$points),
       as.numeric(expected$points),
       check.attributes = FALSE
-    )) ||
-    any(assignments$question_hash != expected$question_hash)
+    ))
   ) {
     stop(
       "Persistent assignment metadata do not match the current question manifest. ",
@@ -84,13 +81,13 @@ build_gradebook_tables <- function(
 ) {
   require_columns(
     manifest,
-    c("event", "item_label", "topic", "points", "question_hash"),
+    c("event", "item_label", "topic", "points"),
     "Question manifest"
   )
 
   scored_manifest <- manifest |>
     dplyr::filter(.data$points > 0) |>
-    dplyr::select(event, item_label, topic, points, question_hash)
+    dplyr::select(event, item_label, topic, points)
 
   if (!nrow(scored_manifest)) {
     stop("The question manifest contains no scored items.")
@@ -180,7 +177,6 @@ build_gradebook_tables <- function(
       item_label = dplyr::na_if(trimws(as.character(.data$item_label)), ""),
       topic = dplyr::na_if(trimws(as.character(.data$topic)), ""),
       points = suppressWarnings(as.numeric(.data$points)),
-      question_hash = dplyr::na_if(trimws(as.character(.data$question_hash)), ""),
       assigned_at_utc = dplyr::na_if(trimws(as.character(.data$assigned_at_utc)), ""),
       assignment_reason = dplyr::na_if(trimws(as.character(.data$assignment_reason)), "")
     ) |>
@@ -194,9 +190,6 @@ build_gradebook_tables <- function(
   }
   if (any(is.na(assignments$topic) | !nzchar(assignments$topic))) {
     stop("Assignments contain a missing topic.")
-  }
-  if (any(is.na(assignments$question_hash) | !nzchar(assignments$question_hash))) {
-    stop("Assignments contain a missing question_hash.")
   }
   if (any(is.na(assignments$points) | assignments$points < 0)) {
     stop("Assignments contain invalid points values.")
@@ -275,7 +268,6 @@ build_gradebook_tables <- function(
       event = .data$assignment_event,
       topic = .data$topic,
       points = .data$points,
-      question_hash = .data$question_hash,
       assigned_at_utc = .data$assigned_at_utc,
       assignment_reason = .data$assignment_reason
     )
@@ -410,7 +402,7 @@ build_gradebook_tables <- function(
     ) |>
     dplyr::select(
       student_id, student_name, assignment_id, assignment_reason,
-      assigned_at_utc, event, item_label, topic, question_hash, points,
+      assigned_at_utc, event, item_label, topic, points,
       attempts, ever_correct, first_correct_utc, points_earned
     )
 
