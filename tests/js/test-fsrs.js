@@ -51,10 +51,33 @@ vm.runInContext(
 
 const api = context.__fsrsTestApi;
 
+// Test-only helpers -----------------------------------------------------------
+
+/**
+ * Throws when an FSRS/scheduler test assertion is false.
+ *
+ * Test-only helper used throughout this file; it has no production dependencies.
+ *
+ * @param {*} condition Value expected to be truthy.
+ * @param {string} message Failure message.
+ * @returns {void}
+ */
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/**
+ * Compares two numeric values within a configurable tolerance for FSRS floating
+ * point assertions.
+ *
+ * Test-only helper used by the initial-stability assertion; it has no production
+ * dependencies.
+ *
+ * @param {number} aa First value.
+ * @param {number} bb Second value.
+ * @param {number} tolerance Maximum absolute difference.
+ * @returns {boolean} Whether the values are within tolerance.
+ */
 function approximatelyEqual(aa, bb, tolerance = 1e-9) {
   return Math.abs(aa - bb) <= tolerance;
 }
@@ -100,6 +123,20 @@ assert(
   'Again should produce less stability than Good from the same prior state.'
 );
 
+/**
+ * Creates one assignment-sheet row fixture in production column order.
+ *
+ * Test-only helper used by compaction, active-queue, and migration assertions;
+ * it has no production dependencies.
+ *
+ * @param {string} assignmentId Persisted assignment ID.
+ * @param {string} itemLabel Question item label.
+ * @param {string} topic Assignment topic.
+ * @param {string} weekId Legacy week provenance.
+ * @param {string} assignedAt Assignment timestamp.
+ * @param {string} status Rolling assignment status.
+ * @returns {Array<*>} Assignment row fixture.
+ */
 function assignmentRow(
   assignmentId,
   itemLabel,
@@ -126,6 +163,18 @@ function assignmentRow(
   ];
 }
 
+/**
+ * Creates one 22-column graded-event row fixture in EVENT_HEADERS order.
+ *
+ * Test-only helper used by review compaction and legacy migration assertions;
+ * it has no production dependencies.
+ *
+ * @param {string} timestamp Event timestamp.
+ * @param {string} assignmentId Assignment exposure ID.
+ * @param {*} correct Correctness value.
+ * @param {string} requestId Optional request ID.
+ * @returns {Array<*>} Event row fixture.
+ */
 function eventRow(timestamp, assignmentId, correct, requestId) {
   const row = new Array(22).fill('');
   row[0] = timestamp;
@@ -185,6 +234,18 @@ assert(
   'A topic with no review history should have zero retrievability.'
 );
 
+/**
+ * Creates a compact review fixture for mastery-window and curriculum tests.
+ *
+ * Test-only helper used by the mastery, moving-window, and frontier routing
+ * assertions; it has no production dependencies.
+ *
+ * @param {number} index Fixture sequence number used in ID/time construction.
+ * @param {boolean} correct First-attempt correctness.
+ * @param {string} topic Review topic.
+ * @param {number} dayOffset Optional day offset added to the fixture date.
+ * @returns {Object} Compact review fixture.
+ */
 function masteryReview(index, correct, topic = 'mastery', dayOffset = 0) {
   return {
     assignment_id: topic + '-m' + index,
