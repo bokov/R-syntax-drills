@@ -42,10 +42,33 @@ vm.runInContext(
 
 const api = context.__bankReconciliationTestApi;
 
+// Test-only helpers -----------------------------------------------------------
+
+/**
+ * Throws when a JavaScript test assertion is false.
+ *
+ * Test-only helper used throughout this file; it has no within-repo production
+ * dependencies.
+ *
+ * @param {*} condition Value expected to be truthy.
+ * @param {string} message Failure message.
+ * @returns {void}
+ */
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/**
+ * Creates the minimal assignment object needed by reconciliation tests.
+ *
+ * Test-only helper used by the discontinued-assignment and history assertions;
+ * it has no within-repo production dependencies.
+ *
+ * @param {string} label Assignment item label.
+ * @param {string} topic Assignment topic.
+ * @param {number} points Assignment point value.
+ * @returns {Object} Minimal assignment fixture.
+ */
 function assignment(label, topic, points) {
   return {
     assignment_id: 'a-' + label,

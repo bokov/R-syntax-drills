@@ -1,3 +1,18 @@
+// Legacy schema migration -----------------------------------------------------
+
+/**
+ * Repairs the two historical placeholder header positions in managed sheets
+ * when every other header still matches the current schema, allowing setup to
+ * migrate old sheets without rewriting data rows.
+ *
+ * Called by setupGradeSheet() in Code.gs before ensureManagedSheet() validates
+ * the current headers. Depends on the ASSIGNMENT_SHEET, ASSIGNMENT_HEADERS,
+ * QUESTION_BANK_SHEET, and QUESTION_BANK_HEADERS constants from Code.gs.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss Bound grading
+ * spreadsheet whose managed-sheet headers may need migration.
+ * @return {void}
+ */
 function migrateLegacyPlaceholderHeaders(ss) {
   const specs = [
     { sheetName: ASSIGNMENT_SHEET, headers: ASSIGNMENT_HEADERS, ignored: [7] },

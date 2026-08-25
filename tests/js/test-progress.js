@@ -38,10 +38,32 @@ vm.runInContext(
 
 const api = context.__progressTestApi;
 
+// Test-only helpers -----------------------------------------------------------
+
+/**
+ * Throws when a progress test assertion is false.
+ *
+ * Test-only helper used throughout this file; it has no production dependencies.
+ *
+ * @param {*} condition Value expected to be truthy.
+ * @param {string} message Failure message.
+ * @returns {void}
+ */
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/**
+ * Creates the minimal compact-review object needed by progress-summary tests.
+ *
+ * Test-only helper used to build the reviews array below; it has no production
+ * dependencies.
+ *
+ * @param {string} topic Review topic.
+ * @param {boolean} correct Whether the first attempt was correct.
+ * @param {string} when ISO timestamp for the first attempt.
+ * @returns {Object} Compact review fixture.
+ */
 function review(topic, correct, when) {
   return {
     topic: topic,

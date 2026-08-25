@@ -14,11 +14,35 @@ curriculum <- settings$topic_priority
 first_topic <- curriculum[[1]]
 service_timeout_sec <- 30
 
+# Service timing diagnostics --------------------------------------------------
+
+#' Convert one service timing field to numeric
+#'
+#' Normalizes optional Apps Script timing fields for the human-readable timing
+#' report printed by this smoke-test script.
+#'
+#' @param x Service timing value, possibly `NULL` or empty.
+#' @return The first value coerced to numeric, or `NA_real_` when absent.
+#' @details Called only by `print_service_timing()` in this script. Scripts are
+#'   exempt from the issue's unused-function flagging requirement.
 service_timing_number <- function(x) {
   if (is.null(x) || !length(x)) return(NA_real_)
   suppressWarnings(as.numeric(x[[1]]))
 }
 
+#' Print stage-by-stage assignment-service timing diagnostics
+#'
+#' Converts cumulative service timing marks to stage durations and compares the
+#' server handler time with the measured client round trip, including lock wait
+#' and hold time when the Apps Script response supplies them.
+#'
+#' @param label Human-readable label for the request being reported.
+#' @param body Parsed assignment-service response containing `service_timing`.
+#' @param round_trip_ms Client-observed request duration in milliseconds.
+#' @return Invisibly, the value of the final `message()` call; the function is
+#'   used for its printed diagnostics.
+#' @details Called only by `post_test_assignment_service()`. Depends on
+#'   `service_timing_number()`.
 print_service_timing <- function(label, body, round_trip_ms) {
   timing <- body$service_timing
   if (is.null(timing)) {
@@ -69,6 +93,17 @@ print_service_timing <- function(label, body, round_trip_ms) {
   ))
 }
 
+#' Send one timed request to the assignment service
+#'
+#' Adds the service-timing flag to a test payload, measures wall-clock round-trip
+#' time, delegates the request to the production assignment-service client, and
+#' prints the returned timing breakdown before returning the response body.
+#'
+#' @param payload Assignment/logging service payload used by this smoke test.
+#' @param label Human-readable request label for the timing report.
+#' @return The parsed successful response body.
+#' @details Called throughout this script for each queue lifecycle request.
+#'   Depends on `post_assignment_service()` and `print_service_timing()`.
 post_test_assignment_service <- function(payload, label) {
   payload$include_timing <- TRUE
   started <- proc.time()[["elapsed"]]
@@ -146,6 +181,21 @@ if (!identical(created_ids, repeated_table$assignment_id)) {
   stop("Repeated rolling-queue load did not return the original active queue in order.")
 }
 
+# Test event construction -----------------------------------------------------
+
+#' Build one graded event for the rolling-queue service smoke test
+#'
+#' Creates the same assignment-aware `log_event` payload shape used by the
+#' hosted client so this script can exercise wrong-answer, correct-answer,
+#' duplicate-request, and replacement-question behavior directly against Apps
+#' Script.
+#'
+#' @param assignment One-row assignment data frame returned by the service.
+#' @param correct Logical correctness value for the synthetic attempt.
+#' @param request_id Request ID used to test normal and duplicate handling.
+#' @return A JSON-ready logging-event payload list.
+#' @details Called three times later in this script. It depends on the script's
+#'   `APP_CONFIG`, `student_id`, `settings`, and `curriculum` values.
 make_test_event <- function(assignment, correct, request_id) {
   list(
     schema_version = "1",

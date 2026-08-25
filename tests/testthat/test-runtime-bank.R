@@ -1,3 +1,14 @@
+#' Write a minimal runtime question pool for tests
+#'
+#' Creates one empty `exercise=TRUE` R chunk per supplied label so runtime-bank
+#' tests can exercise ID reconciliation without depending on the canonical bank.
+#'
+#' @param path Destination Rmd path.
+#' @param labels Character vector of exercise labels to write.
+#' @return The value returned by `writeLines()`; used for its file-writing side
+#'   effect.
+#' @details Used throughout this test file and has no callers outside it. The
+#'   anonymous `lapply()` callback creates one three-line chunk per label.
 write_runtime_test_pool <- function(path, labels) {
   lines <- unlist(lapply(labels, function(label) {
     c(
@@ -9,6 +20,18 @@ write_runtime_test_pool <- function(path, labels) {
   writeLines(lines, path)
 }
 
+#' Write a minimal runtime manifest for tests
+#'
+#' Creates scored `exercise_result` rows with stable topic/points/starter values
+#' and a caller-selected release number.
+#'
+#' @param path Destination CSV path.
+#' @param labels Character vector of item labels to write.
+#' @param release Manifest release repeated across rows.
+#' @return The value returned by `write.csv()`; used for its file-writing side
+#'   effect.
+#' @details Used throughout this test file and has no callers outside it. It has
+#'   no within-repo function dependencies.
 write_runtime_test_manifest <- function(path, labels, release = 1L) {
   write.csv(
     data.frame(
@@ -50,6 +73,13 @@ test_that("unchanged manifest does not download the runtime pool", {
   write_runtime_test_pool(remote_pool, c("q1", "q2"))
 
   downloads <- character()
+  #' Copy requested runtime assets while recording which URLs were requested
+  #'
+  #' @param url Synthetic `manifest` or `pool` URL used by this test.
+  #' @param path Destination path supplied by `refresh_runtime_bank()`.
+  #' @param timeout_sec Downloader-interface timeout; unused by this local copy.
+  #' @return The logical value returned by `file.copy()`.
+  #' @details Local helper used only by this test as the injected downloader.
   downloader <- function(url, path, timeout_sec) {
     downloads <<- c(downloads, url)
     file.copy(if (url == "manifest") remote_manifest else remote_pool, path)
@@ -83,6 +113,13 @@ test_that("changed manifest downloads and installs the matching runtime pool", {
   write_runtime_test_pool(remote_pool, c("q1", "q2"))
 
   downloads <- character()
+  #' Copy changed-manifest test assets while recording requests
+  #'
+  #' @param url Synthetic `manifest` or `pool` URL used by this test.
+  #' @param path Destination path supplied by `refresh_runtime_bank()`.
+  #' @param timeout_sec Downloader-interface timeout; unused by this local copy.
+  #' @return The logical value returned by `file.copy()`.
+  #' @details Local helper used only by this test as the injected downloader.
   downloader <- function(url, path, timeout_sec) {
     downloads <<- c(downloads, url)
     file.copy(if (url == "manifest") remote_manifest else remote_pool, path)
@@ -115,6 +152,13 @@ test_that("hosted refresh replaces the root runtime pair", {
   write_runtime_test_manifest(remote_manifest, c("q1", "q2"), release = 2L)
   write_runtime_test_pool(remote_pool, c("q1", "q2"))
 
+  #' Copy an updated root-level runtime pair for the hosted-refresh test
+  #'
+  #' @param url Synthetic `manifest` or `pool` URL used by this test.
+  #' @param path Destination path supplied by `refresh_runtime_bank()`.
+  #' @param timeout_sec Downloader-interface timeout; unused by this local copy.
+  #' @return Invisibly, `path` after a successful copy.
+  #' @details Local helper used only by this test as the injected downloader.
   downloader <- function(url, path, timeout_sec) {
     source <- if (url == "manifest") remote_manifest else remote_pool
     if (!file.copy(source, path, overwrite = TRUE)) stop("copy failed")
@@ -147,6 +191,14 @@ test_that("failed runtime pool update keeps the existing local pair", {
   write_runtime_test_pool(local_pool, "q1")
   write_runtime_test_manifest(remote_manifest, c("q1", "q2"), release = 2L)
 
+  #' Copy only the manifest and simulate a matching-pool download failure
+  #'
+  #' @param url Synthetic `manifest` or `pool` URL used by this test.
+  #' @param path Destination path supplied by `refresh_runtime_bank()`.
+  #' @param timeout_sec Downloader-interface timeout; unused by this local copy.
+  #' @return Invisibly, `path` for the manifest request; the pool request throws
+  #'   the simulated error.
+  #' @details Local helper used only by this test as the injected downloader.
   downloader <- function(url, path, timeout_sec) {
     if (url == "manifest") {
       file.copy(remote_manifest, path)
