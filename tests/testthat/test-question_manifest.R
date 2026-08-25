@@ -153,6 +153,6 @@ test_that("index is now player infrastructure rather than a copied assignment", 
     readLines(file.path(root, "index.Rmd"), warn = FALSE),
     collapse = "\n"
   )
-  expect_match(index_text, "runtime_question_pool.Rmd", fixed = TRUE)
+  expect_match(index_text, "child=DRILLR_RUNTIME_BANK$pool_path", fixed = TRUE)
   expect_match(index_text, "initialize_student_assignments", fixed = TRUE)
 })
