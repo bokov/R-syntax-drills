@@ -7,7 +7,6 @@ test_that("scanner reads topic metadata", {
   expect_equal(manifest$topic, "vector_indexing")
   expect_equal(manifest$points, 1)
   expect_false(manifest$starter_question)
-  expect_match(manifest$question_hash, "^[0-9a-f]{32}$")
 })
 
 test_that("missing topic defaults to unassigned when no legacy rule applies", {
@@ -91,7 +90,7 @@ test_that("explicit question marker must match item label", {
   expect_error(scan_question_bank(f), "does not match chunk label")
 })
 
-test_that("assignment validation detects changed copied questions", {
+test_that("assignment validation trusts item labels across wording changes", {
   bank_file <- tempfile(fileext = ".Rmd")
   assignment_file <- tempfile(fileext = ".Rmd")
 
@@ -109,17 +108,11 @@ test_that("assignment validation detects changed copied questions", {
   writeLines(canonical, bank_file)
 
   bank <- scan_question_bank(bank_file)
-  writeLines(canonical, assignment_file)
-  expect_silent(validate_assignment_file(assignment_file, bank))
-
   changed <- canonical
   changed[4] <- "Return the number one."
   writeLines(changed, assignment_file)
 
-  expect_error(
-    validate_assignment_file(assignment_file, bank),
-    "differ from their canonical bank copies"
-  )
+  expect_silent(validate_assignment_file(assignment_file, bank))
 })
 
 test_that("deployed runtime can use a prevalidated manifest without the bank", {
@@ -129,7 +122,7 @@ test_that("deployed runtime can use a prevalidated manifest without the bank", {
     topic = "basics",
     points = 1,
     starter_question = FALSE,
-    question_hash = "abc123",
+    release = 1L,
     stringsAsFactors = FALSE
   )
 
