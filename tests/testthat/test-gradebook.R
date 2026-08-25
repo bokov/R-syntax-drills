@@ -4,7 +4,6 @@ gradebook_test_manifest <- function() {
     item_label = c("q1", "q2", "q3"),
     topic = c("vectors", "vectors", "lists"),
     points = c(1, 1, 1),
-    question_hash = c("h1", "h2", "h3"),
     stringsAsFactors = FALSE
   )
 }
@@ -51,7 +50,6 @@ gradebook_test_assignments <- function(
     item_label = item_label,
     topic = matched$topic,
     points = matched$points,
-    question_hash = matched$question_hash,
     assigned_at_utc = rep("2026-08-17T12:00:00Z", n),
     assignment_reason = rep(assignment_reason, n),
     stringsAsFactors = FALSE
