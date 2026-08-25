@@ -79,7 +79,7 @@ review_question_bank <- function(
   header <- c(
     "---",
     paste0(
-      'title: "Question-bank review — ',
+      'title: "Question-bank review - ',
       tools::file_path_sans_ext(basename(bank_file)),
       '"'
     ),
