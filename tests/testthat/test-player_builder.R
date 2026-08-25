@@ -5,7 +5,6 @@ test_that("player manifest contains only scored learnr exercises", {
     topic = c("vectors", "vectors", "vectors"),
     points = c(1, 1, 0),
     starter_question = c(TRUE, FALSE, FALSE),
-    question_hash = c("h1", "h2", "h3"),
     source_file = c("a", "b", "c"),
     source_line = c(1L, 1L, 1L),
     source_end_line = c(1L, 1L, 1L),
@@ -14,6 +13,19 @@ test_that("player manifest contains only scored learnr exercises", {
 
   out <- player_manifest(bank)
   expect_equal(out$item_label, "q1")
+})
+
+test_that("manifest release is explicit and preserved", {
+  path <- tempfile(fileext = ".csv")
+  write.csv(
+    data.frame(item_label = "q1", release = 7L),
+    path,
+    row.names = FALSE
+  )
+
+  expect_identical(current_manifest_release(path), 7L)
+  expect_identical(current_manifest_release(tempfile()), 1L)
+  expect_error(validate_manifest_release(0), "positive whole number")
 })
 
 test_that("runtime question pool strips solutions but keeps checkers", {
@@ -55,7 +67,7 @@ test_that("assignment-player script is inlined after the generated question pool
   root <- normalizePath(file.path(test_path(), "..", ".."))
   lines <- readLines(file.path(root, "index.Rmd"), warn = FALSE)
 
-  pool_line <- grep('child="runtime_question_pool.Rmd"', lines, fixed = TRUE)
+  pool_line <- grep('child=DRILLR_RUNTIME_BANK$pool_path', lines, fixed = TRUE)
   script_line <- grep('shiny::includeScript("www/assignment-player.js")', lines, fixed = TRUE)
   external_script <- grep('<script src="assignment-player.js"></script>', lines, fixed = TRUE)
 
