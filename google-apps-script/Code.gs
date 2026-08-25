@@ -36,7 +36,7 @@ const ASSIGNMENT_HEADERS = [
   'item_label',
   'topic',
   'points',
-  'question_hash',
+  'legacy_unused_content',
   'assigned_at_utc',
   'assignment_reason',
   'assignment_status',
@@ -51,8 +51,8 @@ const QUESTION_BANK_HEADERS = [
   'topic',
   'points',
   'starter_question',
-  'question_hash',
-  'bank_version'
+  'legacy_unused_1',
+  'legacy_unused_2'
 ];
 
 // One compact row per persisted assignment exposure after its first graded
@@ -86,7 +86,7 @@ const ASSIGNMENT_STATUS_ACTIVE = 'active';
 const ASSIGNMENT_STATUS_RETIRED = 'retired';
 const FSRS_DUE_RETRIEVABILITY = 0.9;
 const RUNTIME_SCHEMA_PROPERTY = 'RUNTIME_SCHEMA_VERSION';
-const RUNTIME_SCHEMA_VERSION = 'bank-handshake-v1';
+const RUNTIME_SCHEMA_VERSION = 'item-label-reconciliation-v1';
 
 // FSRS-6 default parameters from the Open Spaced Repetition reference
 // implementations. Each canonical topic is one FSRS memory item; literal
@@ -426,11 +426,11 @@ function handleLogEvent(data, ss) {
     }
   }
 
-  let bankHandshake = null;
-  if (isGraded && requestUsesBankHandshake(data)) {
-    bankHandshake = bankHandshakeForRequest(data, questionBankSheet);
-    if (!bankHandshake.compatible) {
-      return jsonResponse(bankHandshake.response);
+  let bankReconciliation = null;
+  if (isGraded && requestUsesBankReconciliation(data)) {
+    bankReconciliation = bankReconciliationForRequest(data, questionBankSheet);
+    if (!bankReconciliation.compatible) {
+      return jsonResponse(bankReconciliation.response);
     }
   }
 
@@ -672,7 +672,7 @@ function handleLogEvent(data, ss) {
       duplicate: duplicate
     };
     if (activeAssignments !== null) response.assignments = activeAssignments;
-    attachBankVersion(response, bankHandshake);
+    attachBankReconciliation(response, bankReconciliation);
     markServiceTimer(timer, 'critical_section_done');
     timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
     markServiceTimer(timer, 'response_ready');
@@ -714,17 +714,17 @@ function handleGetActiveAssignments(data, ss) {
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   if (!assignmentsSheet) throw new Error('The assignments sheet does not exist.');
 
-  let bankHandshake = null;
-  if (requestUsesBankHandshake(data)) {
+  let bankReconciliation = null;
+  if (requestUsesBankReconciliation(data)) {
     const questionBankSheet = ss.getSheetByName(QUESTION_BANK_SHEET);
     if (!questionBankSheet) {
       throw new Error(
         'The question_bank sheet does not exist. Run setupGradeSheet() after updating Code.gs.'
       );
     }
-    bankHandshake = bankHandshakeForRequest(data, questionBankSheet);
-    if (!bankHandshake.compatible) {
-      return jsonResponse(bankHandshake.response);
+    bankReconciliation = bankReconciliationForRequest(data, questionBankSheet);
+    if (!bankReconciliation.compatible) {
+      return jsonResponse(bankReconciliation.response);
     }
   }
   markServiceTimer(timer, 'sheets_ready');
@@ -743,7 +743,7 @@ function handleGetActiveAssignments(data, ss) {
     request_id: data.request_id,
     assignments: assignments
   };
-  attachBankVersion(response, bankHandshake);
+  attachBankReconciliation(response, bankReconciliation);
   markServiceTimer(timer, 'response_ready');
   if (includeServiceTiming(data)) {
     response.service_timing = serviceTimerSnapshot(timer);
@@ -771,12 +771,12 @@ function handleGetOrCreateActiveAssignments(data, ss) {
     );
   }
 
-  let bankHandshake = null;
+  let bankReconciliation = null;
   let bank = null;
-  if (requestUsesBankHandshake(data)) {
-    bankHandshake = bankHandshakeForRequest(data, questionBankSheet);
-    if (!bankHandshake.compatible) {
-      return jsonResponse(bankHandshake.response);
+  if (requestUsesBankReconciliation(data)) {
+    bankReconciliation = bankReconciliationForRequest(data, questionBankSheet);
+    if (!bankReconciliation.compatible) {
+      return jsonResponse(bankReconciliation.response);
     }
     bank = getQuestionBank(questionBankSheet);
   }
@@ -791,7 +791,7 @@ function handleGetOrCreateActiveAssignments(data, ss) {
     data.course_id,
     data.student_id
   );
-  const preflightDiscontinued = bankHandshake
+  const preflightDiscontinued = bankReconciliation
     ? discontinuedActiveAssignments(existing, bank, queueConfig.topic_priority)
     : [];
   const currentExistingCount = existing.length - preflightDiscontinued.length;
@@ -820,7 +820,7 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       created_count: 0,
       assignments: existing
     };
-    attachBankVersion(response, bankHandshake);
+    attachBankReconciliation(response, bankReconciliation);
     markServiceTimer(timer, 'response_ready');
     if (includeServiceTiming(data)) {
       response.service_timing = serviceTimerSnapshot(timer);
@@ -853,7 +853,7 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       assignmentSnapshot.rows,
       eventSnapshot.rows
     );
-    const discontinued = bankHandshake
+    const discontinued = bankReconciliation
       ? retireDiscontinuedAssignmentsFromSnapshot(
           assignmentsSheet,
           effectiveAssignmentRows,
@@ -910,7 +910,7 @@ function handleGetOrCreateActiveAssignments(data, ss) {
       assignments: assignments
     };
     if (discontinued.length) response.retired_assignments = discontinued;
-    attachBankVersion(response, bankHandshake);
+    attachBankReconciliation(response, bankReconciliation);
     markServiceTimer(timer, 'critical_section_done');
     timer.lock_hold_ms = Date.now() - timer.lock_acquired_at_ms;
     markServiceTimer(timer, 'response_ready');
@@ -1330,7 +1330,7 @@ function appendActiveAssignments(
       clean(canonical.item_label, 300),
       clean(canonical.topic, 300),
       canonical.points,
-      clean(canonical.question_hash, 100),
+      '',
       assignedAt,
       selection.reason,
       ASSIGNMENT_STATUS_ACTIVE,
@@ -2228,7 +2228,6 @@ function assignmentRowToObject(row) {
     item_label: row[4],
     topic: row[5],
     points: row[6],
-    question_hash: row[7],
     assigned_at_utc: row[8],
     assignment_reason: row[9],
     assignment_status: row[10],
@@ -2247,7 +2246,7 @@ function assignmentObjectToRow(assignment) {
     assignment.item_label,
     assignment.topic,
     assignment.points,
-    assignment.question_hash,
+    '',
     assignment.assigned_at_utc,
     assignment.assignment_reason,
     assignment.assignment_status || '',
@@ -2323,8 +2322,7 @@ function questionBankFromRows(rows) {
       event: String(row[1] || ''),
       topic: String(row[2] || ''),
       points: points,
-      starter_question: sheetBoolean(row[4]),
-      question_hash: String(row[5] || '')
+      starter_question: sheetBoolean(row[4])
     });
   });
 

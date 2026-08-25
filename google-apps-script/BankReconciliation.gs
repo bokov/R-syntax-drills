@@ -1,10 +1,8 @@
-// Client/content reconciliation is based on question IDs only. The legacy
-// function names are retained because Code.gs calls them, but no hash or bank
-// version is computed, sent, or compared.
+// Client/content reconciliation is based on question IDs only.
 
 let DRILLR_AVAILABLE_ITEM_LABELS = null;
 
-function requestUsesBankHandshake(data) {
+function requestUsesBankReconciliation(data) {
   return Boolean(
     data &&
     (
@@ -34,8 +32,8 @@ function requestedAvailableItemLabels(data) {
   return labels;
 }
 
-function bankHandshakeForRequest(data, questionBankSheet) {
-  if (!requestUsesBankHandshake(data)) return null;
+function bankReconciliationForRequest(data, questionBankSheet) {
+  if (!requestUsesBankReconciliation(data)) return null;
 
   const available = requestedAvailableItemLabels(data);
   DRILLR_AVAILABLE_ITEM_LABELS = available === null
@@ -50,7 +48,7 @@ function bankHandshakeForRequest(data, questionBankSheet) {
   };
 }
 
-function attachBankVersion(response, reconciliation) {
+function attachBankReconciliation(response, reconciliation) {
   if (reconciliation && reconciliation.compatible && reconciliation.progress) {
     response.progress_as_of_utc = reconciliation.progress.as_of_utc;
     response.progress = reconciliation.progress.rows;

@@ -6,7 +6,11 @@ QUESTION_BANK_COLUMNS <- c(
   "starter_question"
 )
 
-QUESTION_BANK_SYNC_COLUMNS <- QUESTION_BANK_COLUMNS
+QUESTION_BANK_SYNC_COLUMNS <- c(
+  QUESTION_BANK_COLUMNS,
+  "legacy_unused_1",
+  "legacy_unused_2"
+)
 
 ASSIGNMENT_COLUMNS <- c(
   "assignment_id",
@@ -46,7 +50,9 @@ prepare_question_bank_sync <- function(manifest) {
     stop("Question-bank sync data contain missing or unassigned topics.")
   }
 
-  out
+  out$legacy_unused_1 <- ""
+  out$legacy_unused_2 <- ""
+  out[, QUESTION_BANK_SYNC_COLUMNS, drop = FALSE]
 }
 
 assignment_config <- function(config = APP_CONFIG) {
