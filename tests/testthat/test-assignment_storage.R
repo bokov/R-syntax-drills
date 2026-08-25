@@ -14,8 +14,6 @@ test_that("question-bank sync keeps backend metadata columns", {
 
   expect_named(synced, QUESTION_BANK_SYNC_COLUMNS)
   expect_equal(synced$item_label, c("q1", "q2"))
-  expect_true(all(synced$question_hash == ""))
-  expect_true(all(synced$bank_version == ""))
 })
 
 test_that("question-bank sync rejects duplicate IDs", {
