@@ -102,6 +102,40 @@ test_that("changed manifest downloads and installs the matching runtime pool", {
   expect_equal(bank$manifest$item_label, c("q1", "q2"))
 })
 
+test_that("failed runtime pool update keeps the existing local pair", {
+  root <- tempfile()
+  dir.create(root)
+  local_manifest <- file.path(root, "local-manifest.csv")
+  local_pool <- file.path(root, "local-pool.Rmd")
+  remote_manifest <- file.path(root, "remote-manifest.csv")
+  cache <- file.path(root, "cache")
+
+  write_runtime_test_manifest(local_manifest, "q1", release = 1L)
+  write_runtime_test_pool(local_pool, "q1")
+  write_runtime_test_manifest(remote_manifest, c("q1", "q2"), release = 2L)
+
+  downloader <- function(url, path, timeout_sec) {
+    if (url == "manifest") {
+      file.copy(remote_manifest, path)
+      return(invisible(path))
+    }
+    stop("simulated pool failure")
+  }
+
+  bank <- refresh_runtime_bank(
+    bundled_manifest_path = local_manifest,
+    bundled_pool_path = local_pool,
+    cache_dir = cache,
+    manifest_url = "manifest",
+    pool_url = "pool",
+    downloader = downloader
+  )
+
+  expect_false(bank$updated)
+  expect_equal(bank$manifest$item_label, "q1")
+  expect_match(bank$notice, "could not download the matching drill file", fixed = TRUE)
+})
+
 test_that("manifest and Rmd mismatches warn and use only shared item labels", {
   root <- tempfile()
   dir.create(root)
@@ -119,4 +153,17 @@ test_that("manifest and Rmd mismatches warn and use only shared item labels", {
   expect_match(bank$warning, "copy and paste this entire message into a Teams message", fixed = TRUE)
   expect_match(bank$warning, "manifest-only", fixed = TRUE)
   expect_match(bank$warning, "rmd-only", fixed = TRUE)
+})
+
+test_that("hosted bootstrap uses the rmarkdown prerendered app factory", {
+  factory <- getFromNamespace("shiny_prerendered_app", "rmarkdown")
+  expect_true(is.function(factory))
+  expect_true(all(c("input_rmd", "render_args") %in% names(formals(factory))))
+
+  lines <- readLines("app.R", warn = FALSE)
+  refresh_line <- grep("DRILLR_BOOT_BANK <- refresh_runtime_bank", lines, fixed = TRUE)
+  factory_line <- grep("shiny_prerendered_app", lines, fixed = TRUE)
+  expect_length(refresh_line, 1L)
+  expect_length(factory_line, 1L)
+  expect_lt(refresh_line, factory_line)
 })
