@@ -2,6 +2,16 @@
 
 let DRILLR_AVAILABLE_ITEM_LABELS = null;
 
+/**
+ * Reports whether a request needs client/content bank reconciliation.
+ *
+ * Called by bankReconciliationForRequest(). It has no within-repo function
+ * dependencies.
+ *
+ * @param {Object} data Parsed request payload.
+ * @return {boolean} True when reconciliation, progress, or explicit available
+ *   item labels were requested.
+ */
 function requestUsesBankReconciliation(data) {
   return Boolean(
     data &&
@@ -13,6 +23,16 @@ function requestUsesBankReconciliation(data) {
   );
 }
 
+/**
+ * Validates and normalizes the item labels advertised by a client.
+ *
+ * Called by bankReconciliationForRequest(). The map/filter callbacks only trim
+ * and remove blank values. It has no within-repo named-function dependencies.
+ *
+ * @param {Object} data Parsed request payload.
+ * @return {?Array<string>} Normalized unique labels, or null when the client did
+ *   not supply available_item_labels.
+ */
 function requestedAvailableItemLabels(data) {
   if (!data || typeof data.available_item_labels === 'undefined') return null;
   if (!Array.isArray(data.available_item_labels)) {
@@ -32,6 +52,21 @@ function requestedAvailableItemLabels(data) {
   return labels;
 }
 
+/**
+ * Builds the reconciliation/progress context for one service request.
+ *
+ * Called by the main request handlers in Code.gs before assignment/logging
+ * responses are produced. Depends on requestUsesBankReconciliation(),
+ * requestedAvailableItemLabels(), and progressPayloadForRequest() from
+ * Progress.gs; also updates DRILLR_AVAILABLE_ITEM_LABELS for downstream
+ * discontinued-question checks.
+ *
+ * @param {Object} data Parsed request payload.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} questionBankSheet Question-bank
+ *   sheet used when progress is requested.
+ * @return {?Object} Reconciliation object with compatibility/progress metadata,
+ *   or null when the request does not require reconciliation.
+ */
 function bankReconciliationForRequest(data, questionBankSheet) {
   if (!requestUsesBankReconciliation(data)) return null;
 
@@ -48,6 +83,16 @@ function bankReconciliationForRequest(data, questionBankSheet) {
   };
 }
 
+/**
+ * Adds reconciliation-derived progress fields to a successful response.
+ *
+ * Called by main response paths in Code.gs. It has no within-repo function
+ * dependencies and mutates/returns the supplied response object.
+ *
+ * @param {Object} response Service response object.
+ * @param {?Object} reconciliation Result from bankReconciliationForRequest().
+ * @return {Object} The same response object, with progress fields when present.
+ */
 function attachBankReconciliation(response, reconciliation) {
   if (reconciliation && reconciliation.compatible && reconciliation.progress) {
     response.progress_as_of_utc = reconciliation.progress.as_of_utc;
@@ -56,6 +101,20 @@ function attachBankReconciliation(response, reconciliation) {
   return response;
 }
 
+/**
+ * Determines why one active assignment is no longer usable.
+ *
+ * Called by discontinuedActiveAssignments(). It consults the reconciled client
+ * label set, the configured curriculum, and canonical question-bank metadata.
+ * The Array.find callback locates the canonical row by permanent item label.
+ *
+ * @param {Object} assignment Persisted active assignment.
+ * @param {Array<Object>} bank Canonical scored-question records.
+ * @param {Array<string>} topicPriority Ordered active curriculum topics.
+ * @return {string} Empty string when still usable; otherwise a retirement reason
+ *   such as client_content_unavailable, topic_discontinued,
+ *   question_discontinued, or question_updated.
+ */
 function discontinuedAssignmentReason(assignment, bank, topicPriority) {
   if (
     DRILLR_AVAILABLE_ITEM_LABELS !== null &&
@@ -85,6 +144,19 @@ function discontinuedAssignmentReason(assignment, bank, topicPriority) {
   return '';
 }
 
+/**
+ * Finds all active assignments that should be retired during reconciliation.
+ *
+ * Called by retireDiscontinuedAssignmentsFromSnapshot(). Depends on
+ * discontinuedAssignmentReason(); its map/filter callbacks package assignments
+ * with reasons and discard still-valid rows.
+ *
+ * @param {Array<Object>} assignments Active assignments for one student.
+ * @param {Array<Object>} bank Canonical question-bank records.
+ * @param {Array<string>} topicPriority Ordered active curriculum topics.
+ * @return {Array<Object>} Objects containing each discontinued assignment and
+ *   its retirement reason.
+ */
 function discontinuedActiveAssignments(assignments, bank, topicPriority) {
   return assignments
     .map(function(assignment) {
@@ -96,6 +168,24 @@ function discontinuedActiveAssignments(assignments, bank, topicPriority) {
     .filter(function(item) { return Boolean(item.reason); });
 }
 
+/**
+ * Retires discontinued active assignments against one assignment-sheet snapshot.
+ *
+ * Called by rolling-queue reconciliation paths in Code.gs. It identifies active
+ * rows, rechecks each current sheet status before writing retirement metadata,
+ * updates the in-memory snapshot to match those writes, and returns compact
+ * retirement records for the response. Depends on activeAssignmentsFromRows(),
+ * discontinuedActiveAssignments(), getAssignmentRecordByIdFromRows(), and
+ * clean() from Code.gs.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} assignmentsSheet Assignments sheet.
+ * @param {Array<Array<*>>} assignmentRows Snapshot including header and rows.
+ * @param {Array<Object>} bank Canonical question-bank records.
+ * @param {Object} data Parsed request payload containing course/student/request.
+ * @param {Object} queueConfig Validated queue configuration.
+ * @param {string} retiredAt UTC timestamp written to retired rows.
+ * @return {Array<Object>} Retired assignment IDs, labels, and reasons.
+ */
 function retireDiscontinuedAssignmentsFromSnapshot(
   assignmentsSheet,
   assignmentRows,
