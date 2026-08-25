@@ -123,6 +123,19 @@ const FSRS_DECAY = -FSRS_PARAMETERS[20];
 const FSRS_FACTOR = Math.pow(0.9, 1 / FSRS_DECAY) - 1;
 const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// Spreadsheet setup and migrations ------------------------------------------
+
+/**
+ * Initializes the bound grading spreadsheet, managed sheets, migrations, and
+ * runtime schema marker so the deployed web app can safely serve requests.
+ *
+ * Manual instructor entry point; not called by another repository function.
+ * Depends on migrateLegacyPlaceholderHeaders() in SchemaMigration.gs,
+ * ensureManagedSheet(), rebuildReviewHistoryForSpreadsheet(), and
+ * migrateLegacyAssignmentsForRollingQueue().
+ *
+ * @return {void}
+ */
 function setupGradeSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('Run this from a script bound to the grading spreadsheet.');
@@ -155,6 +168,16 @@ function setupGradeSheet() {
   Logger.log('Grade sheet is ready: ' + ss.getId());
 }
 
+/**
+ * Rebuilds the compact review index for the active bound spreadsheet from the
+ * authoritative assignment and event history.
+ *
+ * Manual instructor maintenance entry point; not called by another repository
+ * function. Depends on ensureManagedSheet() and
+ * rebuildReviewHistoryForSpreadsheet().
+ *
+ * @return {number} Number of compact review rows rebuilt.
+ */
 function rebuildReviewHistory() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('Run this from a script bound to the grading spreadsheet.');
@@ -168,6 +191,17 @@ function rebuildReviewHistory() {
   return rebuilt;
 }
 
+/**
+ * Recomputes all compact review rows for one spreadsheet and replaces the
+ * reviews-sheet data with the reconstructed result.
+ *
+ * Called by setupGradeSheet() and rebuildReviewHistory(). Depends on
+ * ensureSheetHeaders(), getAssignmentRows(), getEventRows(), and
+ * compactReviewRowsFromEvents().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss Grading spreadsheet.
+ * @return {number} Number of review rows written.
+ */
 function rebuildReviewHistoryForSpreadsheet(ss) {
   const started = Date.now();
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
@@ -210,6 +244,16 @@ function rebuildReviewHistoryForSpreadsheet(ss) {
   return reviewRows.length;
 }
 
+/**
+ * Initializes rolling active/retired status fields for pre-rolling assignment
+ * rows while preserving their historical exposure records.
+ *
+ * Called only by setupGradeSheet(). Depends on ensureSheetHeaders(),
+ * getAssignmentRows(), getEventRows(), and legacyAssignmentMigrationValues().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss Grading spreadsheet.
+ * @return {number} Number of legacy assignment rows requiring migration.
+ */
 function migrateLegacyAssignmentsForRollingQueue(ss) {
   const assignmentsSheet = ss.getSheetByName(ASSIGNMENT_SHEET);
   const eventsSheet = ss.getSheetByName(EVENT_SHEET);
@@ -238,6 +282,18 @@ function migrateLegacyAssignmentsForRollingQueue(ss) {
   return legacyCount;
 }
 
+/**
+ * Derives rolling status/retirement fields for legacy assignments from their
+ * assignment times and historical correct events without modifying sheets.
+ *
+ * Called by migrateLegacyAssignmentsForRollingQueue() and directly by the FSRS
+ * JavaScript tests. Depends on eventCorrectBoolean() and rolling-status constants.
+ *
+ * @param {Array<Array<*>>} assignmentRows Assignment-sheet rows.
+ * @param {Array<Array<*>>} eventRows Event-sheet rows.
+ * @param {string} migrationTime ISO timestamp used for migration retirements.
+ * @return {Array<Array<*>>} Four-column rolling-state values for every row.
+ */
 function legacyAssignmentMigrationValues(assignmentRows, eventRows, migrationTime) {
   const latestAssignedByStudent = {};
   const correctByAssignment = {};
@@ -306,6 +362,18 @@ function legacyAssignmentMigrationValues(assignmentRows, eventRows, migrationTim
   });
 }
 
+/**
+ * Creates or validates a managed sheet, applies its standard header styling,
+ * and returns the usable Sheet object.
+ *
+ * Called by setupGradeSheet() and rebuildReviewHistory(). Depends on
+ * ensureSheetHeaders().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss Grading spreadsheet.
+ * @param {string} sheetName Managed sheet name.
+ * @param {string[]} headers Required ordered headers.
+ * @return {GoogleAppsScript.Spreadsheet.Sheet} Created or validated sheet.
+ */
 function ensureManagedSheet(ss, sheetName, headers) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
@@ -319,6 +387,19 @@ function ensureManagedSheet(ss, sheetName, headers) {
   return sheet;
 }
 
+/**
+ * Verifies that an existing managed sheet has the expected prefix of headers,
+ * adding only missing trailing headers when the schema has grown.
+ *
+ * Called by ensureManagedSheet(), rebuildReviewHistoryForSpreadsheet(), and
+ * migrateLegacyAssignmentsForRollingQueue(). It has no within-repo function
+ * dependencies.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Sheet to validate.
+ * @param {string[]} headers Required ordered headers.
+ * @param {string} sheetName Human-readable sheet name for errors.
+ * @return {void}
+ */
 function ensureSheetHeaders(sheet, headers, sheetName) {
   if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -351,6 +432,16 @@ function ensureSheetHeaders(sheet, headers, sheetName) {
   }
 }
 
+// Web app entry points and request handlers ----------------------------------
+
+/**
+ * Responds to HTTP GET health checks with the service identity and schema.
+ *
+ * Apps Script web-app entry point; called by the platform rather than by a
+ * repository function. Depends on jsonResponse().
+ *
+ * @return {GoogleAppsScript.Content.TextOutput} JSON health response.
+ */
 function doGet() {
   return jsonResponse({
     ok: true,
@@ -359,6 +450,17 @@ function doGet() {
   });
 }
 
+/**
+ * Parses and routes incoming HTTP POST requests to event logging or assignment
+ * handlers, returning errors as JSON rather than uncaught web-app exceptions.
+ *
+ * Apps Script web-app entry point. Depends on runtimeSchemaIsReady(),
+ * handleLogEvent(), handleGetActiveAssignments(),
+ * handleGetOrCreateActiveAssignments(), and jsonResponse().
+ *
+ * @param {GoogleAppsScript.Events.DoPost} e Apps Script POST event.
+ * @return {GoogleAppsScript.Content.TextOutput} JSON service response.
+ */
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
@@ -404,6 +506,20 @@ function doPost(e) {
   }
 }
 
+/**
+ * Validates and idempotently persists one client event, maintains the compact
+ * review index, retires correct assignments, and optionally refills the queue.
+ *
+ * Called by doPost(). Depends on validation, snapshot, review, queue, timing,
+ * scalar/response helpers in this file plus requestUsesBankReconciliation(),
+ * bankReconciliationForRequest(), and attachBankReconciliation() from
+ * BankReconciliation.gs.
+ *
+ * @param {Object} data Parsed log_event request payload.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss Grading spreadsheet.
+ * @return {GoogleAppsScript.Content.TextOutput} JSON write/duplicate response,
+ * optionally including the updated active assignments.
+ */
 function handleLogEvent(data, ss) {
   validateEventPayload(data);
 
@@ -694,6 +810,17 @@ function handleLogEvent(data, ss) {
   }
 }
 
+/**
+ * Confirms that a retried request_id refers to the same logical event identity
+ * before treating the POST as an idempotent duplicate.
+ *
+ * Called twice by handleLogEvent(), before and after lock reconciliation.
+ * Depends on clean().
+ *
+ * @param {Array<*>} existingRow Existing event-sheet row.
+ * @param {Object} data Incoming event payload.
+ * @return {void}
+ */
 function validateDuplicateEventMatches(existingRow, data) {
   const checks = [
     [existingRow[4], clean(data.course_id, 200), 'course_id'],
@@ -709,6 +836,18 @@ function validateDuplicateEventMatches(existingRow, data) {
   });
 }
 
+/**
+ * Returns the student's current active assignment queue without creating new
+ * assignments, optionally attaching content reconciliation/progress data.
+ *
+ * Called by doPost(). Depends on validateAssignmentRequest(), timing helpers,
+ * getActiveAssignmentsForStudent(), jsonResponse(), and reconciliation helpers
+ * from BankReconciliation.gs.
+ *
+ * @param {Object} data Parsed assignment lookup request.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss Grading spreadsheet.
+ * @return {GoogleAppsScript.Content.TextOutput} JSON active-queue response.
+ */
 function handleGetActiveAssignments(data, ss) {
   validateAssignmentRequest(data);
   const timer = startServiceTimer('get_active_assignments', data.request_id);
@@ -754,6 +893,19 @@ function handleGetActiveAssignments(data, ss) {
   return jsonResponse(response);
 }
 
+/**
+ * Ensures a student has a full curriculum-aware active queue, reconciling
+ * discontinued content and creating only the assignments needed to fill gaps.
+ *
+ * Called by doPost(). Depends on assignment validation, snapshot, review,
+ * queue-planning, timing, bank helpers in this file and reconciliation helpers
+ * in BankReconciliation.gs.
+ *
+ * @param {Object} data Parsed get_or_create_active_assignments request.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss Grading spreadsheet.
+ * @return {GoogleAppsScript.Content.TextOutput} JSON queue response including
+ * any created/retired assignments.
+ */
 function handleGetOrCreateActiveAssignments(data, ss) {
   validateAssignmentRequest(data);
   const queueConfig = validateQueueSelectionConfig(data);
@@ -932,6 +1084,27 @@ function handleGetOrCreateActiveAssignments(data, ss) {
   }
 }
 
+// Rolling queue planning and persistence -------------------------------------
+
+/**
+ * Loads current assignment/bank/review state and fills a student's active queue
+ * to the requested size using the shared queue planner.
+ *
+ * No current production caller; retained helper is not used by the active
+ * request handlers, which call planActiveQueueFromSnapshots() directly. Depends
+ * on getAssignmentRows(), getQuestionBank(), getReviewsForStudent(),
+ * planActiveQueueFromSnapshots(), appendActiveAssignments(), and
+ * sortAssignmentsOldestFirst().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} assignmentsSheet Assignments sheet.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} questionBankSheet Question bank.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} reviewsSheet Reviews sheet.
+ * @param {Object} data Request identity fields.
+ * @param {Object} queueConfig Validated queue configuration.
+ * @param {Date} asOf Scheduling evaluation time.
+ * @param {?Object} replacementContext Optional just-retired assignment context.
+ * @return {Object} Full assignments array and created_count.
+ */
 function ensureActiveQueue(
   assignmentsSheet,
   questionBankSheet,
@@ -972,6 +1145,24 @@ function ensureActiveQueue(
   return { assignments: active, created_count: createdAssignments.length };
 }
 
+/**
+ * Computes which distinct canonical questions should fill vacancies in a
+ * student's active queue while enforcing starter, retry, FSRS, and curriculum
+ * frontier rules.
+ *
+ * Called by handleLogEvent(), handleGetOrCreateActiveAssignments(), the unused
+ * ensureActiveQueue() wrapper, and concurrency tests. Depends on active/history,
+ * curriculum-routing, and least-used-question helpers.
+ *
+ * @param {Array<Array<*>>} assignmentRows Assignment snapshot rows.
+ * @param {Object[]} bank Canonical scored-question metadata.
+ * @param {Object[]} reviews Student compact review history.
+ * @param {Object} data Request identity fields.
+ * @param {Object} queueConfig Validated queue configuration.
+ * @param {Date} asOf Scheduling evaluation time.
+ * @param {?Object} replacementContext Optional just-retired assignment context.
+ * @return {Object} Existing active assignments plus selected replacement specs.
+ */
 function planActiveQueueFromSnapshots(
   assignmentRows,
   bank,
@@ -1131,6 +1322,16 @@ function planActiveQueueFromSnapshots(
   return { active: active, selected: selected };
 }
 
+/**
+ * Verifies that every configured curriculum topic has at least one scored
+ * exercise in the current question bank.
+ *
+ * Called only by planActiveQueueFromSnapshots().
+ *
+ * @param {Object[]} bank Canonical question metadata.
+ * @param {string[]} topicPriority Ordered curriculum topics.
+ * @return {void}
+ */
 function validateCurriculumAgainstBank(bank, topicPriority) {
   const scoredTopics = new Set(
     bank
@@ -1150,6 +1351,17 @@ function validateCurriculumAgainstBank(bank, topicPriority) {
   }
 }
 
+/**
+ * Accepts historical assignments from topics no longer in the current
+ * curriculum so old exposures remain valid scheduling evidence.
+ *
+ * Called by planActiveQueueFromSnapshots(), curriculumStateFromHistory(), and
+ * bank-reconciliation tests. It currently has no within-repo helper dependencies.
+ *
+ * @param {Object[]} history Historical assignment objects.
+ * @param {string[]} topicPriority Current ordered curriculum topics.
+ * @return {boolean} Always true under the current compatibility policy.
+ */
 function validateHistoryAgainstCurriculum(history, topicPriority) {
   // Historical assignments remain valid evidence even after a topic is removed
   // from the current curriculum. Current routing simply ignores topics that are
@@ -1157,6 +1369,17 @@ function validateHistoryAgainstCurriculum(history, topicPriority) {
   return true;
 }
 
+/**
+ * Derives the set of introduced current topics and the most advanced curriculum
+ * frontier reached by a student's assignment history.
+ *
+ * Called by chooseCurriculumReplacementTopic() and FSRS tests. Depends on
+ * validateHistoryAgainstCurriculum().
+ *
+ * @param {Object[]} history Historical assignment objects.
+ * @param {string[]} topicPriority Ordered curriculum topics.
+ * @return {Object} Introduced topics, frontier topic, and frontier index.
+ */
 function curriculumStateFromHistory(history, topicPriority) {
   validateHistoryAgainstCurriculum(history, topicPriority);
 
@@ -1187,6 +1410,21 @@ function curriculumStateFromHistory(history, topicPriority) {
   };
 }
 
+/**
+ * Chooses the topic for a replacement question, prioritizing FSRS-due topics,
+ * then curriculum advancement after mastery, then frontier/introduced practice.
+ *
+ * Called by planActiveQueueFromSnapshots() and FSRS tests. Depends on
+ * curriculumStateFromHistory(), topicRetrievabilitiesFromReviews(), and
+ * topicMasterySummary().
+ *
+ * @param {Object[]} history Historical assignment objects.
+ * @param {Object[]} reviews Compact student reviews.
+ * @param {string[]} topicPriority Ordered curriculum topics.
+ * @param {Set<string>} availableTopics Topics with a distinct candidate question.
+ * @param {Date} asOf Scheduling evaluation time.
+ * @return {Object} Selected topic, reason, and sometimes retrievability.
+ */
 function chooseCurriculumReplacementTopic(
   history,
   reviews,
@@ -1286,6 +1524,18 @@ function chooseCurriculumReplacementTopic(
   );
 }
 
+/**
+ * Selects the least-exposed candidate question within one topic, breaking ties
+ * randomly so repeated literal probes are minimized without deterministic bias.
+ *
+ * Called by planActiveQueueFromSnapshots() and FSRS tests.
+ *
+ * @param {Object[]} eligible Candidate question objects.
+ * @param {Object[]} history Historical/current assignment objects.
+ * @param {string} topic Topic to select within.
+ * @param {Function=} randomFn Optional random-number function for deterministic tests.
+ * @return {?Object} Selected question object, or null when none is available.
+ */
 function selectLeastUsedQuestion(eligible, history, topic, randomFn) {
   const exposureCounts = {};
   history.forEach(function(assignment) {
@@ -1313,6 +1563,20 @@ function selectLeastUsedQuestion(eligible, history, topic, randomFn) {
   return ranked.length ? ranked[0].item : null;
 }
 
+/**
+ * Persists selected canonical questions as new active assignment exposures and
+ * optionally extends the caller's in-memory assignment snapshot.
+ *
+ * Called by handleLogEvent(), handleGetOrCreateActiveAssignments(), and the
+ * unused ensureActiveQueue(). Depends on clean() and assignmentRowToObject().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} assignmentsSheet Assignments sheet.
+ * @param {Object[]} selected Selection objects with item and reason.
+ * @param {Object} data Request identity fields.
+ * @param {string} assignedAt ISO assignment timestamp.
+ * @param {Object=} assignmentSnapshot Optional mutable assignment snapshot.
+ * @return {Object[]} Newly created assignment objects.
+ */
 function appendActiveAssignments(
   assignmentsSheet,
   selected,
@@ -1362,6 +1626,20 @@ function appendActiveAssignments(
   return rows.map(assignmentRowToObject);
 }
 
+/**
+ * Retires one assignment row only if it is currently active, making the write
+ * idempotent when the row was already retired.
+ *
+ * No current production or test caller was found in this repository. It has no
+ * within-repo function dependencies beyond assignment-status constants.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} assignmentsSheet Assignments sheet.
+ * @param {number} rowIndex One-based physical sheet row.
+ * @param {string} requestId Request causing retirement.
+ * @param {string} retiredAt ISO retirement timestamp.
+ * @param {string} retiredReason Retirement reason.
+ * @return {boolean} True when this call retired the row; false if already retired.
+ */
 function retireAssignmentIfActive(
   assignmentsSheet,
   rowIndex,
@@ -1390,6 +1668,21 @@ function retireAssignmentIfActive(
   return true;
 }
 
+// Compact reviews and mastery -------------------------------------------------
+
+/**
+ * Replays each topic's first-attempt review sequence through FSRS and returns
+ * current retrievability for every requested topic.
+ *
+ * Called by chooseCurriculumReplacementTopic(), studentProgressSummary() in
+ * Progress.gs, and FSRS tests. Depends on fsrsReviewMemoryState() and
+ * fsrsCurrentRetrievability().
+ *
+ * @param {Object[]} reviews Compact review objects.
+ * @param {string[]} topics Topics to evaluate.
+ * @param {Date} asOf Time at which recall is estimated.
+ * @return {Object<string, number>} Retrievability keyed by topic.
+ */
 function topicRetrievabilitiesFromReviews(reviews, topics, asOf) {
   const reviewsByTopic = {};
 
@@ -1422,6 +1715,18 @@ function topicRetrievabilitiesFromReviews(reviews, topics, asOf) {
   return output;
 }
 
+/**
+ * Summarizes first-attempt mastery for one topic over a recent moving window.
+ *
+ * Called by chooseCurriculumReplacementTopic(), studentProgressSummary() in
+ * Progress.gs, and FSRS tests.
+ *
+ * @param {Object[]} reviews Compact review objects.
+ * @param {string} topic Topic to summarize.
+ * @param {number=} windowSize Number of recent observations; defaults to 10.
+ * @param {number=} masteryThreshold Required recent accuracy; defaults to 0.9.
+ * @return {Object} Observation counts, recent accuracy, and mastered flag.
+ */
 function topicMasterySummary(
   reviews,
   topic,
@@ -1466,6 +1771,19 @@ function topicMasterySummary(
   };
 }
 
+/**
+ * Compacts graded event history into one review row per attempted persisted
+ * assignment, preserving first-attempt outcome and total/last attempt metadata.
+ *
+ * Called by rebuildReviewHistoryForSpreadsheet(), compactReviewRowForAssignment(),
+ * reviewsForStudentFromEvents(), refreshReviewForAssignment(), and JS tests.
+ * Depends on assignmentRowToObject(), eventCorrectBoolean(), and
+ * reviewObjectToRow().
+ *
+ * @param {Array<Array<*>>} assignmentRows Assignment-sheet rows.
+ * @param {Array<Array<*>>} eventRows Event-sheet rows.
+ * @return {Array<Array<*>>} Compact review rows sorted by first attempt.
+ */
 function compactReviewRowsFromEvents(assignmentRows, eventRows) {
   const assignmentsById = {};
   assignmentRows.forEach(function(row) {
@@ -1520,6 +1838,14 @@ function compactReviewRowsFromEvents(assignmentRows, eventRows) {
     });
 }
 
+/**
+ * Converts one in-memory compact review aggregate to REVIEW_HEADERS row order.
+ *
+ * Called only by compactReviewRowsFromEvents().
+ *
+ * @param {Object} review Review aggregate containing its assignment object.
+ * @return {Array<*>} Review-sheet row.
+ */
 function reviewObjectToRow(review) {
   const assignment = review.assignment;
   return [
@@ -1536,6 +1862,19 @@ function reviewObjectToRow(review) {
   ];
 }
 
+/**
+ * Reconstructs and upserts the compact review for one assignment by re-reading
+ * its matching graded events.
+ *
+ * No current production or test caller was found. Depends on
+ * getGradedEventRowsForAssignment(), assignmentObjectToRow(),
+ * compactReviewRowsFromEvents(), findSheetRowByValue(), and reviewRowToObject().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet Events sheet.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} reviewsSheet Reviews sheet.
+ * @param {Object} assignment Persisted assignment object.
+ * @return {Object} Updated compact review object.
+ */
 function refreshReviewForAssignment(eventsSheet, reviewsSheet, assignment) {
   const eventRows = getGradedEventRowsForAssignment(eventsSheet, assignment);
   if (!eventRows.length) {
@@ -1570,6 +1909,19 @@ function refreshReviewForAssignment(eventsSheet, reviewsSheet, assignment) {
   return reviewRowToObject(compact[0]);
 }
 
+/**
+ * Produces the next compact review row after one newly observed graded event,
+ * preserving the earliest first-attempt result and updating attempt metadata.
+ *
+ * Called by updateReviewForNewEvent() and performance tests. Depends on
+ * eventCorrectBoolean(), reviewRowToObject(), and validateReviewAgainstAssignment().
+ *
+ * @param {?Array<*>} existingRow Existing compact review row, or null.
+ * @param {Object} assignment Persisted assignment object.
+ * @param {string|Date} eventTime New event timestamp.
+ * @param {*} correct New event correctness value.
+ * @return {Array<*>} Updated review row.
+ */
 function reviewRowAfterNewEvent(existingRow, assignment, eventTime, correct) {
   const attemptTime = new Date(eventTime);
   if (isNaN(attemptTime.getTime())) {
@@ -1619,6 +1971,16 @@ function reviewRowAfterNewEvent(existingRow, assignment, eventTime, correct) {
   ];
 }
 
+/**
+ * Verifies that a compact review still describes the same persisted assignment
+ * before an incremental update is applied.
+ *
+ * Called only by reviewRowAfterNewEvent().
+ *
+ * @param {Object} review Compact review object.
+ * @param {Object} assignment Persisted assignment object.
+ * @return {void}
+ */
 function validateReviewAgainstAssignment(review, assignment) {
   const checks = [
     [review.assignment_id, assignment.assignment_id, 'assignment_id'],
@@ -1637,6 +1999,17 @@ function validateReviewAgainstAssignment(review, assignment) {
   });
 }
 
+/**
+ * Finds and parses one reviews-sheet row by assignment ID.
+ *
+ * Called by updateReviewForNewEvent() and getReviewForAssignment(); both callers
+ * are currently unused by production code. Depends on findSheetRowByValue() and
+ * reviewRowToObject().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} reviewsSheet Reviews sheet.
+ * @param {string} assignmentId Assignment ID to locate.
+ * @return {?Object} Row index, raw row, and parsed review; null if absent.
+ */
 function getReviewRecordByAssignmentId(reviewsSheet, assignmentId) {
   const rowIndex = findSheetRowByValue(reviewsSheet, 1, assignmentId);
   if (!rowIndex) return null;
@@ -1650,6 +2023,19 @@ function getReviewRecordByAssignmentId(reviewsSheet, assignmentId) {
   };
 }
 
+/**
+ * Incrementally writes one new graded event into a compact review row.
+ *
+ * No current production or test caller was found. Depends on
+ * reviewRowAfterNewEvent() and reviewRowToObject().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} reviewsSheet Reviews sheet.
+ * @param {Object} assignment Persisted assignment object.
+ * @param {string|Date} eventTime Event timestamp.
+ * @param {*} correct Event correctness value.
+ * @param {?Object} existingRecord Existing review record, if any.
+ * @return {Object} Parsed updated review.
+ */
 function updateReviewForNewEvent(
   reviewsSheet,
   assignment,
@@ -1677,11 +2063,31 @@ function updateReviewForNewEvent(
   return reviewRowToObject(nextRow);
 }
 
+/**
+ * Returns the parsed compact review for one assignment when it exists.
+ *
+ * No current production or test caller was found. Depends on
+ * getReviewRecordByAssignmentId().
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} reviewsSheet Reviews sheet.
+ * @param {string} assignmentId Assignment ID to locate.
+ * @return {?Object} Parsed review or null.
+ */
 function getReviewForAssignment(reviewsSheet, assignmentId) {
   const record = getReviewRecordByAssignmentId(reviewsSheet, assignmentId);
   return record ? record.review : null;
 }
 
+/**
+ * Checks whether any event row references a given assignment ID.
+ *
+ * No current production or test caller was found. It has no within-repo
+ * function dependencies.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet Events sheet.
+ * @param {string} assignmentId Assignment ID to search for.
+ * @return {boolean} Whether a matching event exists.
+ */
 function hasEventForAssignment(eventsSheet, assignmentId) {
   if (eventsSheet.getLastRow() <= 1) return false;
   return Boolean(
@@ -1693,6 +2099,17 @@ function hasEventForAssignment(eventsSheet, assignmentId) {
   );
 }
 
+/**
+ * Reads all graded event rows that belong to one persisted assignment and
+ * verifies their course/student identity while filtering.
+ *
+ * Called only by unused refreshReviewForAssignment(); therefore it currently has
+ * no active production path. It has no within-repo function dependencies.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} eventsSheet Events sheet.
+ * @param {Object} assignment Persisted assignment object.
+ * @return {Array<Array<*>>} Matching graded event rows.
+ */
 function getGradedEventRowsForAssignment(eventsSheet, assignment) {
   if (eventsSheet.getLastRow() <= 1) return [];
 
@@ -1717,6 +2134,19 @@ function getGradedEventRowsForAssignment(eventsSheet, assignment) {
     });
 }
 
+// FSRS memory calculations ----------------------------------------------------
+
+/**
+ * Applies one Again/Good FSRS review to an optional prior topic memory state.
+ *
+ * Called by topicRetrievabilitiesFromReviews() and FSRS tests. Depends on the
+ * FSRS helper functions below.
+ *
+ * @param {?Object} state Prior FSRS state, or null for the first observation.
+ * @param {number} rating Supported FSRS rating (Again or Good).
+ * @param {string|Date} reviewTime Review timestamp.
+ * @return {Object} Updated stability, difficulty, and last_review state.
+ */
 function fsrsReviewMemoryState(state, rating, reviewTime) {
   if (rating !== FSRS_RATING_AGAIN && rating !== FSRS_RATING_GOOD) {
     throw new Error('This drill scheduler supports FSRS Again/Good ratings only.');
@@ -1761,6 +2191,16 @@ function fsrsReviewMemoryState(state, rating, reviewTime) {
   };
 }
 
+/**
+ * Computes current FSRS retrievability from a topic memory state.
+ *
+ * Called by topicRetrievabilitiesFromReviews(), fsrsReviewMemoryState(), and
+ * FSRS tests. Depends on fsrsElapsedDays() and FSRS constants.
+ *
+ * @param {?Object} state FSRS state, or null for an unseen topic.
+ * @param {string|Date} asOf Time at which recall is estimated.
+ * @return {number} Retrievability from 0 upward, with unseen topics returning 0.
+ */
 function fsrsCurrentRetrievability(state, asOf) {
   if (!state || state.stability === null || !state.last_review) return 0;
 
@@ -1774,6 +2214,15 @@ function fsrsCurrentRetrievability(state, asOf) {
   );
 }
 
+/**
+ * Converts two timestamps to nonnegative whole elapsed days for FSRS updates.
+ *
+ * Called by fsrsReviewMemoryState() and fsrsCurrentRetrievability().
+ *
+ * @param {string|Date} fromTime Earlier timestamp.
+ * @param {string|Date} toTime Later/as-of timestamp.
+ * @return {number} Nonnegative floored elapsed days.
+ */
 function fsrsElapsedDays(fromTime, toTime) {
   return Math.max(
     0,
@@ -1781,10 +2230,22 @@ function fsrsElapsedDays(fromTime, toTime) {
   );
 }
 
+/**
+ * Returns clamped FSRS initial stability for a rating.
+ * Called by fsrsReviewMemoryState(); depends on fsrsClampStability().
+ * @param {number} rating FSRS rating.
+ * @return {number} Initial stability.
+ */
 function fsrsInitialStability(rating) {
   return fsrsClampStability(FSRS_PARAMETERS[rating - 1]);
 }
 
+/**
+ * Returns clamped FSRS initial difficulty for a rating.
+ * Called by fsrsReviewMemoryState(); depends on fsrsClampDifficulty().
+ * @param {number} rating FSRS rating.
+ * @return {number} Initial difficulty.
+ */
 function fsrsInitialDifficulty(rating) {
   const difficulty =
     FSRS_PARAMETERS[4] -
@@ -1793,6 +2254,14 @@ function fsrsInitialDifficulty(rating) {
   return fsrsClampDifficulty(difficulty);
 }
 
+/**
+ * Computes next FSRS difficulty after a review.
+ * Called by fsrsReviewMemoryState(); depends on
+ * fsrsInitialDifficultyUnclamped() and fsrsClampDifficulty().
+ * @param {number} difficulty Prior difficulty.
+ * @param {number} rating Review rating.
+ * @return {number} Next clamped difficulty.
+ */
 function fsrsNextDifficulty(difficulty, rating) {
   const initialEasy = fsrsInitialDifficultyUnclamped(4);
   const deltaDifficulty = -(FSRS_PARAMETERS[6] * (rating - 3));
@@ -1803,6 +2272,12 @@ function fsrsNextDifficulty(difficulty, rating) {
   return fsrsClampDifficulty(next);
 }
 
+/**
+ * Computes the raw, unclamped FSRS initial difficulty for a rating.
+ * Called only by fsrsNextDifficulty().
+ * @param {number} rating FSRS rating.
+ * @return {number} Unclamped initial difficulty.
+ */
 function fsrsInitialDifficultyUnclamped(rating) {
   return (
     FSRS_PARAMETERS[4] -
@@ -1811,6 +2286,13 @@ function fsrsInitialDifficultyUnclamped(rating) {
   );
 }
 
+/**
+ * Computes FSRS short-term stability when reviews occur less than one day apart.
+ * Called by fsrsReviewMemoryState(); depends on fsrsClampStability().
+ * @param {number} stability Prior stability.
+ * @param {number} rating Review rating.
+ * @return {number} Next short-term stability.
+ */
 function fsrsShortTermStability(stability, rating) {
   let increase =
     Math.pow(
@@ -1826,6 +2308,14 @@ function fsrsShortTermStability(stability, rating) {
   return fsrsClampStability(stability * increase);
 }
 
+/**
+ * Computes next FSRS stability after a forgetting/Again observation.
+ * Called only by fsrsReviewMemoryState().
+ * @param {number} difficulty Current difficulty.
+ * @param {number} stability Current stability.
+ * @param {number} retrievability Pre-review retrievability.
+ * @return {number} Next forgetting stability before caller clamping.
+ */
 function fsrsNextForgetStability(difficulty, stability, retrievability) {
   const longTerm =
     FSRS_PARAMETERS[11] *
@@ -1840,6 +2330,15 @@ function fsrsNextForgetStability(difficulty, stability, retrievability) {
   return Math.min(longTerm, shortTerm);
 }
 
+/**
+ * Computes next FSRS stability after a successful recall observation.
+ * Called only by fsrsReviewMemoryState().
+ * @param {number} difficulty Current difficulty.
+ * @param {number} stability Current stability.
+ * @param {number} retrievability Pre-review retrievability.
+ * @param {number} rating Review rating.
+ * @return {number} Next recall stability before caller clamping.
+ */
 function fsrsNextRecallStability(
   difficulty,
   stability,
@@ -1860,10 +2359,23 @@ function fsrsNextRecallStability(
   );
 }
 
+/**
+ * Enforces the minimum valid FSRS stability.
+ * Called by fsrsInitialStability(), fsrsReviewMemoryState(), and
+ * fsrsShortTermStability().
+ * @param {number} stability Candidate stability.
+ * @return {number} Stability at or above the configured minimum.
+ */
 function fsrsClampStability(stability) {
   return Math.max(stability, FSRS_STABILITY_MIN);
 }
 
+/**
+ * Restricts FSRS difficulty to its supported 1–10 range.
+ * Called by fsrsInitialDifficulty() and fsrsNextDifficulty().
+ * @param {number} difficulty Candidate difficulty.
+ * @return {number} Clamped difficulty.
+ */
 function fsrsClampDifficulty(difficulty) {
   return Math.min(
     Math.max(difficulty, FSRS_DIFFICULTY_MIN),
@@ -1871,6 +2383,14 @@ function fsrsClampDifficulty(difficulty) {
   );
 }
 
+// Request and configuration validation ---------------------------------------
+
+/**
+ * Validates common and event-specific fields for a log_event request.
+ * Called only by handleLogEvent(); depends on validateCommonPayload().
+ * @param {Object} data Parsed request payload.
+ * @return {void}
+ */
 function validateEventPayload(data) {
   validateCommonPayload(data);
   if (!data.session_token) throw new Error('session_token is required.');
@@ -1886,6 +2406,14 @@ function validateEventPayload(data) {
   }
 }
 
+/**
+ * Verifies that a graded event's course/student/question/topic identity matches
+ * the persisted assignment referenced by assignment_id.
+ * Called only by handleLogEvent(); depends on clean().
+ * @param {Object} data Parsed graded event payload.
+ * @param {Object} assignment Persisted assignment object.
+ * @return {void}
+ */
 function validateGradedEventAgainstAssignment(data, assignment) {
   const checks = [
     [assignment.course_id, clean(data.course_id, 200), 'course_id'],
@@ -1903,6 +2431,12 @@ function validateGradedEventAgainstAssignment(data, assignment) {
   });
 }
 
+/**
+ * Validates common fields plus the student ID required by assignment requests.
+ * Called by both assignment request handlers; depends on validateCommonPayload().
+ * @param {Object} data Parsed assignment request.
+ * @return {void}
+ */
 function validateAssignmentRequest(data) {
   validateCommonPayload(data);
 
@@ -1912,6 +2446,14 @@ function validateAssignmentRequest(data) {
   }
 }
 
+/**
+ * Validates and normalizes queue_size and ordered topic_priority scheduling
+ * fields supplied by rolling-queue requests.
+ * Called by handleGetOrCreateActiveAssignments(), optionalQueueSelectionConfig(),
+ * and FSRS tests.
+ * @param {Object} data Parsed request payload.
+ * @return {Object} Normalized queue_size and topic_priority.
+ */
 function validateQueueSelectionConfig(data) {
   const queueSize = Number(data.queue_size);
   if (!Number.isInteger(queueSize) || queueSize < 1 || queueSize > 500) {
@@ -1938,6 +2480,13 @@ function validateQueueSelectionConfig(data) {
   };
 }
 
+/**
+ * Returns validated queue configuration only when both optional scheduling
+ * fields were supplied, rejecting partial configuration.
+ * Called only by handleLogEvent(); depends on validateQueueSelectionConfig().
+ * @param {Object} data Parsed event payload.
+ * @return {?Object} Validated queue config, or null when neither field is present.
+ */
 function optionalQueueSelectionConfig(data) {
   const hasSize = typeof data.queue_size !== 'undefined';
   const hasTopics = typeof data.topic_priority !== 'undefined';
@@ -1948,6 +2497,16 @@ function optionalQueueSelectionConfig(data) {
   return validateQueueSelectionConfig(data);
 }
 
+// Snapshot and concurrency helpers ------------------------------------------
+
+/**
+ * Reads all data rows of a sheet once, recording the physical last row so a
+ * request can later reconcile only concurrently appended rows.
+ * Called by request handlers and concurrency tests.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Sheet to snapshot.
+ * @param {number} width Number of columns to read.
+ * @return {Object} Snapshot with last_row and rows.
+ */
 function readSheetSnapshot(sheet, width) {
   const lastRow = sheet.getLastRow();
   return {
@@ -1958,6 +2517,15 @@ function readSheetSnapshot(sheet, width) {
   };
 }
 
+/**
+ * Extends an existing row snapshot with rows appended since it was read, while
+ * rejecting destructive row removal during a live request.
+ * Called by request handlers and concurrency tests.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Source sheet.
+ * @param {Object} snapshot Mutable snapshot from readSheetSnapshot().
+ * @param {number} width Number of columns to read.
+ * @return {Object} The updated snapshot.
+ */
 function extendSheetSnapshot(sheet, snapshot, width) {
   const currentLastRow = sheet.getLastRow();
   if (currentLastRow < snapshot.last_row) {
@@ -1974,6 +2542,13 @@ function extendSheetSnapshot(sheet, snapshot, width) {
   return snapshot;
 }
 
+/**
+ * Reads one data column as a compact index snapshot with its physical last row.
+ * Called by handleLogEvent() and concurrency tests.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Source sheet.
+ * @param {number} columnIndex One-based column index.
+ * @return {Object} Snapshot with last_row and scalar values.
+ */
 function readColumnSnapshot(sheet, columnIndex) {
   const lastRow = sheet.getLastRow();
   return {
@@ -1986,6 +2561,14 @@ function readColumnSnapshot(sheet, columnIndex) {
   };
 }
 
+/**
+ * Extends a column snapshot with values appended since it was read.
+ * Called by handleLogEvent() and concurrency tests.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Source sheet.
+ * @param {Object} snapshot Mutable column snapshot.
+ * @param {number} columnIndex One-based column index.
+ * @return {Object} Updated snapshot.
+ */
 function extendColumnSnapshot(sheet, snapshot, columnIndex) {
   const currentLastRow = sheet.getLastRow();
   if (currentLastRow < snapshot.last_row) {
@@ -2004,6 +2587,16 @@ function extendColumnSnapshot(sheet, snapshot, columnIndex) {
   return snapshot;
 }
 
+/**
+ * Appends one row at the next unclaimed physical position and updates the
+ * caller's in-memory snapshot to include the write.
+ * Called by handleLogEvent() and concurrency tests.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Destination sheet.
+ * @param {Object} snapshot Mutable row snapshot.
+ * @param {Array<*>} row Row to append.
+ * @param {number} width Number of columns to write.
+ * @return {number} Physical one-based row index written.
+ */
 function appendRowToSnapshot(sheet, snapshot, row, width) {
   const rowIndex = Math.max(2, snapshot.last_row + 1);
   sheet.getRange(rowIndex, 1, 1, width).setValues([row]);
@@ -2012,6 +2605,14 @@ function appendRowToSnapshot(sheet, snapshot, row, width) {
   return rowIndex;
 }
 
+/**
+ * Finds an event by request_id inside an already-read snapshot while preserving
+ * its physical sheet row index.
+ * Called by handleLogEvent() and concurrency tests.
+ * @param {Array<Array<*>>} eventRows Event snapshot rows.
+ * @param {string} requestId Request ID to locate.
+ * @return {?Object} Row index and row, or null.
+ */
 function findEventRowByRequestIdFromRows(eventRows, requestId) {
   const key = String(requestId || '');
   for (let ii = 0; ii < eventRows.length; ii++) {
@@ -2022,6 +2623,15 @@ function findEventRowByRequestIdFromRows(eventRows, requestId) {
   return null;
 }
 
+/**
+ * Finds and parses an assignment by ID inside an already-read snapshot while
+ * preserving its physical sheet row index.
+ * Called by handleLogEvent(), BankReconciliation.gs, getAssignmentRecordById(),
+ * and concurrency tests. Depends on assignmentRowToObject().
+ * @param {Array<Array<*>>} assignmentRows Assignment snapshot rows.
+ * @param {string} assignmentId Assignment ID to locate.
+ * @return {?Object} Row index, raw row, and assignment object; or null.
+ */
 function getAssignmentRecordByIdFromRows(assignmentRows, assignmentId) {
   const key = String(assignmentId || '');
   for (let ii = 0; ii < assignmentRows.length; ii++) {
@@ -2036,6 +2646,13 @@ function getAssignmentRecordByIdFromRows(assignmentRows, assignmentId) {
   return null;
 }
 
+/**
+ * Locates a scalar value inside a column snapshot and returns its physical row.
+ * Called only by upsertReviewRowFromSnapshot().
+ * @param {Object} snapshot Column snapshot.
+ * @param {*} value Value to match exactly after string coercion.
+ * @return {number} Physical row index, or 0 when absent.
+ */
 function findRowInColumnSnapshot(snapshot, value) {
   const key = String(value || '');
   for (let ii = 0; ii < snapshot.values.length; ii++) {
@@ -2044,6 +2661,16 @@ function findRowInColumnSnapshot(snapshot, value) {
   return 0;
 }
 
+/**
+ * Updates an existing compact review row or appends a new one while keeping the
+ * assignment-ID index snapshot synchronized with the write.
+ * Called only by handleLogEvent(); depends on findRowInColumnSnapshot().
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} reviewsSheet Reviews sheet.
+ * @param {Object} reviewIndexSnapshot Mutable assignment-ID column snapshot.
+ * @param {string} assignmentId Assignment ID key.
+ * @param {Array<*>} reviewRow Compact review row to write.
+ * @return {number} Physical row index written.
+ */
 function upsertReviewRowFromSnapshot(
   reviewsSheet,
   reviewIndexSnapshot,
@@ -2067,6 +2694,16 @@ function upsertReviewRowFromSnapshot(
   return rowIndex;
 }
 
+/**
+ * Reconstructs exactly one compact review row for a specified assignment from
+ * current assignment/event snapshots.
+ * Called by handleLogEvent() and concurrency tests. Depends on
+ * compactReviewRowsFromEvents().
+ * @param {Array<Array<*>>} assignmentRows Assignment snapshot rows.
+ * @param {Array<Array<*>>} eventRows Event snapshot rows.
+ * @param {Object} assignment Assignment object identifying the exposure.
+ * @return {Array<*>} Compact review row.
+ */
 function compactReviewRowForAssignment(assignmentRows, eventRows, assignment) {
   const compact = compactReviewRowsFromEvents(
     assignmentRows.filter(function(row) {
@@ -2083,6 +2720,17 @@ function compactReviewRowForAssignment(assignmentRows, eventRows, assignment) {
   return compact[0];
 }
 
+/**
+ * Rebuilds compact reviews from assignment/event snapshots and filters them to
+ * one student's course identity for scheduling.
+ * Called by both queue-refilling handlers and concurrency tests. Depends on
+ * clean(), compactReviewRowsFromEvents(), and reviewRowToObject().
+ * @param {Array<Array<*>>} assignmentRows Assignment snapshot rows.
+ * @param {Array<Array<*>>} eventRows Event snapshot rows.
+ * @param {string} courseId Course ID.
+ * @param {string} studentId Student ID.
+ * @return {Object[]} Compact review objects for that student.
+ */
 function reviewsForStudentFromEvents(assignmentRows, eventRows, courseId, studentId) {
   const courseKey = clean(courseId, 200);
   const studentKey = clean(studentId, 200);
@@ -2093,6 +2741,15 @@ function reviewsForStudentFromEvents(assignmentRows, eventRows, courseId, studen
     });
 }
 
+/**
+ * Applies correct graded events as authoritative logical retirements to a copy
+ * of assignment snapshot rows, resolving stale pre-lock assignment state.
+ * Called by both mutation handlers and concurrency tests. Depends on
+ * eventCorrectBoolean() and assignment-status constants.
+ * @param {Array<Array<*>>} assignmentRows Assignment snapshot rows.
+ * @param {Array<Array<*>>} eventRows Event snapshot rows.
+ * @return {Array<Array<*>>} Copied assignment rows with logical retirements applied.
+ */
 function applyCorrectEventRetirementsToAssignmentRows(assignmentRows, eventRows) {
   const output = assignmentRows.map(function(row) { return row.slice(); });
   const byId = {};
@@ -2118,6 +2775,12 @@ function applyCorrectEventRetirementsToAssignmentRows(assignmentRows, eventRows)
   return output;
 }
 
+/**
+ * Validates schema_version plus request/course IDs shared by all service calls.
+ * Called by validateEventPayload() and validateAssignmentRequest().
+ * @param {Object} data Parsed request payload.
+ * @return {void}
+ */
 function validateCommonPayload(data) {
   if (String(data.schema_version) !== '1') {
     throw new Error('Unsupported schema_version.');
@@ -2126,6 +2789,14 @@ function validateCommonPayload(data) {
   if (!data.course_id) throw new Error('course_id is required.');
 }
 
+// Sheet access and row/object conversion -------------------------------------
+
+/**
+ * Reads all assignment data rows from a managed sheet.
+ * Called by setup/migration, queue, and assignment lookup helpers.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Assignments sheet.
+ * @return {Array<Array<*>>} Assignment rows excluding the header.
+ */
 function getAssignmentRows(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return [];
@@ -2134,6 +2805,12 @@ function getAssignmentRows(sheet) {
     .getValues();
 }
 
+/**
+ * Reads all event data rows from a managed sheet.
+ * Called by review rebuild and legacy migration helpers.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Events sheet.
+ * @return {Array<Array<*>>} Event rows excluding the header.
+ */
 function getEventRows(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return [];
@@ -2142,6 +2819,12 @@ function getEventRows(sheet) {
     .getValues();
 }
 
+/**
+ * Reads all compact review data rows from a managed sheet.
+ * Called only by getReviewsForStudent().
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Reviews sheet.
+ * @return {Array<Array<*>>} Review rows excluding the header.
+ */
 function getReviewRows(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return [];
@@ -2150,6 +2833,13 @@ function getReviewRows(sheet) {
     .getValues();
 }
 
+/**
+ * Returns a copy of assignment objects ordered by assigned_at_utc oldest first.
+ * Called by activeAssignmentsFromRows(), request handlers, ensureActiveQueue(),
+ * and performance tests.
+ * @param {Object[]} assignments Assignment objects.
+ * @return {Object[]} Sorted copy.
+ */
 function sortAssignmentsOldestFirst(assignments) {
   return assignments
     .slice()
@@ -2162,6 +2852,16 @@ function sortAssignmentsOldestFirst(assignments) {
     });
 }
 
+/**
+ * Filters assignment rows to one student's active queue and returns parsed
+ * assignment objects in oldest-first order.
+ * Called by handlers, planners, BankReconciliation.gs, and JS tests. Depends on
+ * clean(), assignmentRowToObject(), and sortAssignmentsOldestFirst().
+ * @param {Array<Array<*>>} assignmentRows Assignment rows.
+ * @param {string} courseId Course ID.
+ * @param {string} studentId Student ID.
+ * @return {Object[]} Active assignment objects.
+ */
 function activeAssignmentsFromRows(assignmentRows, courseId, studentId) {
   const courseKey = clean(courseId, 200);
   const studentKey = clean(studentId, 200);
@@ -2179,6 +2879,15 @@ function activeAssignmentsFromRows(assignmentRows, courseId, studentId) {
   );
 }
 
+/**
+ * Filters assignment rows to all historical exposures for one student/course.
+ * Called by planActiveQueueFromSnapshots(), getAssignmentsForStudentHistory(),
+ * and performance tests. Depends on clean() and assignmentRowToObject().
+ * @param {Array<Array<*>>} assignmentRows Assignment rows.
+ * @param {string} courseId Course ID.
+ * @param {string} studentId Student ID.
+ * @return {Object[]} Historical assignment objects, active and retired.
+ */
 function assignmentsForStudentHistoryFromRows(assignmentRows, courseId, studentId) {
   const courseKey = clean(courseId, 200);
   const studentKey = clean(studentId, 200);
@@ -2190,6 +2899,15 @@ function assignmentsForStudentHistoryFromRows(assignmentRows, courseId, studentI
     .map(assignmentRowToObject);
 }
 
+/**
+ * Reads and returns one student's active assignments from the assignments sheet.
+ * Called only by handleGetActiveAssignments(); depends on getAssignmentRows()
+ * and activeAssignmentsFromRows().
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Assignments sheet.
+ * @param {string} courseId Course ID.
+ * @param {string} studentId Student ID.
+ * @return {Object[]} Active assignment objects.
+ */
 function getActiveAssignmentsForStudent(sheet, courseId, studentId) {
   return activeAssignmentsFromRows(
     getAssignmentRows(sheet),
@@ -2198,6 +2916,15 @@ function getActiveAssignmentsForStudent(sheet, courseId, studentId) {
   );
 }
 
+/**
+ * Reads and returns all historical assignment exposures for one student.
+ * No current production or test caller was found. Depends on getAssignmentRows()
+ * and assignmentsForStudentHistoryFromRows().
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Assignments sheet.
+ * @param {string} courseId Course ID.
+ * @param {string} studentId Student ID.
+ * @return {Object[]} Historical assignment objects.
+ */
 function getAssignmentsForStudentHistory(sheet, courseId, studentId) {
   return assignmentsForStudentHistoryFromRows(
     getAssignmentRows(sheet),
@@ -2206,6 +2933,15 @@ function getAssignmentsForStudentHistory(sheet, courseId, studentId) {
   );
 }
 
+/**
+ * Reads and returns compact reviews for one student/course.
+ * Called by ensureActiveQueue() and progressPayloadForRequest() in Progress.gs.
+ * Depends on getReviewRows(), clean(), and reviewRowToObject().
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Reviews sheet.
+ * @param {string} courseId Course ID.
+ * @param {string} studentId Student ID.
+ * @return {Object[]} Compact review objects.
+ */
 function getReviewsForStudent(sheet, courseId, studentId) {
   const courseKey = clean(courseId, 200);
   const studentKey = clean(studentId, 200);
@@ -2217,10 +2953,24 @@ function getReviewsForStudent(sheet, courseId, studentId) {
     .map(reviewRowToObject);
 }
 
+/**
+ * Reads all assignments and locates one persisted assignment by ID.
+ * No current production or test caller was found. Depends on getAssignmentRows()
+ * and getAssignmentRecordByIdFromRows().
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Assignments sheet.
+ * @param {string} assignmentId Assignment ID.
+ * @return {?Object} Assignment record or null.
+ */
 function getAssignmentRecordById(sheet, assignmentId) {
   return getAssignmentRecordByIdFromRows(getAssignmentRows(sheet), assignmentId);
 }
 
+/**
+ * Converts one assignment-sheet row to the service's assignment object shape.
+ * Called throughout assignment, review, and test helpers.
+ * @param {Array<*>} row Assignment row in ASSIGNMENT_HEADERS order.
+ * @return {Object} Parsed assignment object.
+ */
 function assignmentRowToObject(row) {
   return {
     assignment_id: row[0],
@@ -2239,6 +2989,13 @@ function assignmentRowToObject(row) {
   };
 }
 
+/**
+ * Converts an assignment object back to ASSIGNMENT_HEADERS row order.
+ * Called only by unused refreshReviewForAssignment(); therefore it has no active
+ * production path.
+ * @param {Object} assignment Assignment object.
+ * @return {Array<*>} Assignment-sheet row.
+ */
 function assignmentObjectToRow(assignment) {
   return [
     assignment.assignment_id,
@@ -2258,6 +3015,13 @@ function assignmentObjectToRow(assignment) {
   ];
 }
 
+/**
+ * Parses and validates one reviews-sheet row into typed Date/count fields.
+ * Called by live review/scheduling helpers and JavaScript tests. Depends on
+ * eventCorrectBoolean().
+ * @param {Array<*>} row Review row in REVIEW_HEADERS order.
+ * @return {Object} Parsed compact review object.
+ */
 function reviewRowToObject(row) {
   const firstAttemptAt = new Date(row[6]);
   const lastAttemptAt = new Date(row[9]);
@@ -2287,6 +3051,13 @@ function reviewRowToObject(row) {
   };
 }
 
+/**
+ * Reads and parses the canonical question_bank sheet, rejecting an empty bank.
+ * Called by assignment handlers and ensureActiveQueue(). Depends on
+ * questionBankFromRows().
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Question-bank sheet.
+ * @return {Object[]} Parsed canonical question metadata.
+ */
 function getQuestionBank(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
@@ -2301,6 +3072,12 @@ function getQuestionBank(sheet) {
   );
 }
 
+/**
+ * Parses raw question-bank rows, enforcing unique item labels and valid points.
+ * Called only by getQuestionBank(); depends on sheetBoolean().
+ * @param {Array<Array<*>>} rows Raw question-bank rows.
+ * @return {Object[]} Parsed question metadata objects.
+ */
 function questionBankFromRows(rows) {
   const seen = new Set();
   const bank = [];
@@ -2331,6 +3108,15 @@ function questionBankFromRows(rows) {
   return bank;
 }
 
+/**
+ * Finds the physical row containing an exact value in one sheet column.
+ * Called by refreshReviewForAssignment() and getReviewRecordByAssignmentId(),
+ * both currently outside the active production path.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet Sheet to search.
+ * @param {number} columnIndex One-based column index.
+ * @param {*} value Exact value to match.
+ * @return {number} Physical row index, or 0 if absent.
+ */
 function findSheetRowByValue(sheet, columnIndex, value) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return 0;
@@ -2342,6 +3128,15 @@ function findSheetRowByValue(sheet, columnIndex, value) {
   return match ? match.getRow() : 0;
 }
 
+// Runtime diagnostics ---------------------------------------------------------
+
+/**
+ * Checks whether setupGradeSheet() recorded the runtime schema marker expected
+ * by this deployed Code.gs version.
+ * Called by doPost() and performance tests.
+ * @param {Object} runtimeProperties Script properties map.
+ * @return {boolean} Whether the runtime schema is current.
+ */
 function runtimeSchemaIsReady(runtimeProperties) {
   return Boolean(
     runtimeProperties &&
@@ -2349,6 +3144,13 @@ function runtimeSchemaIsReady(runtimeProperties) {
   );
 }
 
+/**
+ * Creates a mutable timing accumulator for one service operation.
+ * Called by all three request handlers and the service timing test script.
+ * @param {string} operation Operation label.
+ * @param {string} requestId Request ID.
+ * @return {Object} Mutable timer state.
+ */
 function startServiceTimer(operation, requestId) {
   return {
     operation: operation,
@@ -2358,14 +3160,34 @@ function startServiceTimer(operation, requestId) {
   };
 }
 
+/**
+ * Records elapsed milliseconds for a named stage on a service timer.
+ * Called repeatedly by request handlers.
+ * @param {Object} timer Mutable timer from startServiceTimer().
+ * @param {string} label Stage label.
+ * @return {void}
+ */
 function markServiceTimer(timer, label) {
   timer.marks[label] = Date.now() - timer.started_at_ms;
 }
 
+/**
+ * Enables timing diagnostics only for an explicit boolean include_timing=true.
+ * Called by request handlers and FSRS tests.
+ * @param {Object} data Request payload.
+ * @return {boolean} Whether timing should be included in the response.
+ */
 function includeServiceTiming(data) {
   return Boolean(data && data.include_timing === true);
 }
 
+/**
+ * Copies the externally useful fields of a mutable timer into a response-safe
+ * diagnostic snapshot.
+ * Called by request handlers, logServiceTimer(), scripts, and JS tests.
+ * @param {Object} timer Mutable timer state.
+ * @return {Object} Timing diagnostic snapshot.
+ */
 function serviceTimerSnapshot(timer) {
   const output = {
     operation: timer.operation,
@@ -2392,10 +3214,24 @@ function serviceTimerSnapshot(timer) {
   return output;
 }
 
+/**
+ * Emits one completed service timing snapshot to the Apps Script execution log.
+ * Called by all request handlers; depends on serviceTimerSnapshot().
+ * @param {Object} timer Mutable timer state.
+ * @return {void}
+ */
 function logServiceTimer(timer) {
   console.log('service_timing ' + JSON.stringify(serviceTimerSnapshot(timer)));
 }
 
+// Scalar and response utilities ----------------------------------------------
+
+/**
+ * Parses a Sheet value as a strict starter-question boolean.
+ * Called only by questionBankFromRows().
+ * @param {*} value Sheet cell value.
+ * @return {boolean} Parsed boolean.
+ */
 function sheetBoolean(value) {
   if (value === true || value === 1) return true;
   if (value === false || value === 0 || value === '' || value === null) return false;
@@ -2406,6 +3242,12 @@ function sheetBoolean(value) {
   throw new Error('Invalid starter_question value in question_bank: ' + String(value));
 }
 
+/**
+ * Parses a stored/request correctness value into a strict boolean.
+ * Called by event/review/migration/FSRS helpers throughout this file.
+ * @param {*} value Correctness value.
+ * @return {boolean} Parsed boolean.
+ */
 function eventCorrectBoolean(value) {
   if (value === true || value === 1) return true;
   if (value === false || value === 0 || value === '' || value === null) return false;
@@ -2416,6 +3258,14 @@ function eventCorrectBoolean(value) {
   throw new Error('Invalid correct value: ' + String(value));
 }
 
+/**
+ * Normalizes values before they are written/compared: nulls become empty,
+ * strings are length-limited, and spreadsheet-formula prefixes are escaped.
+ * Called throughout request, assignment, and review helpers.
+ * @param {*} value Value to normalize.
+ * @param {number} maxLength Maximum retained string length.
+ * @return {*} Boolean/number values unchanged, otherwise a sanitized string.
+ */
 function clean(value, maxLength) {
   if (value === null || typeof value === 'undefined') return '';
   if (typeof value === 'boolean' || typeof value === 'number') return value;
@@ -2427,6 +3277,12 @@ function clean(value, maxLength) {
   return text;
 }
 
+/**
+ * Serializes an object as the JSON ContentService response used by all web-app
+ * entry points and request handlers.
+ * @param {Object} obj Response payload.
+ * @return {GoogleAppsScript.Content.TextOutput} JSON text response.
+ */
 function jsonResponse(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))

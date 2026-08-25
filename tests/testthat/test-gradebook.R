@@ -1,3 +1,11 @@
+#' Build the minimal manifest used by gradebook unit tests
+#'
+#' Supplies three scored questions spanning two topics so gradebook tests can
+#' focus on assignment/attempt linkage rather than manifest construction.
+#'
+#' @return A three-row scored question manifest data frame.
+#' @details Used throughout this test file and has no callers outside it. It has
+#'   no within-repo function dependencies.
 gradebook_test_manifest <- function() {
   data.frame(
     event = rep("exercise_result", 3),
@@ -8,6 +16,21 @@ gradebook_test_manifest <- function() {
   )
 }
 
+#' Build synthetic event rows for gradebook unit tests
+#'
+#' Creates a compact event-log data frame with stable course/session/name fields
+#' while allowing tests to vary question labels, correctness, assignment IDs,
+#' and student IDs.
+#'
+#' @param item_label Character vector of event item labels.
+#' @param correct Character vector of logged correctness values.
+#' @param assignment_id Optional character assignment IDs; defaults to missing.
+#' @param student_id Optional character student IDs; defaults to `"abc123"` for
+#'   every generated row.
+#' @return A synthetic event-log data frame in the schema consumed by
+#'   `build_gradebook_tables()`.
+#' @details Used throughout this test file and has no callers outside it. It has
+#'   no within-repo function dependencies.
 gradebook_test_events <- function(
   item_label = character(),
   correct = character(),
@@ -33,6 +56,17 @@ gradebook_test_events <- function(
   )
 }
 
+#' Build persisted assignment rows for gradebook unit tests
+#'
+#' Matches requested labels to the test manifest and creates one assignment
+#' exposure per label with deterministic IDs and metadata.
+#'
+#' @param item_label Character vector of question labels to assign.
+#' @param student_id Student ID repeated across generated assignments.
+#' @param assignment_reason Assignment reason repeated across generated rows.
+#' @return A synthetic persisted-assignment data frame.
+#' @details Used throughout this test file and has no callers outside it. Depends
+#'   on `gradebook_test_manifest()`.
 gradebook_test_assignments <- function(
   item_label = c("q1", "q2", "q3"),
   student_id = "abc123",

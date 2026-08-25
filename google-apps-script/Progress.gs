@@ -2,6 +2,19 @@
 // calculations that drive adaptive scheduling; it does not maintain a second
 // progress model.
 
+// Progress request validation -------------------------------------------------
+
+/**
+ * Validates and normalizes the ordered curriculum topics supplied by a progress
+ * request so the report uses the same curriculum vocabulary as scheduling.
+ *
+ * Called only by progressPayloadForRequest(). It has no within-file helper
+ * dependencies.
+ *
+ * @param {Object} data Parsed request payload containing topic_priority.
+ * @return {string[]} Trimmed curriculum topics in request order.
+ * @throws {Error} If topic_priority is missing, empty, duplicated, or invalid.
+ */
 function validateProgressTopics(data) {
   if (!Array.isArray(data.topic_priority) || !data.topic_priority.length) {
     throw new Error('topic_priority must be a non-empty ordered array.');
@@ -19,6 +32,21 @@ function validateProgressTopics(data) {
   return topics;
 }
 
+// Progress summary construction ----------------------------------------------
+
+/**
+ * Builds one student-facing progress row per curriculum topic from persisted
+ * review history, combining mastery-window statistics with current FSRS recall.
+ *
+ * Called only by progressPayloadForRequest(). Depends on
+ * topicRetrievabilitiesFromReviews() and topicMasterySummary() in Code.gs.
+ *
+ * @param {Object[]} reviews Compact review objects for one student.
+ * @param {string[]} topicPriority Ordered curriculum topics to report.
+ * @param {Date} asOf Time at which estimated retrievability is calculated.
+ * @return {Object[]} Progress rows with practice counts, accuracy, recall, and
+ * mastery state for each topic.
+ */
 function studentProgressSummary(reviews, topicPriority, asOf) {
   const retrievability = topicRetrievabilitiesFromReviews(
     reviews,
@@ -42,6 +70,22 @@ function studentProgressSummary(reviews, topicPriority, asOf) {
   });
 }
 
+/**
+ * Builds the optional progress portion of an assignment-service response by
+ * loading this student's reviews and summarizing them at the current time.
+ *
+ * Called by bankReconciliationForRequest() in BankReconciliation.gs when
+ * include_progress is true. Depends on validateProgressTopics(),
+ * getReviewsForStudent() in Code.gs, studentProgressSummary(), and REVIEW_SHEET.
+ *
+ * @param {Object} data Parsed service request.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} questionBankSheet Question-bank
+ * sheet used to locate the containing spreadsheet.
+ * @return {?Object} Null when progress was not requested; otherwise an object
+ * containing as_of_utc and progress rows.
+ * @throws {Error} If progress was requested but the reviews sheet is missing or
+ * the request topics are invalid.
+ */
 function progressPayloadForRequest(data, questionBankSheet) {
   if (!data || data.include_progress !== true) return null;
 

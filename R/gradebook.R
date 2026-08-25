@@ -1,3 +1,18 @@
+# Gradebook validation --------------------------------------------------------
+
+#' Require named columns in a tabular input
+#'
+#' Provides a shared schema guard for gradebook events, assignments, manifests,
+#' and optional roster data before downstream joins and summaries assume those
+#' fields exist.
+#'
+#' @param data Data frame or tibble whose columns should be checked.
+#' @param required Character vector of required column names.
+#' @param object_name Human-readable input name used in an error message.
+#' @return Invisibly, `TRUE` when all required columns are present.
+#' @details Called by `validate_gradebook_assignment_metadata()` and several
+#'   stages of `build_gradebook_tables()`. It has no within-repo function
+#'   dependencies.
 require_columns <- function(data, required, object_name) {
   missing <- setdiff(required, names(data))
   if (length(missing)) {
@@ -21,6 +36,19 @@ GRADEBOOK_ASSIGNMENT_COLUMNS <- c(
   "assignment_reason"
 )
 
+#' Validate historical assignment metadata for gradebook use
+#'
+#' Confirms persisted assignment IDs and structural metadata are complete and
+#' unique, verifies every question still exists in the current manifest, and
+#' prevents topic/point metadata from silently changing under an already used
+#' permanent item label.
+#'
+#' @param assignments Historical assignment rows for one student.
+#' @param manifest Current canonical/runtime question manifest.
+#' @return The validated `assignments` data frame unchanged.
+#' @details Called by `build_gradebook_tables()` once per student and directly
+#'   by `tests/testthat/test-gradebook.R`. Depends on `require_columns()` and the
+#'   `GRADEBOOK_ASSIGNMENT_COLUMNS` constant.
 validate_gradebook_assignment_metadata <- function(assignments, manifest) {
   require_columns(assignments, GRADEBOOK_ASSIGNMENT_COLUMNS, "Assignments")
 
@@ -71,6 +99,32 @@ validate_gradebook_assignment_metadata <- function(assignments, manifest) {
   assignments
 }
 
+# Gradebook construction ------------------------------------------------------
+
+#' Build cumulative gradebook and item-detail tables
+#'
+#' Normalizes raw event and assignment data, links pre-identity events to the
+#' first saved identity in each session, validates historical assignment
+#' exposures, matches attempts to exact assignment IDs (with limited legacy
+#' rescue), and summarizes earned/possible points into student and item-level
+#' reporting tables.
+#'
+#' @param events Append-only event log read from the grading Google Sheet.
+#' @param assignments Historical assignment rows, including retired exposures;
+#'   may be `NULL` to represent no assignments.
+#' @param manifest Current question manifest used to determine scored items and
+#'   validate persisted assignment metadata.
+#' @param roster Optional roster data frame. When supplied, it defines the
+#'   students included in the gradebook; otherwise students are inferred from
+#'   identified instructional events.
+#' @param course_id Course identifier used to filter events and assignments.
+#' @param deadline_utc Optional UTC deadline; events after it are excluded.
+#' @return A list containing `gradebook`, `item_detail`, and
+#'   `effective_assignments` data frames.
+#' @details Called by `scripts/04_build_gradebook.R` and extensively exercised by
+#'   `tests/testthat/test-gradebook.R`. Depends on `require_columns()`,
+#'   `empty_assignment_table()`, and
+#'   `validate_gradebook_assignment_metadata()`.
 build_gradebook_tables <- function(
   events,
   assignments,

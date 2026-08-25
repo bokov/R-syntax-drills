@@ -47,11 +47,36 @@ vm.runInContext(
 
 const api = context.__concurrencyTestApi;
 
+// Test-only helpers -----------------------------------------------------------
+
+/**
+ * Throws when a concurrency test assertion is false.
+ *
+ * Test-only helper used throughout this file; it has no production dependencies.
+ *
+ * @param {*} condition Value expected to be truthy.
+ * @param {string} message Failure message.
+ * @returns {void}
+ */
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/**
+ * Minimal fake Spreadsheet Range used to exercise snapshot helpers without
+ * Google Apps Script services.
+ *
+ * Test-only class instantiated by FakeSheet.getRange().
+ */
 class FakeRange {
+  /**
+   * Stores the fake sheet and requested range coordinates.
+   * @param {FakeSheet} sheet Parent fake sheet.
+   * @param {number} row One-based starting row.
+   * @param {number} column One-based starting column.
+   * @param {number} numRows Number of rows in the range.
+   * @param {number} numColumns Number of columns in the range.
+   */
   constructor(sheet, row, column, numRows, numColumns) {
     this.sheet = sheet;
     this.row = row;
@@ -60,6 +85,10 @@ class FakeRange {
     this.numColumns = numColumns;
   }
 
+  /**
+   * Reads the requested rectangular values from the in-memory fake sheet.
+   * @returns {Array<Array<*>>} Two-dimensional range values.
+   */
   getValues() {
     const out = [];
     for (let rr = 0; rr < this.numRows; rr += 1) {
@@ -73,6 +102,12 @@ class FakeRange {
     return out;
   }
 
+  /**
+   * Writes rectangular values into the in-memory fake sheet and returns itself,
+   * matching the Apps Script Range.setValues() chaining shape.
+   * @param {Array<Array<*>>} values Values to write.
+   * @returns {FakeRange} This fake range.
+   */
   setValues(values) {
     for (let rr = 0; rr < values.length; rr += 1) {
       const rowIndex = this.row - 1 + rr;
@@ -85,20 +120,54 @@ class FakeRange {
   }
 }
 
+/**
+ * Minimal fake Spreadsheet Sheet used by snapshot/concurrency tests.
+ *
+ * Test-only class used only in this file; its methods support the subset of the
+ * Apps Script Sheet API exercised by production snapshot helpers.
+ */
 class FakeSheet {
+  /**
+   * Copies fixture rows so tests can mutate the fake sheet independently.
+   * @param {Array<Array<*>>} rows Initial sheet rows.
+   */
   constructor(rows) {
     this.rows = rows.map(function(row) { return row.slice(); });
   }
 
+  /**
+   * Returns the physical last row number in the fake sheet.
+   * @returns {number} Current row count.
+   */
   getLastRow() {
     return this.rows.length;
   }
 
+  /**
+   * Creates a FakeRange over the requested coordinates.
+   * @param {number} row One-based starting row.
+   * @param {number} column One-based starting column.
+   * @param {number} numRows Number of rows.
+   * @param {number} numColumns Number of columns.
+   * @returns {FakeRange} Fake range object.
+   */
   getRange(row, column, numRows, numColumns) {
     return new FakeRange(this, row, column, numRows, numColumns);
   }
 }
 
+/**
+ * Creates one assignment-sheet row fixture in the production column order.
+ *
+ * Test-only helper used throughout the retirement and queue-planning cases.
+ *
+ * @param {string} assignmentId Persisted assignment ID.
+ * @param {string} itemLabel Question item label.
+ * @param {string} status Rolling status; defaults to active.
+ * @param {string} assignedAt Assignment timestamp.
+ * @param {string} studentId Student ID; defaults to abc123.
+ * @returns {Array<*>} Assignment row fixture.
+ */
 function assignmentRow(
   assignmentId,
   itemLabel,
@@ -124,6 +193,19 @@ function assignmentRow(
   ];
 }
 
+/**
+ * Creates one 22-column graded-event row fixture matching EVENT_HEADERS order.
+ *
+ * Test-only helper used by retirement, review, and cross-student concurrency
+ * cases.
+ *
+ * @param {string} requestId Event request ID.
+ * @param {string} assignmentId Assignment exposure ID.
+ * @param {*} correct Correctness value stored in the event row.
+ * @param {string} timestamp Server timestamp.
+ * @param {string} studentId Student ID; defaults to abc123.
+ * @returns {Array<*>} Event row fixture.
+ */
 function eventRow(requestId, assignmentId, correct, timestamp, studentId) {
   const row = new Array(22).fill('');
   row[0] = timestamp || '2026-01-01T00:01:00Z';

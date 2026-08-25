@@ -28,6 +28,21 @@ ASSIGNMENT_COLUMNS <- c(
   "retired_request_id"
 )
 
+# Question-bank synchronization ----------------------------------------------
+
+#' Prepare canonical question metadata for the Apps Script question-bank tab
+#'
+#' Validates the canonical manifest fields needed by the assignment service,
+#' rejects duplicate IDs and unusable topics, and appends the two legacy columns
+#' expected by the existing Google Sheet schema.
+#'
+#' @param manifest Canonical question-bank manifest data frame.
+#' @return A data frame containing `QUESTION_BANK_SYNC_COLUMNS` in backend sheet
+#'   order.
+#' @details Called by `scripts/06_sync_question_bank.R` before writing the
+#'   `question_bank` sheet and directly by `test-assignment_storage.R`. It uses
+#'   `QUESTION_BANK_COLUMNS` and `QUESTION_BANK_SYNC_COLUMNS` but has no
+#'   within-repo function dependencies.
 prepare_question_bank_sync <- function(manifest) {
   missing <- setdiff(QUESTION_BANK_COLUMNS, names(manifest))
   if (length(missing)) {
@@ -55,6 +70,19 @@ prepare_question_bank_sync <- function(manifest) {
   out[, QUESTION_BANK_SYNC_COLUMNS, drop = FALSE]
 }
 
+# Assignment curriculum configuration ----------------------------------------
+
+#' Normalize active-queue assignment configuration
+#'
+#' Validates the queue size and ordered curriculum topics that are sent to the
+#' assignment service and used when graded events request a replacement item.
+#'
+#' @param config Runtime/authoring configuration list, normally `APP_CONFIG`.
+#' @return A list containing integer `queue_size` and character
+#'   `topic_priority`.
+#' @details Called by `validate_assignment_config()`,
+#'   `assignment_service_payload()`, and `post_log_event()`, and directly by
+#'   `test-assignment_storage.R`. It has no within-repo function dependencies.
 assignment_config <- function(config = APP_CONFIG) {
   if (is.null(config$queue_size) || length(config$queue_size) != 1) {
     stop("APP_CONFIG$queue_size must be one positive integer.")
@@ -86,6 +114,20 @@ assignment_config <- function(config = APP_CONFIG) {
   )
 }
 
+#' Validate assignment configuration against the canonical bank
+#'
+#' Checks that configured topics exist, each curriculum topic contains scored
+#' exercises, and the first topic has enough distinct questions and a starter
+#' set that fits within the active queue.
+#'
+#' @param config Runtime/authoring configuration list, normally `APP_CONFIG`.
+#' @param bank_manifest Optional canonical question-bank manifest. When `NULL`,
+#'   only scalar configuration validation is performed.
+#' @return Invisibly, the normalized settings returned by
+#'   `assignment_config()`.
+#' @details Called by `build_player_assets()`, `scripts/06_sync_question_bank.R`,
+#'   and `test-assignment_storage.R`. Depends on `assignment_config()` and the
+#'   `QUESTION_BANK_COLUMNS` schema constant.
 validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL) {
   settings <- assignment_config(config)
 
@@ -164,6 +206,17 @@ validate_assignment_config <- function(config = APP_CONFIG, bank_manifest = NULL
   invisible(settings)
 }
 
+# Assignment-service requests -------------------------------------------------
+
+#' Generate an assignment-service request ID
+#'
+#' Combines a request-family prefix, UTC timestamp, and random suffix to produce
+#' an identifier used for service-side idempotency and tracing.
+#'
+#' @param prefix Character prefix describing the request family.
+#' @return A length-one character request ID.
+#' @details Called only by `assignment_service_payload()`. It has no within-repo
+#'   function dependencies.
 make_service_request_id <- function(prefix = "assignment") {
   paste0(
     prefix, "-",
@@ -172,6 +225,15 @@ make_service_request_id <- function(prefix = "assignment") {
   )
 }
 
+#' Return scored exercise labels from a manifest
+#'
+#' Extracts unique positive-point `exercise_result` item labels so requests can
+#' tell the backend which canonical questions are currently available.
+#'
+#' @param manifest Question-manifest data frame, or `NULL`.
+#' @return A character vector of unique scored item labels, possibly empty.
+#' @details Called by `assignment_service_payload()` and `post_log_event()`. It
+#'   has no within-repo function dependencies.
 scored_manifest_labels <- function(manifest) {
   if (is.null(manifest) || !nrow(manifest)) return(character())
   unique(as.character(manifest$item_label[
@@ -179,6 +241,23 @@ scored_manifest_labels <- function(manifest) {
   ]))
 }
 
+#' Build an active-assignment service request
+#'
+#' Validates the request type and student ID, adds course and bank-reconciliation
+#' metadata, and for create requests includes the active queue size and ordered
+#' curriculum.
+#'
+#' @param request_type Either `"get_active_assignments"` or
+#'   `"get_or_create_active_assignments"`.
+#' @param student_id Student identifier sent to the assignment service.
+#' @param config Runtime/authoring configuration list.
+#' @param manifest Optional current question manifest used to advertise usable
+#'   scored item labels.
+#' @return A JSON-ready request payload list.
+#' @details Called by `initialize_student_assignments()`, assignment-service
+#'   smoke/testing code, and `test-assignment_storage.R`. Depends on
+#'   `make_service_request_id()`, `scored_manifest_labels()`, and, for create
+#'   requests, `assignment_config()`.
 assignment_service_payload <- function(
   request_type,
   student_id,
@@ -215,6 +294,18 @@ assignment_service_payload <- function(
   payload
 }
 
+#' Send an active-assignment request to Apps Script
+#'
+#' Posts the request payload as JSON to the configured webhook, parses the
+#' response, and raises an R error when the service reports `ok = false`.
+#'
+#' @param payload Assignment-service request list.
+#' @param config Configuration containing `webhook_url`.
+#' @param timeout_sec HTTP request timeout in seconds.
+#' @return The parsed successful response body.
+#' @details Called by `initialize_student_assignments()` and authoring-side
+#'   assignment-service test/smoke code. It has no within-repo function
+#'   dependencies.
 post_assignment_service <- function(
   payload,
   config = APP_CONFIG,
@@ -242,11 +333,32 @@ post_assignment_service <- function(
   body
 }
 
+# Assignment response normalization ------------------------------------------
+
+#' Extract one scalar assignment-response field
+#'
+#' Normalizes empty or vector-valued Apps Script response fields before they are
+#' placed into the rectangular assignment table.
+#'
+#' @param x Response field value.
+#' @param default Value returned for `NULL` or length-zero input.
+#' @return The first element of `x`, or `default`.
+#' @details Called only by `assignment_response_table()`. It has no within-repo
+#'   function dependencies.
 assignment_scalar <- function(x, default = NA_character_) {
   if (is.null(x) || length(x) == 0) return(default)
   x[[1]]
 }
 
+#' Create an empty assignment table
+#'
+#' Supplies the canonical zero-row assignment schema for service responses and
+#' gradebook construction when no persisted assignments are available.
+#'
+#' @return A zero-row data frame containing all `ASSIGNMENT_COLUMNS` with stable
+#'   types.
+#' @details Called by `assignment_response_table()` and `build_gradebook_tables()`.
+#'   It has no within-repo function dependencies.
 empty_assignment_table <- function() {
   data.frame(
     assignment_id = character(),
@@ -266,6 +378,17 @@ empty_assignment_table <- function() {
   )
 }
 
+#' Convert assignment-service rows to a data frame
+#'
+#' Flattens returned assignment objects into the stable local schema and orders
+#' them oldest-first by assignment time.
+#'
+#' @param body Parsed Apps Script response body containing an `assignments` list.
+#' @return An assignment data frame, or the canonical empty table when no rows
+#'   are returned.
+#' @details Called by `initialize_student_assignments()` and `post_log_event()`,
+#'   and directly by `test-assignment_storage.R`. Depends on
+#'   `assignment_scalar()` and `empty_assignment_table()`.
 assignment_response_table <- function(body) {
   rows <- body$assignments
   if (is.null(rows) || !length(rows)) return(empty_assignment_table())
@@ -293,6 +416,20 @@ assignment_response_table <- function(body) {
   out[order(out$assigned_at_utc), , drop = FALSE]
 }
 
+#' Validate active assignment rows against the current manifest
+#'
+#' Checks assignment schema, uniqueness, required metadata, and active status;
+#' removes server rows whose IDs are absent from the locally usable manifest;
+#' and verifies topic/point metadata for the remaining rows.
+#'
+#' @param assignments Assignment data frame returned by
+#'   `assignment_response_table()`.
+#' @param manifest Current question-manifest data frame.
+#' @return The validated assignment data frame, possibly restricted to the local
+#'   manifest intersection.
+#' @details Called by `initialize_student_assignments()` and `post_log_event()`,
+#'   and directly by `test-assignment_storage.R`. It uses `ASSIGNMENT_COLUMNS`
+#'   but has no within-repo function dependencies.
 validate_persisted_assignments <- function(assignments, manifest) {
   missing_assignment <- setdiff(ASSIGNMENT_COLUMNS, names(assignments))
   if (length(missing_assignment)) {
@@ -358,6 +495,23 @@ validate_persisted_assignments <- function(assignments, manifest) {
   assignments
 }
 
+# Assignment lifecycle --------------------------------------------------------
+
+#' Load or create a student's active assignment queue
+#'
+#' Builds a create-or-load request, calls the assignment service, converts and
+#' validates the response against the current manifest, and preserves any
+#' retired-assignment metadata as an attribute on the resulting table.
+#'
+#' @param student_id Student identifier whose active queue should be loaded.
+#' @param manifest Current question manifest.
+#' @param config Runtime configuration list.
+#' @return A validated active assignment data frame with a
+#'   `retired_assignments` attribute.
+#' @details Called directly by the `save_identity` observer in `index.Rmd`.
+#'   Depends on `read_question_manifest()` through its default,
+#'   `assignment_service_payload()`, `post_assignment_service()`,
+#'   `assignment_response_table()`, and `validate_persisted_assignments()`.
 initialize_student_assignments <- function(
   student_id,
   manifest = read_question_manifest(),
@@ -377,6 +531,17 @@ initialize_student_assignments <- function(
   assignments
 }
 
+#' Map active item labels to their assignment IDs
+#'
+#' Converts a validated active queue to the named vector stored in Shiny session
+#' state so logging events can carry the exact persisted exposure ID.
+#'
+#' @param assignments Active assignment data frame.
+#' @return A character vector of assignment IDs named by `item_label`, or an
+#'   empty named character vector for an empty queue.
+#' @details Called by `set_active_assignment_player()` in `R/logging.R` and
+#'   directly by `test-assignment_storage.R`. It has no within-repo function
+#'   dependencies.
 assignment_id_map <- function(assignments) {
   if (!nrow(assignments)) return(setNames(character(), character()))
   if (anyDuplicated(assignments$item_label)) {
