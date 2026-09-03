@@ -10,6 +10,29 @@ test_that("equals is rejected only when parsed as assignment", {
   expect_false(uses_assignment_equals("function(x = 1) x"))
 })
 
+test_that("syntax inspection handles omitted subscript arguments", {
+  expect_true(uses_call("foo[10:20, ]", "["))
+  expect_true(uses_call("foo[, 2:4]", "["))
+})
+
+test_that("global checker accepts valid omitted subscript arguments", {
+  checker <- unserialize(serialize(drillr_exercise_checker, NULL))
+  checker_env <- new.env(parent = globalenv())
+
+  # Isolate Drillr's pre-delegation behavior without adding gradethis as a test
+  # dependency. The mock namespace operator returns a function that captures the
+  # arguments Drillr would have forwarded to gradethis.
+  assign("::", function(...) function(...) list(...), envir = checker_env)
+  environment(checker) <- checker_env
+
+  forwarded <- checker(
+    user_code = "middle_rows <- airquality[10:20, ]\nmiddle_rows",
+    check_code = "original check"
+  )
+
+  expect_identical(forwarded$check_code, "original check")
+})
+
 test_that("global checker survives learnr environment rebinding", {
   checker <- unserialize(serialize(drillr_exercise_checker, NULL))
 

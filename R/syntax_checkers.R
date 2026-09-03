@@ -70,7 +70,12 @@ walk_calls <- function(x) {
 
     calls[[length(calls) + 1L]] <<- node
     children <- as.list(node)[-1]
-    for (child in children) visit(child)
+    # R represents an omitted call argument with a special sentinel. Inspect it
+    # in place so valid forms such as x[rows, ] do not trigger evaluation errors.
+    for (ii in seq_along(children)) {
+      if (identical(children[[ii]], quote(expr = ))) next
+      visit(children[[ii]])
+    }
     invisible(NULL)
   }
 
@@ -199,8 +204,13 @@ drillr_exercise_checker <- function(
     if (is.symbol(head) && identical(as.character(head), "=")) return(TRUE)
 
     children <- as.list(node)[-1]
-    if (!length(children)) return(FALSE)
-    any(vapply(children, contains_assignment_equals, logical(1)))
+    # As in walk_calls(), skip omitted arguments without binding the sentinel to
+    # a local variable, which would make R treat it as an evaluated missing arg.
+    for (ii in seq_along(children)) {
+      if (identical(children[[ii]], quote(expr = ))) next
+      if (contains_assignment_equals(children[[ii]])) return(TRUE)
+    }
+    FALSE
   }
 
   if (contains_assignment_equals(parsed)) {
